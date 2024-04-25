@@ -20,7 +20,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	${CUDA_INC_PATH} 
 	${CUDAToolkit_INCLUDE_DIRS} 
 	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-	${OptiX_INSTALL_DIR}/include)
+	${OptiX_INSTALL_DIR}/include
+	${OPENGL_INCLUDE_DIRS})
 
 # Compile
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
@@ -28,9 +29,16 @@ target_compile_features(${PROJECT_NAME} PUBLIC cuda_std_20)
 
 # Dependencies
 
+# OPENGL
+find_package(OpenGL REQUIRED)
+
 # CUDA
 find_package(CUDAToolkit 12.0 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart)
+
+# GLAD
+find_package(glad CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE glad::glad)
 
 # GLFW
 find_package(glfw3 CONFIG REQUIRED)
