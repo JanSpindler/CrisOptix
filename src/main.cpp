@@ -1,4 +1,5 @@
 #include <iostream>
+#include <optix.h>
 
 int main()
 {
