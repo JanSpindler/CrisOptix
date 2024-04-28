@@ -27,5 +27,4 @@ private:
 	static void InitGlfw(const bool resizable, const std::string& title);
 	static void InitOpenGl();
 	static void InitGlsl();
-	static void InitOptiX();
 };

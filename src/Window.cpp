@@ -8,7 +8,6 @@ void Window::Init(const int width, const int height, const bool resizable, const
 	InitGlfw(resizable, title);
 	InitOpenGl();
 	InitGlsl();
-	InitOptiX();
 }
 
 void Window::Destroy()
@@ -165,9 +164,4 @@ void Window::InitGlsl()
 			glUseProgram(0);
 		}
 	}
-}
-
-void Window::InitOptiX()
-{
-
 }
