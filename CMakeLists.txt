@@ -17,7 +17,7 @@ list(APPEND CMAKE_MODULE_PATH "./cmake")
 # Other
 #option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 #set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Multiple processors on windows
 if (MSVC)
@@ -39,7 +39,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	${OPENGL_INCLUDE_DIRS})
 
 # Compile
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_compile_features(${PROJECT_NAME} PUBLIC cuda_std_17)
 
 # Dependencies
@@ -69,3 +69,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
 # IMGUI
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
+
+# ASSIMP
+find_package(assimp CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)

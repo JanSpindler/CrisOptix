@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <string>
+#include <OutputBuffer.h>
+#include <glm/glm.hpp>
 
 class Window
 {
@@ -18,8 +20,9 @@ private:
 	static inline int m_Width = 0;
 	static inline int m_Height = 0;
 
-	static inline GLuint m_PboOutputBuffer = 0;
+	static inline OutputBuffer<glm::u8vec3> m_OutputBuffer;
 	static inline GLuint m_HdrTexture = 0;
+
 	static inline GLuint m_VertexShader = 0;
 	static inline GLuint m_FragmentShader = 0;
 	static inline GLuint m_Program = 0;

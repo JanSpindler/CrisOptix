@@ -1,4 +1,5 @@
 #include <Window.h>
+#include <custom_assert.h>
 
 void Window::Init(const int width, const int height, const bool resizable, const std::string& title)
 {
@@ -7,6 +8,7 @@ void Window::Init(const int width, const int height, const bool resizable, const
 
 	InitGlfw(resizable, title);
 	InitOpenGl();
+	m_OutputBuffer.Resize(width, height);
 	InitGlsl();
 }
 
@@ -17,8 +19,38 @@ void Window::Destroy()
 
 void Window::Update()
 {
+	// GLFW
 	glfwPollEvents();
 	glfwGetFramebufferSize(m_Handle, &m_Width, &m_Height);
+
+	// Render with OptiX
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_HdrTexture);
+	//glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_bufferOutput->getGLBOId());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, nullptr);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	// Display texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_HdrTexture);
+
+	glUseProgram(m_Program);
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(0.0f, 0.0f);
+	glVertex2f(-1.0f, -1.0f);
+	glTexCoord2f(1.0f, 0.0f);
+	glVertex2f(1.0f, -1.0f);
+	glTexCoord2f(1.0f, 1.0f);
+	glVertex2f(1.0f, 1.0f);
+	glTexCoord2f(0.0f, 1.0f);
+	glVertex2f(-1.0f, 1.0f);
+	glEnd();
+
+	glUseProgram(0);
+
+	// Check gl errors
+	CHECK_GL_ERROR();
 }
 
 bool Window::IsClosed()
@@ -63,13 +95,6 @@ void Window::InitOpenGl()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	// Interop
-	glGenBuffers(1, &m_PboOutputBuffer);
-	if (m_PboOutputBuffer == 0) { exit(1); }
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PboOutputBuffer);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, m_Width * m_Height * sizeof(float) * 4, nullptr, GL_STREAM_READ);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
 	// Textures
 	glGenTextures(1, &m_HdrTexture);
 	if (m_HdrTexture == 0) { exit(1); }
@@ -83,6 +108,9 @@ void Window::InitOpenGl()
 
 	// DEAR ImGui has been changed to push the GL_TEXTURE_BIT so that this works
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	// Check gl errors
+	CHECK_GL_ERROR();
 }
 
 void Window::InitGlsl()
@@ -164,4 +192,7 @@ void Window::InitGlsl()
 			glUseProgram(0);
 		}
 	}
+
+	// Check gl errors
+	CHECK_GL_ERROR();
 }

@@ -7,6 +7,7 @@
 #include <optix.h>
 #include <optix_stubs.h>
 #include <optix_function_table_definition.h>
+#include <custom_assert.h>
 
 OptixDeviceContext optixContext = nullptr;
 
@@ -17,17 +18,14 @@ void InitOptix()
 
     const OptixDeviceContextOptions optixContextOptions{};
     optixContext = nullptr;
-    if (optixDeviceContextCreate(0, &optixContextOptions, &optixContext) != OPTIX_SUCCESS)
-    {
-        exit(1);
-    }
+    ASSERT_OPTIX(optixDeviceContextCreate(0, &optixContextOptions, &optixContext));
 }
 
 int main()
 {
     std::cout << "Hello there" << std::endl;
 
-    Window::Init(800, 600, true, "CrisOptix");
+    Window::Init(800, 600, false, "CrisOptix");
     InitOptix();
 
     while (!Window::IsClosed())
