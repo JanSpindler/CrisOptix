@@ -8,7 +8,6 @@ void Window::Init(const int width, const int height, const bool resizable, const
 
 	InitGlfw(resizable, title);
 	InitOpenGl();
-	m_OutputBuffer.Resize(width, height);
 	InitGlsl();
 }
 

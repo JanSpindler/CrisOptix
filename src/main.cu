@@ -28,8 +28,21 @@ int main()
     Window::Init(800, 600, false, "CrisOptix");
     InitOptix();
 
+    OutputBuffer<glm::u8vec3> outputBuffer(800, 600);
+
+    DeviceBuffer<glm::vec3> hdrBuffer(800 * 600);
+
     while (!Window::IsClosed())
     {
+        //
+        outputBuffer.MapCuda();
+
+        // Trace rays
+        // TODO: trace rays
+
+        // Tone mapping
+
+        // Render to window
         Window::Update();
     }
 

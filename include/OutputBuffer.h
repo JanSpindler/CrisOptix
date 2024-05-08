@@ -46,6 +46,13 @@ public:
 		m_PixelStorage.resize(m_Width * m_Height);
 	}
 
+	constexpr void MapCuda()
+	{
+		size_t bufferSize = 0;
+		ASSERT_CUDA(cudaGraphicsMapResources(1, &m_CudaGraphRes, m_Stream));
+		ASSERT_CUDA(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&m_DevicePixels), &bufferSize, m_CudaGraphRes));
+	}
+
 private:
 	uint32_t m_Width = 0;
 	uint32_t m_Height = 0;
