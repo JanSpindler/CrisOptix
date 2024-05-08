@@ -3,9 +3,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <string>
-#include <OutputBuffer.h>
-#include <glm/glm.hpp>
-#include <DeviceBuffer.h>
 
 class Window
 {
@@ -20,8 +17,6 @@ private:
 	static inline GLFWwindow* m_Handle = nullptr;
 	static inline int m_Width = 0;
 	static inline int m_Height = 0;
-
-	static inline GLuint m_HdrTexture = 0;
 
 	static inline GLuint m_VertexShader = 0;
 	static inline GLuint m_FragmentShader = 0;

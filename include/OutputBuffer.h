@@ -11,22 +11,13 @@ template <typename T>
 class OutputBuffer
 {
 public:
-	constexpr OutputBuffer() = default;
-
-	constexpr OutputBuffer(const uint32_t width, const uint32_t height) :
-		m_Width(width),
-		m_Height(height)
+	constexpr OutputBuffer(const uint32_t width, const uint32_t height)
 	{
-		Resize(m_Width, m_Height);
+		Resize(width, height);
 	}
 
 	constexpr void Resize(const uint32_t width, const uint32_t height)
-	{
-		if (width == m_Width && height == m_Height)
-		{
-			return;
-		}
-		
+	{	
 		m_Width = width;
 		m_Height = height;
 
@@ -51,6 +42,11 @@ public:
 		size_t bufferSize = 0;
 		ASSERT_CUDA(cudaGraphicsMapResources(1, &m_CudaGraphRes, m_Stream));
 		ASSERT_CUDA(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&m_DevicePixels), &bufferSize, m_CudaGraphRes));
+	}
+
+	constexpr void UnmapCuda()
+	{
+		ASSERT_CUDA(cudaGraphicsUnmapResources(1, &m_CudaGraphRes, m_Stream));
 	}
 
 private:

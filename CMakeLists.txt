@@ -4,10 +4,12 @@ cmake_minimum_required(VERSION 3.16)
 project(CrisOptix CXX CUDA)
 
 # CUDA and OPTIX
-set(CMAKE_CUDA_ARCHITECTURES 86)
-#option(CUDA_GENERATE_DEPENDENCIES_DURING_CONFIGURE "Generate dependencies during configure time instead of only during build time." OFF)
-#mark_as_advanced(CLEAR CUDA_64_BIT_DEVICE_CODE)
-#set(CUDA_NVCC_FLAGS "--use_fast_math" "--expt-relaxed-constexpr" "-Wno-deprecated-gpu-targets" "-Xcudafe=\"--diag_suppress=2886\"")
+#set(CMAKE_CUDA_ARCHITECTURES 86)
+option(CUDA_GENERATE_DEPENDENCIES_DURING_CONFIGURE "Generate dependencies during configure time instead of only during build time." OFF)
+mark_as_advanced(CLEAR CUDA_64_BIT_DEVICE_CODE)
+set(CUDA_NVCC_FLAGS "--use_fast_math" "--expt-relaxed-constexpr" "-Wno-deprecated-gpu-targets" "-Xcudafe=\"--diag_suppress=2886\"")
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} CACHE STRING "Semi-colon delimit multiple arguments." FORCE)
+
 set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
 message("OptiX install dir: " ${OptiX_INSTALL_DIR})
 
@@ -15,9 +17,7 @@ message("OptiX install dir: " ${OptiX_INSTALL_DIR})
 list(APPEND CMAKE_MODULE_PATH "./cmake")
 
 # Other
-#option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 # Multiple processors on windows
 if (MSVC)
@@ -39,7 +39,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	${OPENGL_INCLUDE_DIRS})
 
 # Compile
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 target_compile_features(${PROJECT_NAME} PUBLIC cuda_std_17)
 
 # Dependencies

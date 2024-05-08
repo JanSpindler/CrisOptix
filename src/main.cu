@@ -8,13 +8,27 @@
 #include <optix_stubs.h>
 #include <optix_function_table_definition.h>
 #include <custom_assert.h>
+#include <glm/glm.hpp>
+#include <OutputBuffer.h>
+#include <DeviceBuffer.h>
+#include <array>
 
 OptixDeviceContext optixContext = nullptr;
 
+void InitCuda()
+{
+    std::array<int, 4> cudaGlDevices{};
+    uint32_t glDeviceCount = 4;
+    cudaGLGetDevices(&glDeviceCount, cudaGlDevices.data(), glDeviceCount, cudaGLDeviceListAll);
+    if (glDeviceCount == 0) { Log::Error("No cuda gl capable device found"); }
+
+    //ASSERT_CUDA(cudaSetDevice(cudaGlDevices[0]));
+    ASSERT_CUDA(cudaFree(nullptr));
+}
+
 void InitOptix()
 {
-    if (cudaFree(0) != CUDA_SUCCESS) { exit(1); }
-    if (optixInit() != OPTIX_SUCCESS) { exit(1); }
+    ASSERT_OPTIX(optixInit());
 
     const OptixDeviceContextOptions optixContextOptions{};
     optixContext = nullptr;
@@ -26,6 +40,7 @@ int main()
     std::cout << "Hello there" << std::endl;
 
     Window::Init(800, 600, false, "CrisOptix");
+    InitCuda();
     InitOptix();
 
     OutputBuffer<glm::u8vec3> outputBuffer(800, 600);
@@ -44,6 +59,9 @@ int main()
 
         // Render to window
         Window::Update();
+
+        //
+        outputBuffer.UnmapCuda();
     }
 
     Window::Destroy();
