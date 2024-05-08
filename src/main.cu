@@ -49,8 +49,9 @@ int main()
 
     while (!Window::IsClosed())
     {
-        //
-        outputBuffer.MapCuda();
+        // Handle window io
+        Window::HandleIO();
+        // TODO: handle resize by resizing buffers
 
         // Trace rays
         // TODO: trace rays
@@ -58,10 +59,7 @@ int main()
         // Tone mapping
 
         // Render to window
-        Window::Update();
-
-        //
-        outputBuffer.UnmapCuda();
+        Window::Display(outputBuffer);
     }
 
     Window::Destroy();

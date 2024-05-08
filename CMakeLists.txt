@@ -16,7 +16,7 @@ message("OptiX install dir: " ${OptiX_INSTALL_DIR})
 # Module path
 list(APPEND CMAKE_MODULE_PATH "./cmake")
 
-# Other
+# C++
 set(CMAKE_CXX_STANDARD 17)
 
 # Multiple processors on windows
@@ -37,10 +37,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 	"${OptiX_INSTALL_DIR}/include"
 	${OPENGL_INCLUDE_DIRS})
-
-# Compile
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_compile_features(${PROJECT_NAME} PUBLIC cuda_std_17)
 
 # Dependencies
 

@@ -1,6 +1,34 @@
 #include <Window.h>
 #include <custom_assert.h>
 
+static const std::string vertShaderSrx = R"(
+#version 330 core
+
+layout(location = 0) in vec3 vertexPosition_modelspace;
+out vec2 UV;
+
+void main()
+{
+	gl_Position =  vec4(vertexPosition_modelspace,1);
+	UV = (vec2( vertexPosition_modelspace.x, -vertexPosition_modelspace.y )+vec2(1,1))/2.0;
+}
+)";
+
+static const std::string fragShaderSrc = R"(
+#version 330 core
+
+in vec2 UV;
+out vec3 color;
+
+uniform sampler2D render_tex;
+uniform bool correct_gamma;
+
+void main()
+{
+    color = texture( render_tex, UV ).xyz;
+}
+)";
+
 void Window::Init(const int width, const int height, const bool resizable, const std::string& title)
 {
 	m_Width = width;
@@ -16,22 +44,57 @@ void Window::Destroy()
 	glfwTerminate();
 }
 
-void Window::Update()
+void Window::HandleIO()
 {
-	// GLFW
 	glfwPollEvents();
+
+	int oldWidth = m_Width;
+	int oldHeight = m_Height;
 	glfwGetFramebufferSize(m_Handle, &m_Width, &m_Height);
+	m_Resized = oldWidth != m_Width || oldHeight != m_Height;
+}
 
-	// Render with OptiX
-	// TODO
+void Window::Display(OutputBuffer<glm::u8vec3>& outputBuffer)
+{
+	//
+	outputBuffer.MapCuda();
 
-	// Check gl errors
-	CHECK_GL_ERROR();
+	outputBuffer.UnmapCuda();
+	
+	// Display
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, m_Width, m_Height);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glUseProgram(m_Program);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_RenderTex);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, outputBuffer.GetPbo());
+
+	// Swap buffers
+	glfwSwapBuffers(m_Handle);
 }
 
 bool Window::IsClosed()
 {
 	return glfwWindowShouldClose(m_Handle) == GLFW_TRUE;
+}
+
+bool Window::IsResized()
+{
+	return m_Resized;
+}
+
+uint32_t Window::GetWidth()
+{
+	return static_cast<uint32_t>(m_Width);
+}
+
+uint32_t Window::GetHeight()
+{
+	return static_cast<uint32_t>(m_Height);
 }
 
 void Window::InitGlfw(const bool resizable, const std::string& title)

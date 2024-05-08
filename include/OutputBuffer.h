@@ -49,6 +49,11 @@ public:
 		ASSERT_CUDA(cudaGraphicsUnmapResources(1, &m_CudaGraphRes, m_Stream));
 	}
 
+	constexpr GLuint GetPbo()
+	{
+		return m_Pbo;
+	}
+
 private:
 	uint32_t m_Width = 0;
 	uint32_t m_Height = 0;
