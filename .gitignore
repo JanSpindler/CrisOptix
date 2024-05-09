@@ -6,6 +6,8 @@
 *.pdb
 *.log
 
+/Release
+/Debug
 /.vs
 /.vscode
 /build
