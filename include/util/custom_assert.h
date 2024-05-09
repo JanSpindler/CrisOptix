@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <Log.h>
+#include <util/Log.h>
 #include <cuda.h>
 #include <string>
 #include <sstream>

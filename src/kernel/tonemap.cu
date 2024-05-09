@@ -39,8 +39,7 @@ __global__ void ToneMappingKernel(const CuBufferView<glm::vec3> inputHdr, CuBuff
 		return;
 	}
 
-	//outputLdr[idx] = LinearToSrgb(inputHdr[idx]);
-	outputLdr[idx] = glm::u8vec3(100);
+	outputLdr[idx] = LinearToSrgb(inputHdr[idx]);
 }
 
 void ToneMapping(const CuBufferView<glm::vec3>& inputHdr, CuBufferView<glm::u8vec3>& outputLdr)

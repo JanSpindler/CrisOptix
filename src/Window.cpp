@@ -1,5 +1,5 @@
-#include <Window.h>
-#include <custom_assert.h>
+#include <graph/Window.h>
+#include <util/custom_assert.h>
 #include <glsl.h>
 
 static const std::string vertShaderSrc = R"(

@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 #include <cuda.h>
 #include <cuda_gl_interop.h>
-#include <custom_assert.h>
+#include <util/custom_assert.h>
 
 template <typename T>
 class OutputBuffer

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <custom_assert.h>
+#include <util/custom_assert.h>
 #include <cuda_runtime.h>
 
 template <typename T>

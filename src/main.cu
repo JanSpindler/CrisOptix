@@ -1,5 +1,5 @@
 #include <iostream>
-#include <Window.h>
+#include <graph/Window.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <optix_host.h>
@@ -7,12 +7,12 @@
 #include <optix.h>
 #include <optix_stubs.h>
 #include <optix_function_table_definition.h>
-#include <custom_assert.h>
+#include <util/custom_assert.h>
 #include <glm/glm.hpp>
-#include <OutputBuffer.h>
-#include <DeviceBuffer.h>
+#include <graph/OutputBuffer.h>
+#include <graph/DeviceBuffer.h>
 #include <array>
-#include <CuBufferView.h>
+#include <graph/CuBufferView.h>
 #include <kernel/tonemap.h>
 
 OptixDeviceContext optixContext = nullptr;

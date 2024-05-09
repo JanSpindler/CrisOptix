@@ -3,7 +3,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <string>
-#include <OutputBuffer.h>
+#include <graph/OutputBuffer.h>
 #include <glm/glm.hpp>
 
 class Window
