@@ -13,7 +13,7 @@ public:
 	static void Destroy();
 
 	static void HandleIO();
-	static void Display(OutputBuffer<glm::u8vec3>& outputBuffer);
+	static void Display(const GLuint pbo);
 
 	static bool IsClosed();
 	static bool IsResized();
@@ -29,6 +29,10 @@ private:
 
 	// Texture
 	static inline GLuint m_RenderTex = 0;
+	static inline GLint m_RenderTexUniformLoc = -1;
+
+	// Vertex buffer
+	static inline GLuint m_VertexBuffer = 0;
 
 	// Shader
 	static inline GLuint m_VertexShader = 0;
@@ -38,5 +42,7 @@ private:
 	// Functions
 	static void InitGlfw(const bool resizable, const std::string& title);
 	static void InitOpenGl();
-	static void InitGlsl();
+	static void InitRenderTex();
+	static void InitVertexBuffer();
+	static void InitProgram();
 };

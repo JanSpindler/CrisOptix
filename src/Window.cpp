@@ -1,7 +1,8 @@
 #include <Window.h>
 #include <custom_assert.h>
+#include <glsl.h>
 
-static const std::string vertShaderSrx = R"(
+static const std::string vertShaderSrc = R"(
 #version 330 core
 
 layout(location = 0) in vec3 vertexPosition_modelspace;
@@ -36,7 +37,9 @@ void Window::Init(const int width, const int height, const bool resizable, const
 
 	InitGlfw(resizable, title);
 	InitOpenGl();
-	InitGlsl();
+	InitRenderTex();
+	InitVertexBuffer();
+	InitProgram();
 }
 
 void Window::Destroy()
@@ -54,24 +57,42 @@ void Window::HandleIO()
 	m_Resized = oldWidth != m_Width || oldHeight != m_Height;
 }
 
-void Window::Display(OutputBuffer<glm::u8vec3>& outputBuffer)
-{
-	//
-	outputBuffer.MapCuda();
-
-	outputBuffer.UnmapCuda();
-	
-	// Display
+void Window::Display(const GLuint pbo)
+{	
+	// Framebuffer and viewport
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, m_Width, m_Height);
 
+	// Clear
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Use glsl program
 	glUseProgram(m_Program);
 
+	// Setupt render texutre
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_RenderTex);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, outputBuffer.GetPbo());
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, m_Width, m_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+	glUniform1i(m_RenderTexUniformLoc, 0);
+
+	// Setup vertex array
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// Draw
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	//
+	glDisableVertexAttribArray(0);
+
+	CHECK_GL_ERROR();
 
 	// Swap buffers
 	glfwSwapBuffers(m_Handle);
@@ -131,86 +152,45 @@ void Window::InitOpenGl()
 	CHECK_GL_ERROR();
 }
 
-void Window::InitGlsl()
+void Window::InitRenderTex()
 {
-	static const std::string vsSource =
-		"#version 330\n"
-		"layout(location = 0) in vec4 attrPosition;\n"
-		"layout(location = 8) in vec2 attrTexCoord0;\n"
-		"out vec2 varTexCoord0;\n"
-		"void main()\n"
-		"{\n"
-		"  gl_Position  = attrPosition;\n"
-		"  varTexCoord0 = attrTexCoord0;\n"
-		"}\n";
+	glGenTextures(1, &m_RenderTex);
+	glBindTexture(GL_TEXTURE_2D, m_RenderTex);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-	static const std::string fsSource =
-		"#version 330\n"
-		"uniform sampler2D samplerHDR;\n"
-		"in vec2 varTexCoord0;\n"
-		"layout(location = 0, index = 0) out vec4 outColor;\n"
-		"void main()\n"
-		"{\n"
-		"  outColor = texture(samplerHDR, varTexCoord0);\n"
-		"}\n";
+	glBindTexture(GL_TEXTURE_2D, 0);
 
-	GLint vsCompiled = 0;
-	GLint fsCompiled = 0;
+	CHECK_GL_ERROR();
+}
 
-	m_VertexShader = glCreateShader(GL_VERTEX_SHADER);
-	if (m_VertexShader)
-	{
-		GLsizei len = (GLsizei)vsSource.size();
-		const GLchar* vs = vsSource.c_str();
-		glShaderSource(m_VertexShader, 1, &vs, &len);
-		glCompileShader(m_VertexShader);
-		//checkInfoLog(vs, m_VertexShader);
+void Window::InitVertexBuffer()
+{
+	static constexpr GLfloat vertexBufferData[] = {
+		-1.0f, -1.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
 
-		glGetShaderiv(m_VertexShader, GL_COMPILE_STATUS, &vsCompiled);
-		if (vsCompiled == GL_FALSE) { exit(1); }
-	}
+		-1.0f,  1.0f, 0.0f,
+		 1.0f, -1.0f, 0.0f,
+		 1.0f,  1.0f, 0.0f,
+	};
 
-	m_FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	if (m_FragmentShader)
-	{
-		GLsizei len = (GLsizei)fsSource.size();
-		const GLchar* fs = fsSource.c_str();
-		glShaderSource(m_FragmentShader, 1, &fs, &len);
-		glCompileShader(m_FragmentShader);
-		//checkInfoLog(fs, m_FragmentShader);
+	glGenBuffers(1, &m_VertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBufferData), reinterpret_cast<const void*>(vertexBufferData), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-		glGetShaderiv(m_FragmentShader, GL_COMPILE_STATUS, &fsCompiled);
-		if (fsCompiled == GL_FALSE) { exit(1); }
-	}
+	CHECK_GL_ERROR();
+}
 
-	m_Program = glCreateProgram();
-	if (m_Program)
-	{
-		GLint programLinked = 0;
+void Window::InitProgram()
+{
+	m_Program = CreateGlProgram(vertShaderSrc.c_str(), fragShaderSrc.c_str());
+	m_RenderTexUniformLoc = GetGlUniformLoc(m_Program, "render_tex");
 
-		if (m_VertexShader && vsCompiled)
-		{
-			glAttachShader(m_Program, m_VertexShader);
-		}
-		if (m_FragmentShader&& fsCompiled)
-		{
-			glAttachShader(m_Program, m_FragmentShader);
-		}
-
-		glLinkProgram(m_Program);
-		//checkInfoLog("m_glslProgram", m_glslProgram);
-
-		glGetProgramiv(m_Program, GL_LINK_STATUS, &programLinked);
-		if (programLinked == GL_FALSE) { exit(1); }
-
-		if (programLinked)
-		{
-			glUseProgram(m_Program);
-			glUniform1i(glGetUniformLocation(m_Program, "samplerHDR"), 0); // texture image unit 0
-			glUseProgram(0);
-		}
-	}
-
-	// Check gl errors
 	CHECK_GL_ERROR();
 }

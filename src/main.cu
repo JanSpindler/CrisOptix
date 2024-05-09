@@ -53,13 +53,18 @@ int main()
         Window::HandleIO();
         // TODO: handle resize by resizing buffers
 
-        // Trace rays
+        //
+        outputBuffer.MapCuda();
+
         // TODO: trace rays
 
-        // Tone mapping
+        // TODO: tone mapping
+
+        //
+        outputBuffer.UnmapCuda();
 
         // Render to window
-        Window::Display(outputBuffer);
+        Window::Display(outputBuffer.GetPbo());
     }
 
     Window::Destroy();
