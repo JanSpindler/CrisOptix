@@ -69,3 +69,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 # ASSIMP
 find_package(assimp CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
+
+# STB
+find_package(Stb REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
