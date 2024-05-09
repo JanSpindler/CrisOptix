@@ -27,7 +27,6 @@ Model::Model(const std::string& filePath, const bool flipUv) :
 	// Log scene info
 	Log::Info("Model has " + std::to_string(scene->mNumMeshes) + " meshes");
 	Log::Info("Model has " + std::to_string(scene->mNumMaterials) + " materials");
-	Log::Info("Model has " + std::to_string(scene->mNumTextures) + " textures");
 
 	// Process scene
 	if (scene->HasMaterials()) { LoadMaterials(scene); }
@@ -69,7 +68,7 @@ void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& par
 
 	// Get meshes
 	const size_t meshCount = node->mNumMeshes;
-	Log::Info("Node has " + std::to_string(meshCount) + " meshes");
+	//Log::Info("Node has " + std::to_string(meshCount) + " meshes");
 	for (size_t meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[meshIdx]];
@@ -78,7 +77,7 @@ void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& par
 
 	// Get children
 	const size_t childCount = node->mNumChildren;
-	Log::Info("\tNode has " + std::to_string(childCount) + " children");
+	//Log::Info("\tNode has " + std::to_string(childCount) + " children");
 	for (size_t childIdx = 0; childIdx < childCount; ++childIdx)
 	{
 		ProcessNode(node->mChildren[childIdx], scene, totalT);
@@ -184,6 +183,8 @@ void Model::LoadMaterials(const aiScene* scene)
 		{
 			aiString texFileName{};
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &texFileName);
+			Log::Info("Diffuse texture: " + std::string(texFileName.C_Str()));
+
 			std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
 			if (m_Textures.find(texFilePath) == m_Textures.end())
 			{

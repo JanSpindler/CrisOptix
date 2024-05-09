@@ -16,8 +16,6 @@
 #include <kernel/tonemap.h>
 #include <model/Model.h>
 
-OptixDeviceContext optixContext = nullptr;
-
 void InitCuda()
 {
     std::array<int, 4> cudaGlDevices{};
@@ -28,18 +26,20 @@ void InitCuda()
     ASSERT_CUDA(cudaFree(nullptr));
 }
 
-void InitOptix()
+OptixDeviceContext InitOptix()
 {
     ASSERT_OPTIX(optixInit());
 
+    OptixDeviceContext optixContext = nullptr;
     const OptixDeviceContextOptions optixContextOptions{};
-    optixContext = nullptr;
     ASSERT_OPTIX(optixDeviceContextCreate(0, &optixContextOptions, &optixContext));
+
+    return optixContext;
 }
 
 void TestModelLoading()
 {
-
+    Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false);
 }
 
 int main()
@@ -52,7 +52,7 @@ int main()
 
     Window::Init(width, height, false, "CrisOptix");
     InitCuda();
-    InitOptix();
+    OptixDeviceContext optixContext = InitOptix();
 
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
 
