@@ -1,6 +1,6 @@
 #include <glsl.h>
-#include <Log.h>
-#include <custom_assert.h>
+#include <util/Log.h>
+#include <util/custom_assert.h>
 
 GLuint CreateGlShader(const char* src, const GLuint type)
 {
