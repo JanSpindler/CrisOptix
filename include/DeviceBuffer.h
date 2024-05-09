@@ -75,6 +75,16 @@ public:
 		DownloadSub(data, 0, m_Count);
 	}
 
+	constexpr CUdeviceptr GetCuPtr() const
+	{
+		return reinterpret_cast<CUdeviceptr>(m_Ptr);
+	}
+
+	constexpr size_t GetCount() const
+	{
+		return m_Count;
+	}
+
 private:
 	size_t m_Count = 0;
 	size_t m_AllocCount = 0;

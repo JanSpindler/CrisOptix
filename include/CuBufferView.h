@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <cstdint>
+#include <cuda_runtime.h>
 
 template <typename T>
 struct CuBufferView
@@ -14,7 +15,7 @@ struct CuBufferView
 	CuBufferView() = default;
 
 	CuBufferView(
-		const CUdeviceptr devicePtr,
+		CUdeviceptr devicePtr,
 		const uint32_t count,
 		const uint16_t byteStride = sizeof(T),
 		const uint16_t elemByteSize = sizeof(T))
@@ -26,22 +27,22 @@ struct CuBufferView
 	{
 	}
 
-	constexpr bool IsValid() const
+	__host__ __device__ constexpr bool IsValid() const
 	{
 		return data != 0;
 	}
 
-	constexpr operator bool() const
+	__host__ __device__ constexpr operator bool() const
 	{
 		return IsValid();
 	}
 
-	const T& operator[](const uint32_t idx) const
+	__host__ __device__ const T& operator[](const uint32_t idx) const
 	{
 		return *reinterpret_cast<T*>(data + idx * byteStride);
 	}
 
-	T& operator[](const uint32_t idx)
+	__host__ __device__ T& operator[](const uint32_t idx)
 	{
 		return *reinterpret_cast<T*>(data + idx * byteStride);
 	}

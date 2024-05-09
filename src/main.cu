@@ -12,6 +12,8 @@
 #include <OutputBuffer.h>
 #include <DeviceBuffer.h>
 #include <array>
+#include <CuBufferView.h>
+#include <kernel/tonemap.h>
 
 OptixDeviceContext optixContext = nullptr;
 
@@ -39,13 +41,17 @@ int main()
 {
     std::cout << "Hello there" << std::endl;
 
-    Window::Init(800, 600, false, "CrisOptix");
+    static constexpr size_t width = 800;
+    static constexpr size_t height = 600;
+    static constexpr size_t pixelCount = width * height;
+
+    Window::Init(width, height, false, "CrisOptix");
     InitCuda();
     InitOptix();
 
-    OutputBuffer<glm::u8vec3> outputBuffer(800, 600);
+    OutputBuffer<glm::u8vec3> outputBuffer(width, height);
 
-    DeviceBuffer<glm::vec3> hdrBuffer(800 * 600);
+    DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
     while (!Window::IsClosed())
     {
@@ -58,10 +64,15 @@ int main()
 
         // TODO: trace rays
 
-        // TODO: tone mapping
+        // Tone mapping
+        CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
+        CuBufferView<glm::u8vec3> ldrBufferView(outputBuffer.GetPixelDevicePtr(), pixelCount);
+        ToneMapping(hdrBufferView, ldrBufferView);
+        ASSERT_CUDA(cudaDeviceSynchronize());
 
         //
         outputBuffer.UnmapCuda();
+        ASSERT_CUDA(cudaDeviceSynchronize());
 
         // Render to window
         Window::Display(outputBuffer.GetPbo());

@@ -49,6 +49,11 @@ public:
 		ASSERT_CUDA(cudaGraphicsUnmapResources(1, &m_CudaGraphRes, m_Stream));
 	}
 
+	constexpr CUdeviceptr GetPixelDevicePtr()
+	{
+		return reinterpret_cast<CUdeviceptr>(m_DevicePixels);
+	}
+
 	constexpr GLuint GetPbo() const
 	{
 		return m_Pbo;
