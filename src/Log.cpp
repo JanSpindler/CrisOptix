@@ -12,4 +12,9 @@ namespace Log
 		std::cout << "Error: \t" << msg << std::endl;
 		if (exitProgram) { throw std::runtime_error(msg); }
 	}
+
+	void Assert(const bool condition, const std::string& msg)
+	{
+		if (!condition) { Log::Error(msg, true); }
+	}
 }
