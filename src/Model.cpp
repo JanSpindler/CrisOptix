@@ -14,7 +14,7 @@ Model::Model(const std::string& filePath, const bool flipUv) :
 	Log::Info("Loading model " + m_FilePath);
 
 	// Get directory path
-	m_DirPath = m_FilePath.substr(0, m_FilePath.find_first_of('/'));
+	m_DirPath = m_FilePath.substr(0, m_FilePath.find_last_of('/'));
 
 	// Import scene
 	Assimp::Importer importer;
