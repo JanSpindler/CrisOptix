@@ -37,9 +37,9 @@ OptixDeviceContext InitOptix()
     return optixContext;
 }
 
-void TestModelLoading()
+void TestModelLoading(const OptixDeviceContext optixDeviceContext)
 {
-    Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false);
+    Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
 }
 
 int main()
@@ -52,13 +52,13 @@ int main()
 
     Window::Init(width, height, false, "CrisOptix");
     InitCuda();
-    OptixDeviceContext optixContext = InitOptix();
+    OptixDeviceContext optixDeviceContext = InitOptix();
 
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
 
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
-    TestModelLoading();
+    TestModelLoading(optixDeviceContext);
 
     while (!Window::IsClosed())
     {

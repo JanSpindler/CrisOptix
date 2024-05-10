@@ -4,7 +4,7 @@
 #include <assimp/postprocess.h>
 #include <model/Vertex.h>
 
-Model::Model(const std::string& filePath, const bool flipUv) :
+Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext) :
 	m_FilePath(filePath)
 {
 	// Assert
@@ -31,6 +31,9 @@ Model::Model(const std::string& filePath, const bool flipUv) :
 	// Process scene
 	if (scene->HasMaterials()) { LoadMaterials(scene); }
 	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
+
+	// Build acceleration structure
+	BuildAccelStructure(optixDeviceContext);
 }
 
 Model::~Model()
@@ -200,4 +203,8 @@ void Model::LoadMaterials(const aiScene* scene)
 		// Add material
 		m_Materials.push_back(new Material(diffColor, diffTex));
 	}
+}
+
+void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
+{
 }

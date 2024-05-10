@@ -12,7 +12,7 @@
 class Model
 {
 public:
-	Model(const std::string& filePath, const bool flipUv);
+	Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext);
 	~Model();
 	// TODO: rule of 5
 
@@ -27,4 +27,5 @@ private:
 	void ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT);
 	void LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t);
 	void LoadMaterials(const aiScene* scene);
+	void BuildAccelStructure(const OptixDeviceContext optixDeviceContext);
 };
