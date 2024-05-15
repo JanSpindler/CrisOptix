@@ -31,7 +31,7 @@ static std::string GetGlErrorStr(const GLenum result)
 			std::stringstream ss; \
 			ss << GetGlErrorStr(result); \
             ss << " at " << __FILE__ << ":" << __LINE__; \
-            Log::Error(ss.str()); \
+            Log::Error(ss.str(), true); \
 		} \
 	}
 
@@ -42,7 +42,7 @@ static std::string GetGlErrorStr(const GLenum result)
 			std::stringstream ss; \
 			ss << cudaGetErrorString(cudaResult); \
             ss << " at " << __FILE__ << ":" << __LINE__; \
-            Log::Error(ss.str()); \
+            Log::Error(ss.str(), true); \
 		} \
 	}
 
@@ -53,6 +53,6 @@ static std::string GetGlErrorStr(const GLenum result)
 			std::stringstream ss; \
 			ss << optixGetErrorName(optixResult); \
             ss << " at " << __FILE__ << ":" << __LINE__; \
-            Log::Error(ss.str()); \
+            Log::Error(ss.str(), true); \
 		} \
 	}

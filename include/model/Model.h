@@ -23,6 +23,8 @@ private:
 	std::vector<Mesh*> m_Meshes{};
 	std::vector<Material*> m_Materials{};
 	std::unordered_map<std::string, Texture*> m_Textures{};
+	
+	OptixTraversableHandle m_TraversHandle = 0;
 
 	void ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT);
 	void LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t);

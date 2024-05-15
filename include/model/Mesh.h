@@ -4,6 +4,7 @@
 #include <vector>
 #include <model/Material.h>
 #include <graph/DeviceBuffer.h>
+#include <array>
 
 class Mesh
 {
@@ -18,7 +19,6 @@ private:
 	DeviceBuffer<Vertex> m_DeviceVertexBuffer{};
 	DeviceBuffer<uint32_t> m_DeviceIndexBuffer{};
 
-	// Only needed for ptr to these variable
-	CUdeviceptr m_VertexBufferDevicePtr = 0;
-	static constexpr uint32_t TRIANGLE_INPUT_FLAGS = { 0 };
+	CUdeviceptr m_VertexDevPtr = 0;
+	static constexpr std::array<uint32_t, 1> m_TriangleInputFlags = { 0 };
 };

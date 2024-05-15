@@ -85,6 +85,11 @@ public:
 		return m_Count;
 	}
 
+	constexpr size_t GetByteSize() const
+	{
+		return m_Count * sizeof(T);
+	}
+
 private:
 	size_t m_Count = 0;
 	size_t m_AllocCount = 0;

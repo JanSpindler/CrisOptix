@@ -10,7 +10,11 @@ namespace Log
 	void Error(const std::string& msg, const bool exitProgram)
 	{
 		std::cout << "Error: \t" << msg << std::endl;
-		if (exitProgram) { throw std::runtime_error(msg); }
+		if (exitProgram)
+		{ 
+			throw std::runtime_error(msg);
+			exit(1);
+		}
 	}
 
 	void Assert(const bool condition, const std::string& msg)

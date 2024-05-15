@@ -3,6 +3,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <model/Vertex.h>
+#include <optix_stubs.h>
+#include <optix_host.h>
 
 Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext) :
 	m_FilePath(filePath)
@@ -207,4 +209,53 @@ void Model::LoadMaterials(const aiScene* scene)
 
 void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
 {
+	// Get OptixBuildInputs from all sub meshes
+	std::vector<OptixBuildInput> buildInputs(m_Meshes.size());
+	for (size_t idx = 0; idx < buildInputs.size(); ++idx)
+	{
+		buildInputs[idx] = m_Meshes[idx]->GetBuildInput(optixDeviceContext);
+	}
+
+	// Get memory requirements
+	OptixAccelBuildOptions buildOptions{};
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	buildOptions.motionOptions.numKeys = 1;
+	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
+	buildOptions.motionOptions.timeBegin = 0.0f;
+	buildOptions.motionOptions.timeEnd = 1.0f;
+	buildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+
+	OptixAccelBufferSizes blasBufferSizes{};
+	ASSERT_OPTIX(optixAccelComputeMemoryUsage(
+		optixDeviceContext, 
+		&buildOptions, 
+		buildInputs.data(), 
+		buildInputs.size(), 
+		&blasBufferSizes));
+
+	// Build
+	DeviceBuffer<uint64_t> compactSizeBuf(1);
+	DeviceBuffer<uint8_t> tempBuf(blasBufferSizes.tempSizeInBytes);
+	DeviceBuffer<uint8_t> outputBuf(blasBufferSizes.outputSizeInBytes);
+
+	OptixAccelEmitDesc emitDesc;
+	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+	emitDesc.result = compactSizeBuf.GetCuPtr();
+
+	ASSERT_OPTIX(optixAccelBuild(
+		optixDeviceContext, 
+		0, 
+		&buildOptions, 
+		buildInputs.data(), 
+		buildInputs.size(), 
+		tempBuf.GetCuPtr(), 
+		tempBuf.GetByteSize(),
+		outputBuf.GetCuPtr(),
+		outputBuf.GetByteSize(),
+		&m_TraversHandle, 
+		&emitDesc, 
+		1));
+
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
 }
