@@ -258,4 +258,20 @@ void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
+
+	// Compact
+	uint64_t compactedSize = 0;
+	compactSizeBuf.Download(&compactedSize);
+
+	m_AccelStructBuf.Alloc(compactedSize);
+	ASSERT_OPTIX(optixAccelCompact(
+		optixDeviceContext, 
+		0, 
+		m_TraversHandle, 
+		m_AccelStructBuf.GetCuPtr(), 
+		m_AccelStructBuf.GetByteSize(), 
+		&m_TraversHandle));
+
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
 }

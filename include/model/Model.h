@@ -25,6 +25,7 @@ private:
 	std::unordered_map<std::string, Texture*> m_Textures{};
 	
 	OptixTraversableHandle m_TraversHandle = 0;
+	DeviceBuffer<uint8_t> m_AccelStructBuf{};
 
 	void ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT);
 	void LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t);
