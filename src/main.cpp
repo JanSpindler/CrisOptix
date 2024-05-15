@@ -48,8 +48,8 @@ OptixDeviceContext InitOptix()
 void TestModelLoading(const OptixDeviceContext optixDeviceContext)
 {
     //Model cubeModel("./data/basic/cube.obj", false, optixDeviceContext);
-    //Model dragonModel("./data/basic/dragon.obj", false, optixDeviceContext);
-    Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
+    Model dragonModel("./data/basic/dragon.obj", false, optixDeviceContext);
+    //Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
 }
 
 int main()
