@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Project
 project(CrisOptix CXX CUDA)
+message("CMAKE_CURRENT_LIST_DIR is ${CMAKE_CURRENT_LIST_DIR}")
 
 # CUDA and OPTIX
 set(CMAKE_CUDA_ARCHITECTURES 86)
@@ -19,28 +20,27 @@ list(APPEND CMAKE_MODULE_PATH "./cmake")
 # C++
 set(CMAKE_CXX_STANDARD 17)
 
-# Multiple processors on windows
-if (MSVC)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-endif()
-
-# Project files
-file(GLOB_RECURSE PROJECT_INCLUDE "include/*.h")
-file(GLOB_RECURSE PROJECT_SOURCE "src/*.cpp")
-file(GLOB_RECURSE PROJECT_CUDA_SOURCE "src/*.cu")
-file(GLOB_RECURSE OPTIX_SOURCE "shader/*.cu")
-
-add_library(CrisOptixShader OBJECT "shader/test.cu")
-set_property(TARGET CrisOptixShader PROPERTY CUDA_PTX_COMPILATION ON)
-
-add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CUDA_SOURCE})
-target_include_directories(${PROJECT_NAME} PUBLIC 
+# Include dirs
+include_directories(${PROJECT_NAME} PUBLIC 
 	"include" 
 	${CUDA_INC_PATH} 
 	${CUDAToolkit_INCLUDE_DIRS} 
 	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 	"${OptiX_INSTALL_DIR}/include"
 	${OPENGL_INCLUDE_DIRS})
+
+# Glob
+file(GLOB_RECURSE PROJECT_INCLUDE "include/*.h")
+file(GLOB_RECURSE PROJECT_SOURCE "src/*.cpp")
+file(GLOB_RECURSE PROJECT_CUDA_SOURCE "src/*.cu")
+file(GLOB_RECURSE PROJECT_SHADER_SOURCE "shader/*.cu")
+
+# Shader lib
+add_library(CrisOptixShader OBJECT ${PROJECT_INCLUDE} ${PROJECT_SHADER_SOURCE})
+set_target_properties(CrisOptixShader PROPERTIES CUDA_PTX_COMPILATION ON)
+
+# Project files
+add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CUDA_SOURCE})
 
 # Dependencies
 
