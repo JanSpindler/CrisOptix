@@ -25,6 +25,7 @@ Pipeline::Pipeline(
 	pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
 	pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
 
+	std::vector<OptixProgramGroup> programGroups{};
 	for (const ShaderEntryPointDesc& shaderDesc : shaders)
 	{
 		OptixModule singleModule = nullptr;
@@ -114,11 +115,48 @@ Pipeline::Pipeline(
 		Log::Assert(logSize == std::strlen(log) && logSize < 2028);
 		Log::Info(log);
 
-		m_ProgramGroups.push_back(programGroup);
+		switch (shaderDesc.shaderKind)
+		{
+		case OPTIX_PROGRAM_GROUP_KIND_RAYGEN:
+			m_RaygenProgramGroups.push_back(programGroup);
+			break;
+		case OPTIX_PROGRAM_GROUP_KIND_MISS:
+			m_MissProgramGroups.push_back(programGroup);
+			break;
+		case OPTIX_PROGRAM_GROUP_KIND_EXCEPTION:
+			m_ExceptionProgramGroups.push_back(programGroup);
+			break;
+		case OPTIX_PROGRAM_GROUP_KIND_CALLABLES:
+			m_CallableProgramGroups.push_back(programGroup);
+			break;
+		case OPTIX_PROGRAM_GROUP_KIND_HITGROUP:
+			m_HitgroupProgramGroups.push_back(programGroup);
+			break;
+		default:
+			Log::Error("Invalid shader kind", true);
+			break;
+		}
+		programGroups.push_back(programGroup);
 	}
 
 	OptixPipelineLinkOptions pipelineLinkOptions{};
 	pipelineLinkOptions.maxTraceDepth = 8;
+
+	char log[2028];
+	size_t logSize = 0;
+
+	ASSERT_OPTIX(optixPipelineCreate(
+		optixDeviceContext, 
+		&pipelineCompileOptions,
+		&pipelineLinkOptions,
+		programGroups.data(),
+		programGroups.size(),
+		log, 
+		&logSize, 
+		&m_Handle));
+
+	Log::Assert(std::strlen(log) == logSize && logSize < 2028);
+	Log::Info(log);
 }
 
 Pipeline::~Pipeline()
@@ -130,10 +168,60 @@ Pipeline::~Pipeline()
 		ASSERT_OPTIX(optixModuleDestroy(optixModule));
 	}
 
-	for (const OptixProgramGroup programGroup : m_ProgramGroups)
+	for (const OptixProgramGroup programGroup : m_RaygenProgramGroups)
 	{
 		ASSERT_OPTIX(optixProgramGroupDestroy(programGroup));
 	}
+
+	for (const OptixProgramGroup programGroup : m_MissProgramGroups)
+	{
+		ASSERT_OPTIX(optixProgramGroupDestroy(programGroup));
+	}
+
+	for (const OptixProgramGroup programGroup : m_ExceptionProgramGroups)
+	{
+		ASSERT_OPTIX(optixProgramGroupDestroy(programGroup));
+	}
+
+	for (const OptixProgramGroup programGroup : m_CallableProgramGroups)
+	{
+		ASSERT_OPTIX(optixProgramGroupDestroy(programGroup));
+	}
+
+	for (const OptixProgramGroup programGroup : m_HitgroupProgramGroups)
+	{
+		ASSERT_OPTIX(optixProgramGroupDestroy(programGroup));
+	}
+}
+
+OptixPipeline Pipeline::GetHandle() const
+{
+	return m_Handle;
+}
+
+const std::vector<OptixProgramGroup>& Pipeline::GetRaygenProgramGroups() const
+{
+	return m_RaygenProgramGroups;
+}
+
+const std::vector<OptixProgramGroup>& Pipeline::GetMissProgramGroups() const
+{
+	return m_MissProgramGroups;
+}
+
+const std::vector<OptixProgramGroup>& Pipeline::GetExceptionProgramGroups() const
+{
+	return m_ExceptionProgramGroups;
+}
+
+const std::vector<OptixProgramGroup>& Pipeline::GetCallableProgramGroups() const
+{
+	return m_CallableProgramGroups;
+}
+
+const std::vector<OptixProgramGroup>& Pipeline::GetHitgroupProgramGroups() const
+{
+	return m_HitgroupProgramGroups;
 }
 
 OptixModule Pipeline::GetModule(

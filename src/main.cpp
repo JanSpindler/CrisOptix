@@ -15,6 +15,8 @@
 #include <graph/CuBufferView.h>
 #include <kernel/tonemap.h>
 #include <model/Model.h>
+#include <graph/Pipeline.h>
+#include <graph/ShaderBindingTable.h>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -47,9 +49,9 @@ OptixDeviceContext InitOptix()
 
 void TestModelLoading(const OptixDeviceContext optixDeviceContext)
 {
-    //Model cubeModel("./data/basic/cube.obj", false, optixDeviceContext);
-    Model dragonModel("./data/basic/dragon.obj", false, optixDeviceContext);
-    //Model zeroDayModel("./data/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
+    //Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
+    Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
+    //Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
 }
 
 int main()
@@ -67,6 +69,8 @@ int main()
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
 
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
+
+    //Pipeline pipeline(optixDeviceContext, {});
 
     TestModelLoading(optixDeviceContext);
 

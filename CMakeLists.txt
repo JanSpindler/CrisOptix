@@ -28,6 +28,10 @@ endif()
 file(GLOB_RECURSE PROJECT_INCLUDE "include/*.h")
 file(GLOB_RECURSE PROJECT_SOURCE "src/*.cpp")
 file(GLOB_RECURSE PROJECT_CUDA_SOURCE "src/*.cu")
+file(GLOB_RECURSE OPTIX_SOURCE "shader/*.cu")
+
+add_library(CrisOptixShader OBJECT "shader/test.cu")
+set_property(TARGET CrisOptixShader PROPERTY CUDA_PTX_COMPILATION ON)
 
 add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CUDA_SOURCE})
 target_include_directories(${PROJECT_NAME} PUBLIC 

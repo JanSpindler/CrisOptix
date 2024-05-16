@@ -2,18 +2,7 @@
 #include <cuda_runtime.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/compatibility.hpp>
-
-template <typename T>
-__host__ __device__ T CeilToMultiple(const T value, const T mod)
-{
-	return value - T(1) + mod - ((value - T(1)) % mod);
-}
-
-template <typename T>
-__host__ __device__ T CeilDiv(const T num, const T den)
-{
-	return (num - T(1)) / den + T(1);
-}
+#include <util/math.h>
 
 template <typename T>
 __host__ __device__ T ApplySrgbGamma(const T& linearColor)

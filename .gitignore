@@ -13,6 +13,7 @@
 /build
 /CMakeFiles
 /CrisOptix.dir
+/CrisOptixShader.dir
 /x64
 /SOURCES
 /RelWithDebInfo

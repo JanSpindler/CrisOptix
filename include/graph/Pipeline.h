@@ -33,10 +33,24 @@ public:
 		const std::vector<ShaderEntryPointDesc>& shaders);
 	~Pipeline();
 
+	OptixPipeline GetHandle() const;
+
+	const std::vector<OptixProgramGroup>& GetRaygenProgramGroups() const;
+	const std::vector<OptixProgramGroup>& GetMissProgramGroups() const;
+	const std::vector<OptixProgramGroup>& GetExceptionProgramGroups() const;
+	const std::vector<OptixProgramGroup>& GetCallableProgramGroups() const;
+	const std::vector<OptixProgramGroup>& GetHitgroupProgramGroups() const;
+
 private:
 	OptixPipeline m_Handle = nullptr;
+
 	std::unordered_map<std::string, OptixModule> m_Modules{};
-	std::vector<OptixProgramGroup> m_ProgramGroups{};
+
+	std::vector<OptixProgramGroup> m_RaygenProgramGroups{};
+	std::vector<OptixProgramGroup> m_MissProgramGroups{};
+	std::vector<OptixProgramGroup> m_ExceptionProgramGroups{};
+	std::vector<OptixProgramGroup> m_CallableProgramGroups{};
+	std::vector<OptixProgramGroup> m_HitgroupProgramGroups{};
 
 	OptixModule GetModule(
 		const OptixDeviceContext optixDeviceContext,
