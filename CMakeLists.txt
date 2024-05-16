@@ -37,7 +37,9 @@ file(GLOB_RECURSE PROJECT_SHADER_SOURCE "shader/*.cu")
 
 # Shader lib
 add_library(CrisOptixShader OBJECT ${PROJECT_INCLUDE} ${PROJECT_SHADER_SOURCE})
-set_target_properties(CrisOptixShader PROPERTIES CUDA_PTX_COMPILATION ON)
+set_target_properties(CrisOptixShader PROPERTIES 
+	CUDA_PTX_COMPILATION ON
+	CUDA_SEPARABLE_COMPILATION ON)
 
 # Project files
 add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CUDA_SOURCE})
