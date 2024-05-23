@@ -17,6 +17,8 @@ public:
 		const std::vector<OptixProgramGroup>& hitgroupProgramGroups);
 	~ShaderBindingTable();
 
+	const OptixShaderBindingTable* GetSbt(const size_t raygenIdx) const;
+
 private:
 	std::vector<OptixShaderBindingTable> m_Sbts{};
 	DeviceBuffer<char> m_Buffer{};

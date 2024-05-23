@@ -51,10 +51,12 @@ void Window::HandleIO()
 {
 	glfwPollEvents();
 
-	int oldWidth = m_Width;
-	int oldHeight = m_Height;
+	const int oldWidth = m_Width;
+	const int oldHeight = m_Height;
 	glfwGetFramebufferSize(m_Handle, &m_Width, &m_Height);
 	m_Resized = oldWidth != m_Width || oldHeight != m_Height;
+
+	glfwGetCursorPos(m_Handle, &m_CursorX, &m_CursorY);
 }
 
 void Window::Display(const GLuint pbo)
@@ -116,6 +118,29 @@ uint32_t Window::GetWidth()
 uint32_t Window::GetHeight()
 {
 	return static_cast<uint32_t>(m_Height);
+}
+
+bool Window::IsKeyPressed(const int keyCode)
+{
+	const int state = glfwGetKey(m_Handle, keyCode);
+	return state == GLFW_PRESS || state == GLFW_REPEAT;
+}
+
+bool Window::IsMouseButtonPressed(const int button)
+{
+	const int state = glfwGetMouseButton(m_Handle, button);
+	return state == GLFW_PRESS;
+}
+
+glm::vec2 Window::GetMousePos()
+{
+	return { m_CursorX, m_CursorY };
+}
+
+void Window::EnableCursor(const bool enableCursor)
+{
+	const int cursorMode = enableCursor ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+	glfwSetInputMode(m_Handle, GLFW_CURSOR, cursorMode);
 }
 
 void Window::InitGlfw(const bool resizable, const std::string& title)

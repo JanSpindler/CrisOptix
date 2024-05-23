@@ -65,6 +65,12 @@ ShaderBindingTable::~ShaderBindingTable()
 
 }
 
+const OptixShaderBindingTable* ShaderBindingTable::GetSbt(const size_t raygenIdx) const
+{
+	Log::Assert(raygenIdx <= m_Sbts.size());
+	return &m_Sbts[raygenIdx];
+}
+
 void ShaderBindingTable::AddRecords(
 	const std::vector<OptixProgramGroup>& programGroups,
 	const size_t stride,
