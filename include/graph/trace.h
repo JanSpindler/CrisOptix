@@ -28,6 +28,13 @@ __host__ __device__ void PackPointer(void* ptr, uint32_t& i0, uint32_t& i1)
     i1 = uptr & 0x00000000ffffffff;
 }
 
+__host__ __device__ void* UnpackPointer(uint32_t i0, uint32_t i1)
+{
+    const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
+    void* ptr = reinterpret_cast<void*>(uptr);
+    return ptr;
+}
+
 template <typename T>
 __forceinline__ __device__ void TraceWithDataPointer(
     OptixTraversableHandle handle,
@@ -56,6 +63,15 @@ __forceinline__ __device__ void TraceWithDataPointer(
         u0,                      // payload 0
         u1);                    // payload 1
     // optixTrace operation will have updated content of *payload_ptr
+}
+
+template <typename T>
+__forceinline__ __device__ T* GetPayloadDataPointer()
+{
+    // Get the pointer to the payload data
+    const uint32_t u0 = optixGetPayload_0();
+    const uint32_t u1 = optixGetPayload_1();
+    return reinterpret_cast<T*>(UnpackPointer(u0, u1));
 }
 
 #endif
