@@ -22,7 +22,7 @@ void SimpleRenderer::LaunchFrame(
 	launchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
 	launchParams.surfaceTraceParams.sbtOffset = 0;
 	launchParams.surfaceTraceParams.sbtStride = 1;
-	launchParams.surfaceTraceParams.missSbtIdx = 0; // TODO
+	launchParams.surfaceTraceParams.missSbtIdx = 1;
 	m_LaunchParamsBuf.Upload(&launchParams);
 
 	ASSERT_OPTIX(optixLaunch(

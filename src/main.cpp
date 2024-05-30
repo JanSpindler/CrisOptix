@@ -18,6 +18,7 @@
 #include <graph/Pipeline.h>
 #include <graph/ShaderBindingTable.h>
 #include <graph/Scene.h>
+#include <graph/SimpleRenderer.h>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -52,18 +53,21 @@ int main()
 {
     std::cout << "Hello there" << std::endl;
 
+    // Settings
     static constexpr size_t width = 800;
     static constexpr size_t height = 600;
     static constexpr size_t pixelCount = width * height;
 
+    // Init
     Window::Init(width, height, false, "CrisOptix");
     InitCuda();
     const OptixDeviceContext optixDeviceContext = InitOptix();
 
+    // Screne buffers
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
-
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
+    // Shaders
     ShaderEntryPointDesc raygenEntry{};
     raygenEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
     raygenEntry.fileName = std::string("test.ptx");
@@ -79,9 +83,11 @@ int main()
     occlusionMissEntry.fileName = "test.ptx";
     occlusionMissEntry.entryPointName = "__miss__occlusion";
 
+    // Pipeline
     const std::vector<ShaderEntryPointDesc> shaders = { raygenEntry, missEntry, occlusionMissEntry };
     Pipeline pipeline(optixDeviceContext, shaders);
 
+    // SBT
     ShaderBindingTable sbt(
         optixDeviceContext,
         pipeline.GetRaygenProgramGroups(),
@@ -90,12 +96,26 @@ int main()
         pipeline.GetCallableProgramGroups(),
         pipeline.GetHitgroupProgramGroups());
 
+    // Models
     const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
     const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
 
+    // Scene
     const std::vector<ModelInstance> modelInstances = { dragonInstance };
     Scene scene(optixDeviceContext, modelInstances, pipeline, sbt);
 
+    // Camera
+    Camera cam(
+        glm::vec3(0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        static_cast<float>(width) / static_cast<float>(height),
+        glm::radians(60.0f));
+
+    // Renderer
+    SimpleRenderer renderer(cam, scene);
+
+    // Main loop
     while (!Window::IsClosed())
     {
         // Handle window io
@@ -106,6 +126,7 @@ int main()
         outputBuffer.MapCuda();
 
         // TODO: trace rays
+        renderer.LaunchFrame(0, hdrBuffer.GetPtr(), width, height);
 
         // Tone mapping
         CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
@@ -121,6 +142,7 @@ int main()
         Window::Display(outputBuffer.GetPbo());
     }
 
+    // End
     Window::Destroy();
 
     return 0;

@@ -75,6 +75,11 @@ public:
 		DownloadSub(data, 0, m_Count);
 	}
 
+	constexpr T* GetPtr()
+	{
+		return m_Ptr;
+	}
+
 	constexpr CUdeviceptr GetCuPtr(const size_t idx = 0) const
 	{
 		return reinterpret_cast<CUdeviceptr>(m_Ptr + idx);
