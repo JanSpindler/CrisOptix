@@ -19,6 +19,7 @@ void SimpleRenderer::LaunchFrame(
 	launchParams.height = height;
 	launchParams.traversableHandle = m_Scene.GetTraversableHandle();
 	launchParams.cameraData = m_Cam.GetData();
+	launchParams.surfaceTraceParams = {}; // TODO
 	m_LaunchParamsBuf.Upload(&launchParams);
 
 	ASSERT_OPTIX(optixLaunch(
