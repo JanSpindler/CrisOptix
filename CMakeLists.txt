@@ -52,6 +52,7 @@ find_package(OpenGL REQUIRED)
 # CUDA
 find_package(CUDAToolkit 12.0 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cuda_driver CUDA::cudart ${CUDA_LIBRARIES})
+target_link_libraries(CrisOptixShader PRIVATE CUDA::cuda_driver CUDA::cudart ${CUDA_LIBRARIES})
 
 # OPTIX
 find_package(OptiX REQUIRED)
@@ -67,6 +68,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 # GLM
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+target_link_libraries(CrisOptixShader PRIVATE glm::glm)
 
 # IMGUI
 find_package(imgui CONFIG REQUIRED)

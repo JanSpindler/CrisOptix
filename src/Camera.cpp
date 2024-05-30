@@ -19,7 +19,7 @@ Camera::Camera(
 
 CameraData Camera::GetData() const
 {
-	glm::mat4 toWorld = glm::lookAt(m_Pos, m_Pos + m_ViewDir, m_Up);
+	const glm::mat4 toWorld = glm::inverse(glm::lookAt(m_Pos, m_Pos + m_ViewDir, m_Up));
 
 	CameraData data{};
 	data.pos = m_Pos;
