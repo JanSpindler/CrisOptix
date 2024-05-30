@@ -14,7 +14,6 @@ class Model
 public:
 	Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext);
 	~Model();
-	// TODO: rule of 5
 
 private:
 	std::string m_FilePath{};

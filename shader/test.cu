@@ -34,7 +34,12 @@ extern "C" __global__ void __miss__main()
 	si->inRayDist = tmax;
 }
 
-extern "C" __global__ void __raygen_main()
+extern "C" __global__ void __miss__occlusion()
+{
+	SetOcclusionPayload(false);
+}
+
+extern "C" __global__ void __raygen__main()
 {
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());

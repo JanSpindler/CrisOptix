@@ -9,20 +9,19 @@ struct ShaderEntryPointDesc
 {
 	OptixProgramGroupKind shaderKind;
 
-	union
-	{
-		std::string fileName;
-		std::string closestHitFileName;
-	};
+	std::string fileName;
+	std::string closestHitFileName;
 
-	union
-	{
-		std::string entryPointName;
-		std::string closestHitEntryPointName;
-	};
+	std::string entryPointName;
+	std::string closestHitEntryPointName;
 
 	std::string anyHitFileName;
 	std::string anyHitEntryPointName;
+
+	ShaderEntryPointDesc();
+	~ShaderEntryPointDesc();
+
+	ShaderEntryPointDesc(const ShaderEntryPointDesc& other);
 };
 
 class Pipeline
@@ -42,6 +41,8 @@ public:
 	const std::vector<OptixProgramGroup>& GetHitgroupProgramGroups() const;
 
 private:
+	static inline const std::string SHADER_DIR = "CrisOptixShader.dir/Debug/";
+
 	OptixPipeline m_Handle = nullptr;
 
 	std::unordered_map<std::string, OptixModule> m_Modules{};

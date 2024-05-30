@@ -4,6 +4,16 @@
 #include <array>
 #include <util/read_file.h>
 
+ShaderEntryPointDesc::ShaderEntryPointDesc() {}
+ShaderEntryPointDesc::~ShaderEntryPointDesc() {}
+
+ShaderEntryPointDesc::ShaderEntryPointDesc(const ShaderEntryPointDesc& other)
+{
+	this->shaderKind = other.shaderKind;
+	this->fileName = other.fileName;
+	this->entryPointName = other.entryPointName;
+}
+
 Pipeline::Pipeline(
 	const OptixDeviceContext optixDeviceContext,
 	const std::vector<ShaderEntryPointDesc>& shaders)
@@ -98,8 +108,8 @@ Pipeline::Pipeline(
 			break;
 		}
 
-		char log[2028];
-		size_t logSize = 2028;
+		char log[2048];
+		size_t logSize = 2048;
 
 		OptixProgramGroupOptions programGroupOptions{};
 		OptixProgramGroup programGroup = nullptr;
@@ -112,7 +122,7 @@ Pipeline::Pipeline(
 			&logSize, 
 			&programGroup));
 
-		Log::Assert(logSize == std::strlen(log) && logSize < 2028);
+		Log::Assert(logSize <= 2048, "Log size (" + std::to_string(logSize) + ") is too long");
 		Log::Info(log);
 
 		switch (shaderDesc.shaderKind)
@@ -142,8 +152,8 @@ Pipeline::Pipeline(
 	OptixPipelineLinkOptions pipelineLinkOptions{};
 	pipelineLinkOptions.maxTraceDepth = 8;
 
-	char log[2028];
-	size_t logSize = 0;
+	char log[2048];
+	size_t logSize = 2048;
 
 	ASSERT_OPTIX(optixPipelineCreate(
 		optixDeviceContext, 
@@ -155,7 +165,7 @@ Pipeline::Pipeline(
 		&logSize, 
 		&m_Handle));
 
-	Log::Assert(std::strlen(log) == logSize && logSize < 2028);
+	Log::Assert(logSize <= 2028, "Log size(" + std::to_string(logSize) + ") is too long");
 	Log::Info(log);
 }
 
@@ -237,7 +247,7 @@ OptixModule Pipeline::GetModule(
 		return m_Modules[fileName];
 	}
 
-	std::vector<char> src = ReadFile(fileName);
+	std::vector<char> src = ReadFile(SHADER_DIR + fileName);
 	
 	char log[2028];
 	size_t logSize = 2028;
@@ -253,7 +263,7 @@ OptixModule Pipeline::GetModule(
 		&logSize, 
 		&optixModule));
 
-	Log::Assert(std::strlen(log) < 2028 && std::strlen(log) == logSize);
+	Log::Assert(logSize <= 2028, "Log size (" + std::to_string(logSize) + ") is too long");
 	Log::Info(std::string(log));
 
 	m_Modules[fileName] = optixModule;

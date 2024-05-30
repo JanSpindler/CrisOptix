@@ -74,4 +74,10 @@ __forceinline__ __device__ T* GetPayloadDataPointer()
     return reinterpret_cast<T*>(UnpackPointer(u0, u1));
 }
 
+__forceinline__ __device__ void SetOcclusionPayload(bool occluded)
+{
+    // Set the payload that _this_ ray will yield
+    optixSetPayload_0(static_cast<uint32_t>(occluded));
+}
+
 #endif

@@ -17,6 +17,7 @@
 #include <model/Model.h>
 #include <graph/Pipeline.h>
 #include <graph/ShaderBindingTable.h>
+#include <graph/Scene.h>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -47,13 +48,6 @@ OptixDeviceContext InitOptix()
     return optixContext;
 }
 
-void TestModelLoading(const OptixDeviceContext optixDeviceContext)
-{
-    //Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
-    Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
-    //Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
-}
-
 int main()
 {
     std::cout << "Hello there" << std::endl;
@@ -70,9 +64,25 @@ int main()
 
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
-    //Pipeline pipeline(optixDeviceContext, {});
+    ShaderEntryPointDesc raygenEntry{};
+    raygenEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
+    raygenEntry.fileName = std::string("test.ptx");
+    raygenEntry.entryPointName = std::string("__raygen__main");
 
-    TestModelLoading(optixDeviceContext);
+    ShaderEntryPointDesc missEntry{};
+    missEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+    missEntry.fileName = "test.ptx";
+    missEntry.entryPointName = "__miss__main";
+
+    ShaderEntryPointDesc occlusionMissEntry{};
+    occlusionMissEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+    occlusionMissEntry.fileName = "test.ptx";
+    occlusionMissEntry.entryPointName = "__miss__occlusion";
+
+    const std::vector<ShaderEntryPointDesc> shaders = { raygenEntry, missEntry, occlusionMissEntry };
+    Pipeline pipeline(optixDeviceContext, shaders);
+
+    Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
 
     while (!Window::IsClosed())
     {
