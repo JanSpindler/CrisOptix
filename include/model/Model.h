@@ -15,6 +15,8 @@ public:
 	Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext);
 	~Model();
 
+	OptixTraversableHandle GetTraversableHandle() const;
+
 private:
 	std::string m_FilePath{};
 	std::string m_DirPath{};

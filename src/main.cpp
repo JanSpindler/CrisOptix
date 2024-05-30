@@ -82,7 +82,19 @@ int main()
     const std::vector<ShaderEntryPointDesc> shaders = { raygenEntry, missEntry, occlusionMissEntry };
     Pipeline pipeline(optixDeviceContext, shaders);
 
-    Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
+    ShaderBindingTable sbt(
+        optixDeviceContext,
+        pipeline.GetRaygenProgramGroups(),
+        pipeline.GetMissProgramGroups(),
+        pipeline.GetExceptionProgramGroups(),
+        pipeline.GetCallableProgramGroups(),
+        pipeline.GetHitgroupProgramGroups());
+
+    const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
+    const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
+
+    const std::vector<ModelInstance> modelInstances = { dragonInstance };
+    Scene scene(optixDeviceContext, modelInstances, pipeline, sbt);
 
     while (!Window::IsClosed())
     {

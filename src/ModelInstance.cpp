@@ -1,12 +1,12 @@
 #include <model/ModelInstance.h>
 
-ModelInstance::ModelInstance(const Model* model, const glm::mat4& modelMat) :
+ModelInstance::ModelInstance(const Model& model, const glm::mat4& modelMat) :
 	m_Model(model),
 	m_ModelMat(modelMat)
 {
 }
 
-const Model* ModelInstance::GetModel() const
+const Model& ModelInstance::GetModel() const
 {
 	return m_Model;
 }

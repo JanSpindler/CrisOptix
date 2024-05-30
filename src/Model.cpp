@@ -56,6 +56,11 @@ Model::~Model()
 	}
 }
 
+OptixTraversableHandle Model::GetTraversableHandle() const
+{
+	return m_TraversHandle;
+}
+
 void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT)
 {
 	// Assert

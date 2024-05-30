@@ -8,8 +8,11 @@
 class Scene
 {
 public:
-	Scene(const std::vector<ModelInstance>& modelInstances, const Pipeline& pipeline, const ShaderBindingTable& sbt);
-	~Scene();
+	Scene(
+		const OptixDeviceContext optixDeviceContext,
+		const std::vector<ModelInstance>& modelInstances, 
+		const Pipeline& pipeline, 
+		const ShaderBindingTable& sbt);
 
 	OptixTraversableHandle GetTraversableHandle() const;
 	const Pipeline& GetPipeline() const;
@@ -20,4 +23,8 @@ private:
 	const std::vector<ModelInstance>& m_ModelInstances;
 	const Pipeline& m_Pipeline;
 	const ShaderBindingTable& m_Sbt;
+
+	DeviceBuffer<uint8_t> m_AccelBuf;
+
+	void BuildTlas();
 };

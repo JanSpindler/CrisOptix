@@ -6,14 +6,14 @@
 class ModelInstance
 {
 public:
-	ModelInstance(const Model* model, const glm::mat4& modelMat);
+	ModelInstance(const Model& model, const glm::mat4& modelMat);
 
-	const Model* GetModel() const;
+	const Model& GetModel() const;
 	const glm::mat4& GetModelMat() const;
 	void SetModelMat(const glm::mat4& modelMat);
 
 private:
-	const Model* m_Model;
+	const Model& m_Model;
 	glm::mat4 m_ModelMat{};
 };
 
