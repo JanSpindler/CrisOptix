@@ -5,7 +5,7 @@ project(CrisOptix CXX CUDA)
 message("CMAKE_CURRENT_LIST_DIR is ${CMAKE_CURRENT_LIST_DIR}")
 
 # CUDA and OPTIX
-set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_ARCHITECTURES 61)
 option(CUDA_GENERATE_DEPENDENCIES_DURING_CONFIGURE "Generate dependencies during configure time instead of only during build time." OFF)
 mark_as_advanced(CLEAR CUDA_64_BIT_DEVICE_CODE)
 set(CUDA_NVCC_FLAGS "--use_fast_math" "--expt-relaxed-constexpr" "-Wno-deprecated-gpu-targets" "-Xcudafe=\"--diag_suppress=2886\"")
