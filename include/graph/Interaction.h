@@ -15,5 +15,5 @@ struct SurfaceInteraction : Interaction
 	glm::vec3 normal;
 	glm::vec3 tangent;
 	glm::vec2 uv;
-	glm::vec3 primitiveIdx;
+	uint32_t primitiveIdx;
 };

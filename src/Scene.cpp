@@ -38,15 +38,25 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 	instanceInput.instanceArray.numInstances = modelInstanceCount;
 
 	OptixAccelBuildOptions buildOptions{};
-	buildOptions.buildFlags = OPTIX_BUILD_FLAG_NONE;
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	buildOptions.motionOptions.numKeys = 1;
+	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
+	buildOptions.motionOptions.timeBegin = 0.0f;
+	buildOptions.motionOptions.timeEnd = 1.0f;
 	buildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
 	OptixAccelBufferSizes accelBufferSizes{};
 	ASSERT_OPTIX(optixAccelComputeMemoryUsage(optixDeviceContext, &buildOptions, &instanceInput, 1, &accelBufferSizes));
 
+	DeviceBuffer<uint64_t> compactSizeBuf(1);
 	DeviceBuffer<uint8_t> tempBuffer(accelBufferSizes.tempSizeInBytes);
-	m_AccelBuf.Alloc(accelBufferSizes.outputSizeInBytes);
+	DeviceBuffer<uint8_t> outputBuffer(accelBufferSizes.outputSizeInBytes);
 
+	OptixAccelEmitDesc emitDesc;
+	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+	emitDesc.result = compactSizeBuf.GetCuPtr();
+
+	// Build
 	ASSERT_OPTIX(optixAccelBuild(
 		optixDeviceContext,
 		0,
@@ -55,11 +65,30 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 		1,
 		tempBuffer.GetCuPtr(),
 		tempBuffer.GetByteSize(),
+		outputBuffer.GetCuPtr(),
+		outputBuffer.GetByteSize(),
+		&m_TraversableHandle,
+		&emitDesc,
+		1));
+
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
+
+	// Compact
+	uint64_t compactedSize = 0;
+	compactSizeBuf.Download(&compactedSize);
+
+	m_AccelBuf.Alloc(compactedSize);
+	ASSERT_OPTIX(optixAccelCompact(
+		optixDeviceContext,
+		0,
+		m_TraversableHandle,
 		m_AccelBuf.GetCuPtr(),
 		m_AccelBuf.GetByteSize(),
-		&m_TraversableHandle,
-		nullptr,
-		0));
+		&m_TraversableHandle));
+
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
 }
 
 OptixTraversableHandle Scene::GetTraversableHandle() const

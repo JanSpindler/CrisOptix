@@ -8,7 +8,7 @@
 #include <graph/Interaction.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t MAX_TRACE_OPS = 128;
+static constexpr uint32_t MAX_TRACE_OPS = 32;
 static constexpr uint32_t MAX_TRACE_DEPTH = 8;
 
 __constant__ LaunchParams params;
@@ -20,6 +20,10 @@ struct Ray
 	glm::vec3 throughput; // Contribution to final radiance value of pixel
 	uint32_t depth;
 };
+
+extern "C" __global__ void __closesthit__mesh()
+{
+}
 
 extern "C" __global__ void __miss__main()
 {
@@ -65,6 +69,9 @@ extern "C" __global__ void __raygen__main()
 		nextRay.depth = 0;
 	}
 
+	//params.outputBuffer[pixelIdx] = glm::vec3(0.5f);
+	//return;
+
 	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
 	{
 		if (!nextRayValid) { break; }
@@ -73,7 +80,7 @@ extern "C" __global__ void __raygen__main()
 		nextRayValid = false;
 
 		SurfaceInteraction interaction{};
-		TraceWithDataPointer(
+		TraceWithDataPointer<SurfaceInteraction>(
 			params.traversableHandle, 
 			currentRay.origin, 
 			currentRay.dir, 

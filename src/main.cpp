@@ -42,9 +42,14 @@ OptixDeviceContext InitOptix()
     CUcontext cudaContext = nullptr;
     Log::Assert(cuCtxGetCurrent(&cudaContext) == CUDA_SUCCESS);
 
+    OptixDeviceContextOptions options{};
+    options.logCallbackFunction = MyOptixLogCallback;
+    options.logCallbackData = nullptr;
+    options.logCallbackLevel = 4;
+    options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
+
     OptixDeviceContext optixContext = nullptr;
-    ASSERT_OPTIX(optixDeviceContextCreate(cudaContext, nullptr, &optixContext));
-    ASSERT_OPTIX(optixDeviceContextSetLogCallback(optixContext, MyOptixLogCallback, nullptr, 4));
+    ASSERT_OPTIX(optixDeviceContextCreate(cudaContext, &options, &optixContext));
 
     return optixContext;
 }
@@ -63,46 +68,29 @@ int main()
     InitCuda();
     const OptixDeviceContext optixDeviceContext = InitOptix();
 
-    // Screne buffers
+    // Screen buffers
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
-    // Shaders
-    ShaderEntryPointDesc raygenEntry{};
-    raygenEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    raygenEntry.fileName = std::string("test.ptx");
-    raygenEntry.entryPointName = std::string("__raygen__main");
-
-    ShaderEntryPointDesc missEntry{};
-    missEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-    missEntry.fileName = "test.ptx";
-    missEntry.entryPointName = "__miss__main";
-
-    ShaderEntryPointDesc occlusionMissEntry{};
-    occlusionMissEntry.shaderKind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-    occlusionMissEntry.fileName = "test.ptx";
-    occlusionMissEntry.entryPointName = "__miss__occlusion";
-
     // Pipeline
-    const std::vector<ShaderEntryPointDesc> shaders = { raygenEntry, missEntry, occlusionMissEntry };
-    Pipeline pipeline(optixDeviceContext, shaders);
-
-    // SBT
-    ShaderBindingTable sbt(
-        optixDeviceContext,
-        pipeline.GetRaygenProgramGroups(),
-        pipeline.GetMissProgramGroups(),
-        pipeline.GetExceptionProgramGroups(),
-        pipeline.GetCallableProgramGroups(),
-        pipeline.GetHitgroupProgramGroups());
+    Pipeline pipeline(optixDeviceContext);
+    const OptixProgramGroup raygenPG = pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
+    const OptixProgramGroup surfaceMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__main" });
+    const OptixProgramGroup occlusionMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
+    const OptixProgramGroup closesthitPG = pipeline.AddTrianglesHitGroupShader({ "test.ptx", "__closesthit__mesh" }, {});
+    pipeline.CreatePipeline();
+    
+    // Sbt
+    ShaderBindingTable sbt(optixDeviceContext);
+    sbt.AddRaygenEntry(raygenPG);
+    const uint32_t surfaceMissIdx = sbt.AddMissEntry(surfaceMissPG);
+    const uint32_t occlusionMissIdx = sbt.AddMissEntry(occlusionMissPG);
+    sbt.AddHitEntry(closesthitPG);
+    sbt.CreateSBT();
 
     // Models
     const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
     const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
-
-    // Scene
-    const std::vector<ModelInstance> modelInstances = { dragonInstance };
-    Scene scene(optixDeviceContext, modelInstances, pipeline, sbt);
 
     // Camera
     Camera cam(
@@ -112,10 +100,15 @@ int main()
         static_cast<float>(width) / static_cast<float>(height),
         glm::radians(60.0f));
 
+    // Scene
+    const std::vector<ModelInstance> modelInstances = { dragonInstance };
+    Scene scene(optixDeviceContext, modelInstances, pipeline, sbt);
+
     // Renderer
-    SimpleRenderer renderer(cam, scene);
+    SimpleRenderer renderer(cam, scene, surfaceMissIdx, occlusionMissIdx);
 
     // Main loop
+    ASSERT_CUDA(cudaDeviceSynchronize());
     while (!Window::IsClosed())
     {
         // Handle window io

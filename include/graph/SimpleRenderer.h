@@ -9,7 +9,7 @@
 class SimpleRenderer
 {
 public:
-	SimpleRenderer(Camera& cam, const Scene& scene);
+	SimpleRenderer(Camera& cam, const Scene& scene, const uint32_t surfaceMissIdx, const uint32_t occlusionMissIdx);
 
 	void LaunchFrame(
 		const CUstream stream,
@@ -20,5 +20,8 @@ public:
 private:
 	Camera& m_Cam;
 	const Scene& m_Scene;
+	uint32_t m_SurfaceMissIdx = 0;
+	uint32_t m_OcclusionMissIdx = 0;
+
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 };

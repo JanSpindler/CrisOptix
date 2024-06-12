@@ -13,4 +13,5 @@ struct LaunchParams
 	CameraData cameraData;
 	OptixTraversableHandle traversableHandle;
 	TraceParameters surfaceTraceParams;
+	TraceParameters occlusionTraceParams;
 };
