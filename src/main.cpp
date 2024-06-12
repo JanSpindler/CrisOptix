@@ -19,6 +19,8 @@
 #include <graph/ShaderBindingTable.h>
 #include <graph/Scene.h>
 #include <graph/SimpleRenderer.h>
+#include <chrono>
+#include <cmath>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -52,6 +54,37 @@ OptixDeviceContext InitOptix()
     ASSERT_OPTIX(optixDeviceContextCreate(cudaContext, &options, &optixContext));
 
     return optixContext;
+}
+
+void HandleCamMove(const float deltaTime, Camera& cam)
+{
+    // Key movement
+    const float camSpeed = Window::IsKeyPressed(GLFW_KEY_LEFT_SHIFT) ? 20.0f : 5.0f;
+    glm::vec3 camMove(0.0f);
+
+    if (Window::IsKeyPressed(GLFW_KEY_W)) { camMove += glm::vec3(0.0f, 0.0f, 1.0f); }
+    if (Window::IsKeyPressed(GLFW_KEY_S)) { camMove += glm::vec3(0.0f, 0.0f, -1.0f); }
+    if (Window::IsKeyPressed(GLFW_KEY_A)) { camMove += glm::vec3(-1.0f, 0.0f, 0.0f); }
+    if (Window::IsKeyPressed(GLFW_KEY_D)) { camMove += glm::vec3(1.0f, 0.0f, 0.0f); }
+    if (Window::IsKeyPressed(GLFW_KEY_SPACE)) { camMove += glm::vec3(0.0f, 1.0f, 0.0f); }
+    if (Window::IsKeyPressed(GLFW_KEY_C)) { camMove += glm::vec3(0.0f, -1.0f, 0.0f); }
+
+    const float camMoveLen = glm::length(camMove);
+    if (camMoveLen > 0.001f) { camMove = glm::normalize(camMove) * deltaTime * camSpeed; }
+    if (!std::isinf(camMoveLen) && !std::isnan(camMoveLen)) { cam.Move(camMove); }
+
+    // Mouse rotation
+    const bool rightMouseBtn = Window::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
+    Window::EnableCursor(!rightMouseBtn);
+    if (rightMouseBtn)
+    {
+        static glm::vec2 prevMousePos(0.0f);
+        const glm::vec2 newMousePos = Window::GetMousePos();
+        const glm::vec2 mouseMove = (newMousePos - prevMousePos) * -0.0005f;
+        prevMousePos = newMousePos;
+
+        cam.RotateViewDir(mouseMove.x, mouseMove.y);
+    }
 }
 
 int main()
@@ -109,8 +142,18 @@ int main()
 
     // Main loop
     ASSERT_CUDA(cudaDeviceSynchronize());
+    auto lastTime = std::chrono::high_resolution_clock::now();
     while (!Window::IsClosed())
     {
+        // Delta time
+        const auto newTime = std::chrono::high_resolution_clock::now();
+        const std::chrono::duration<float> duration = newTime - lastTime;
+        const float deltaTime = duration.count();
+        lastTime = newTime;
+
+        // Camera movement
+        HandleCamMove(deltaTime, cam);
+
         // Handle window io
         Window::HandleIO();
         // TODO: handle resize by resizing buffers
