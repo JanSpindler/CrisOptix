@@ -23,6 +23,14 @@ struct Ray
 
 extern "C" __global__ void __closesthit__mesh()
 {
+	SurfaceInteraction* si = GetPayloadDataPointer<SurfaceInteraction>();
+	const glm::vec3 worldRayOrigin = cuda2glm(optixGetWorldRayOrigin());
+	const glm::vec3 worldRayDir = cuda2glm(optixGetWorldRayDirection());
+	const float tMax = optixGetRayTmax();
+
+	si->inRayDir = worldRayDir;
+	si->inRayDist = tMax;
+	si->valid = true;
 }
 
 extern "C" __global__ void __miss__main()
@@ -91,7 +99,6 @@ extern "C" __global__ void __raygen__main()
 
 		if (!interaction.valid) { continue; }
 
-		// TODO: Emitter
 		outputRadiance = glm::vec3(1.0f);
 
 		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
