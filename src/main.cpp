@@ -80,7 +80,7 @@ void HandleCamMove(const float deltaTime, Camera& cam)
     {
         static glm::vec2 prevMousePos(0.0f);
         const glm::vec2 newMousePos = Window::GetMousePos();
-        const glm::vec2 mouseMove = (newMousePos - prevMousePos) * -0.0005f;
+        const glm::vec2 mouseMove = (newMousePos - prevMousePos) * -0.001f;
         prevMousePos = newMousePos;
 
         cam.RotateViewDir(mouseMove.x, mouseMove.y);
