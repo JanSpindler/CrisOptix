@@ -43,6 +43,7 @@ set_target_properties(CrisOptixShader PROPERTIES
 
 # Project files
 add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CUDA_SOURCE})
+add_dependencies(${PROJECT_NAME} CrisOptixShader)
 
 # Dependencies
 
