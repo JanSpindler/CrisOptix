@@ -17,6 +17,8 @@ public:
 
 	OptixTraversableHandle GetTraversableHandle() const;
 
+	const Material* GetMaterial(const size_t idx) const;
+
 private:
 	std::string m_FilePath{};
 	std::string m_DirPath{};

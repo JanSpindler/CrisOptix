@@ -162,7 +162,7 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
     OptixModule ptx_module;
 
     std::vector<char> ptxSource = ReadFile("./CrisOptixShader.dir/Debug/" + ptx_filename);
-    ASSERT_OPTIX( optixModuleCreate(
+    OptixResult result = optixModuleCreate(
         m_Context,
         &m_ModuleCompileOptions,
         &m_PipelineCompileOptions,
@@ -170,8 +170,11 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
         ptxSource.size(),
         log,
         &sizeof_log,
-        &ptx_module
-    ) );
+        &ptx_module);
+    if (result != OPTIX_SUCCESS)
+    {
+        Log::Error(log, true);
+    }
 
     return ptx_module;
 }
@@ -193,7 +196,17 @@ void Pipeline::CreatePipeline()
     std::vector<OptixProgramGroup> program_groups;
     std::transform(m_ProgramGroups.begin(), m_ProgramGroups.end(), std::back_inserter(program_groups), [](const auto &entry){return entry.second;});
 
-    ASSERT_OPTIX( optixPipelineCreate(m_Context, &m_PipelineCompileOptions, &m_PipelineLinkOptions,
-                                        program_groups.data(), program_groups.size(), log,
-                                        &sizeof_log, &m_Handle) );
+    OptixResult result = optixPipelineCreate(
+        m_Context, 
+        &m_PipelineCompileOptions, 
+        &m_PipelineLinkOptions,                  
+        program_groups.data(), 
+        program_groups.size(), 
+        log,
+        &sizeof_log, 
+        &m_Handle);
+    if (result != OPTIX_SUCCESS)
+    {
+        Log::Error(log, true);
+    }
 }

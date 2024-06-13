@@ -61,6 +61,12 @@ OptixTraversableHandle Model::GetTraversableHandle() const
 	return m_TraversHandle;
 }
 
+const Material* Model::GetMaterial(const size_t idx) const
+{
+	if (m_Materials.size() <= idx) { return nullptr; }
+	return m_Materials[idx];
+}
+
 void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT)
 {
 	// Assert
