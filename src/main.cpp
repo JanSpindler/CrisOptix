@@ -30,7 +30,7 @@ void MyOptixLogCallback(unsigned int level, const char* tag, const char* message
     Log::Info("OptiX Log: " + std::string(tag) + ": " + std::string(message));
 }
 
-void InitCuda()
+static void InitCuda()
 {
     std::array<int, 4> cudaGlDevices{};
     uint32_t glDeviceCount = 4;
@@ -40,7 +40,7 @@ void InitCuda()
     ASSERT_CUDA(cudaFree(nullptr));
 }
 
-OptixDeviceContext InitOptix()
+static OptixDeviceContext InitOptix()
 {
     ASSERT_OPTIX(optixInit());
 
@@ -59,7 +59,7 @@ OptixDeviceContext InitOptix()
     return optixContext;
 }
 
-void HandleCamMove(const float deltaTime, Camera& cam)
+static void HandleCamMove(const float deltaTime, Camera& cam)
 {
     // Key movement
     const float camSpeed = Window::IsKeyPressed(GLFW_KEY_LEFT_SHIFT) ? 20.0f : 5.0f;
@@ -90,13 +90,49 @@ void HandleCamMove(const float deltaTime, Camera& cam)
     }
 }
 
+static void RenderAndDispay(
+    OutputBuffer<glm::u8vec3>& outputBuffer, 
+    SimpleRenderer& renderer, 
+    DeviceBuffer<glm::vec3>& hdrBuffer,
+    const uint32_t width,
+    const uint32_t height)
+{
+    const size_t pixelCount = width * height;
+
+    // Render
+    outputBuffer.MapCuda();
+    renderer.LaunchFrame(0, hdrBuffer.GetPtr(), width, height);
+
+    // Tonemapping
+    CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
+    CuBufferView<glm::u8vec3> ldrBufferView(outputBuffer.GetPixelDevicePtr(), pixelCount);
+    ToneMapping(hdrBufferView, ldrBufferView);
+    ASSERT_CUDA(cudaDeviceSynchronize());
+
+    // Display
+    outputBuffer.UnmapCuda();
+    ASSERT_CUDA(cudaDeviceSynchronize());
+    Window::Display(outputBuffer.GetPbo());
+}
+
+static void RunImGui()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("Test");
+    ImGui::Text("Hello there");
+    ImGui::End();
+    ImGui::Render();
+}
+
 int main()
 {
     std::cout << "Hello there" << std::endl;
 
     // Settings
-    static constexpr size_t width = 800;
-    static constexpr size_t height = 600;
+    static constexpr uint32_t width = 800;
+    static constexpr uint32_t height = 600;
     static constexpr size_t pixelCount = width * height;
 
     // Init
@@ -157,33 +193,14 @@ int main()
         // Camera movement
         HandleCamMove(deltaTime, cam);
 
-        // Handle window io
+        // Handle window io // TODO: Handle resize
         Window::HandleIO();
-        // TODO: handle resize by resizing buffers
 
         // Imgui
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        ImGui::Begin("Test");
-        ImGui::Text("Hello there");
-        ImGui::End();
-        ImGui::Render();
+        RunImGui();
             
-        // Render
-        outputBuffer.MapCuda();
-        renderer.LaunchFrame(0, hdrBuffer.GetPtr(), width, height);
-
-        // Tonemapping
-        CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
-        CuBufferView<glm::u8vec3> ldrBufferView(outputBuffer.GetPixelDevicePtr(), pixelCount);
-        ToneMapping(hdrBufferView, ldrBufferView);
-        ASSERT_CUDA(cudaDeviceSynchronize());
-
-        // Display
-        outputBuffer.UnmapCuda();
-        ASSERT_CUDA(cudaDeviceSynchronize());
-        Window::Display(outputBuffer.GetPbo());
+        // Render and display
+        RenderAndDispay(outputBuffer, renderer, hdrBuffer, width, height);
     }
 
     // End
