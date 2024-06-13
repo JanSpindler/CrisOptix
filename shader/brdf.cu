@@ -93,5 +93,6 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     BrdfResult result{};
     result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
     result.samplingPdf = 0.0f;
+    result.brdfResult = glm::vec3(1.0f, 0.0f, 0.0f);
     return result;
 }

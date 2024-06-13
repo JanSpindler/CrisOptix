@@ -12,8 +12,6 @@
 static constexpr uint32_t MAX_TRACE_OPS = 32;
 static constexpr uint32_t MAX_TRACE_DEPTH = 8;
 
-static const glm::vec3 DIR_LIGHT_DIR(1.0f);
-
 __constant__ LaunchParams params;
 
 struct Ray
@@ -115,9 +113,9 @@ extern "C" __global__ void __raygen__main()
 
 		if (!interaction.valid) { continue; }
 
-		//optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(interaction, -DIR_LIGHT_DIR);
-
-		outputRadiance = glm::vec3(1.0f);
+		const glm::vec3 dirLightDir(0.0f, 0.0f, -1.0f);
+		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(0, interaction, dirLightDir);
+		outputRadiance = brdfResult.brdfResult;
 
 		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
 	}

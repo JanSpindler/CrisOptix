@@ -171,7 +171,7 @@ int main()
     const uint32_t surfaceMissIdx = sbt.AddMissEntry(surfaceMissPG);
     const uint32_t occlusionMissIdx = sbt.AddMissEntry(occlusionMissPG);
     sbt.AddHitEntry(closesthitPG);
-    sbt.AddCallableEntry(ggxPG, ToVecByte(dragonModel.GetMaterial(0)->GetGgxDataPtr()));
+    const uint32_t ggxIdx = sbt.AddCallableEntry(ggxPG, ToVecByte(dragonModel.GetMaterial(0)->GetGgxDataPtr()));
     sbt.CreateSBT();
 
     // Camera
