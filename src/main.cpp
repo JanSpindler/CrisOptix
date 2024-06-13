@@ -21,6 +21,9 @@
 #include <graph/SimpleRenderer.h>
 #include <chrono>
 #include <cmath>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -158,23 +161,28 @@ int main()
         Window::HandleIO();
         // TODO: handle resize by resizing buffers
 
-        //
+        // Imgui
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::Begin("Test");
+        ImGui::Text("Hello there");
+        ImGui::End();
+        ImGui::Render();
+            
+        // Render
         outputBuffer.MapCuda();
-
-        // TODO: trace rays
         renderer.LaunchFrame(0, hdrBuffer.GetPtr(), width, height);
 
-        // Tone mapping
+        // Tonemapping
         CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
         CuBufferView<glm::u8vec3> ldrBufferView(outputBuffer.GetPixelDevicePtr(), pixelCount);
         ToneMapping(hdrBufferView, ldrBufferView);
         ASSERT_CUDA(cudaDeviceSynchronize());
 
-        //
+        // Display
         outputBuffer.UnmapCuda();
         ASSERT_CUDA(cudaDeviceSynchronize());
-
-        // Render to window
         Window::Display(outputBuffer.GetPbo());
     }
 

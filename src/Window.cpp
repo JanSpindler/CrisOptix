@@ -1,6 +1,9 @@
 #include <graph/Window.h>
 #include <util/custom_assert.h>
 #include <glsl.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 static const std::string vertShaderSrc = R"(
 #version 330 core
@@ -40,10 +43,14 @@ void Window::Init(const int width, const int height, const bool resizable, const
 	InitRenderTex();
 	InitVertexBuffer();
 	InitProgram();
+	InitImGui();
 }
 
 void Window::Destroy()
 {
+	ImGui_ImplGlfw_Shutdown();
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui::DestroyContext();
 	glfwTerminate();
 }
 
@@ -95,6 +102,10 @@ void Window::Display(const GLuint pbo)
 	glDisableVertexAttribArray(0);
 
 	CHECK_GL_ERROR();
+
+	// Imgui
+	ImDrawData* drawData = ImGui::GetDrawData();
+	if (drawData != nullptr) { ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData()); }
 
 	// Swap buffers
 	glfwSwapBuffers(m_Handle);
@@ -158,6 +169,7 @@ void Window::InitGlfw(const bool resizable, const std::string& title)
 	}
 
 	glfwMakeContextCurrent(m_Handle);
+	glfwSwapInterval(0);
 }
 
 void Window::InitOpenGl()
@@ -218,4 +230,16 @@ void Window::InitProgram()
 	m_RenderTexUniformLoc = GetGlUniformLoc(m_Program, "render_tex");
 
 	CHECK_GL_ERROR();
+}
+
+void Window::InitImGui()
+{
+	ImGui::CreateContext();
+
+	ImGuiIO& io = ImGui::GetIO();
+	io.Fonts->AddFontDefault();
+	io.Fonts->Build();
+	
+	ImGui_ImplOpenGL3_Init();
+	ImGui_ImplGlfw_InitForOpenGL(m_Handle, true);
 }

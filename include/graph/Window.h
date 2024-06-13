@@ -55,4 +55,5 @@ private:
 	static void InitRenderTex();
 	static void InitVertexBuffer();
 	static void InitProgram();
+	static void InitImGui();
 };
