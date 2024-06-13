@@ -162,6 +162,7 @@ int main()
 
     // Models
     const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
+    //const Model dragonModel("./data/model/ZeroDay_v1/MEASURE_ONE/MEASURE_ONE.fbx", false, optixDeviceContext);
     const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
 
     // Camera
