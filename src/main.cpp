@@ -78,17 +78,14 @@ static void HandleCamMove(const float deltaTime, Camera& cam)
     if (!std::isinf(camMoveLen) && !std::isnan(camMoveLen)) { cam.Move(camMove); }
 
     // Mouse rotation
+    static glm::vec2 prevMousePos(0.0f);
+    const glm::vec2 newMousePos = Window::GetMousePos();
+    const glm::vec2 mouseMove = (newMousePos - prevMousePos) * -0.001f;
+    prevMousePos = newMousePos;
+    
     const bool rightMouseBtn = Window::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
     Window::EnableCursor(!rightMouseBtn);
-    if (rightMouseBtn)
-    {
-        static glm::vec2 prevMousePos(0.0f);
-        const glm::vec2 newMousePos = Window::GetMousePos();
-        const glm::vec2 mouseMove = (newMousePos - prevMousePos) * -0.001f;
-        prevMousePos = newMousePos;
-
-        cam.RotateViewDir(mouseMove.x, mouseMove.y);
-    }
+    if (rightMouseBtn) { cam.RotateViewDir(mouseMove.x, mouseMove.y); }
 }
 
 static void RenderAndDispay(
