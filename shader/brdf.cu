@@ -62,11 +62,6 @@ static constexpr __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::v
 
 extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction& interaction, const glm::vec3& outDir)
 {
-    BrdfResult result{};
-    result.brdfResult = glm::vec3(0.5f);
-    result.samplingPdf = 0.0f;
-    return result;
-
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
 
@@ -95,8 +90,8 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
         glm::dot(outDir, interaction.normal) * -glm::sign(glm::dot(interaction.inRayDir, interaction.normal)));
 
     // Result
-    //BrdfResult result{};
-    //result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
-    //result.samplingPdf = 0.0f;
-    //return result;
+    BrdfResult result{};
+    result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
+    result.samplingPdf = 0.0f;
+    return result;
 }
