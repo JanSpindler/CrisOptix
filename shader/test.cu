@@ -112,11 +112,10 @@ extern "C" __global__ void __raygen__main()
 			&interaction);
 
 		if (!interaction.valid) { continue; }
-		outputRadiance += glm::vec3(0.5f);
-
-		//const glm::vec3 dirLightDir(0.0f, 0.0f, 1.0f);
-		//const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(0, interaction, dirLightDir);
-		//outputRadiance = brdfResult.brdfResult;
+		
+		const glm::vec3 dirLightDir(0.0f, 0.0f, 1.0f);
+		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(0, interaction, dirLightDir);
+		outputRadiance = brdfResult.brdfResult;
 
 		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
 	}
