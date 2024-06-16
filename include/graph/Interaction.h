@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <model/Mesh.h>
 
 struct Interaction
 {
@@ -16,4 +17,5 @@ struct SurfaceInteraction : Interaction
 	glm::vec3 tangent;
 	glm::vec2 uv;
 	uint32_t primitiveIdx;
+	const MeshSbtData* meshSbtData;
 };

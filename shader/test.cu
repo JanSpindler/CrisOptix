@@ -26,6 +26,10 @@ extern "C" __global__ void __closesthit__mesh()
 {
 	// Get interaction by ptr
 	SurfaceInteraction* si = GetPayloadDataPointer<SurfaceInteraction>();
+	const MeshSbtData* sbtData = reinterpret_cast<const MeshSbtData*>(optixGetSbtDataPointer());
+	si->meshSbtData = sbtData;
+
+	// Fill ray info
 	const glm::vec3 worldRayOrigin = cuda2glm(optixGetWorldRayOrigin());
 	const glm::vec3 worldRayDir = cuda2glm(optixGetWorldRayDirection());
 	const float tMax = optixGetRayTmax();
@@ -112,9 +116,13 @@ extern "C" __global__ void __raygen__main()
 			&interaction);
 
 		if (!interaction.valid) { continue; }
-		
+
+		const MeshSbtData* meshSbtData = interaction.meshSbtData;
 		const glm::vec3 dirLightDir(0.0f, 0.0f, 1.0f);
-		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(0, interaction, dirLightDir);
+		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
+			meshSbtData->evalMaterialSbtIdx, 
+			interaction, 
+			dirLightDir);
 		outputRadiance = brdfResult.brdfResult;
 
 		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
