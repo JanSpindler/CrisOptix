@@ -95,9 +95,6 @@ extern "C" __global__ void __raygen__main()
 		nextRay.depth = 0;
 	}
 
-	//params.outputBuffer[pixelIdx] = glm::vec3(0.5f);
-	//return;
-
 	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
 	{
 		if (!nextRayValid) { break; }

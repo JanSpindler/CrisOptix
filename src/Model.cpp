@@ -20,7 +20,12 @@ Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceCo
 
 	// Import scene
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(m_FilePath, aiProcess_Triangulate | (flipUv ? aiProcess_FlipUVs : 0));
+	const aiScene* scene = importer.ReadFile(m_FilePath, 
+		aiProcess_Triangulate 
+		| aiProcess_GenNormals
+		| aiProcess_ValidateDataStructure
+		| aiProcess_CalcTangentSpace
+		| (flipUv ? aiProcess_FlipUVs : 0));
 	if (scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode == nullptr)
 	{
 		Log::Error("Assimp error: " + std::string(importer.GetErrorString()));
@@ -147,6 +152,15 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t, con
 			normal.z = mesh->mNormals[vertIdx].z;
 		}
 
+		// Get vert tangent
+		glm::vec3 tangent(0.0f);
+		if (mesh->HasTangentsAndBitangents())
+		{
+			tangent.x = mesh->mTangents[vertIdx].x;
+			tangent.y = mesh->mTangents[vertIdx].y;
+			tangent.z = mesh->mTangents[vertIdx].z;
+		}
+
 		// Get vert uv
 		glm::vec2 uv(0.0f);
 		if (mesh->HasTextureCoords(0))
@@ -160,7 +174,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t, con
 		normal = normalMat * normal;
 
 		// Add vertex
-		Vertex vert(pos, normal, uv);
+		Vertex vert(pos, normal, tangent, uv);
 		vertices.push_back(vert);
 	}
 
