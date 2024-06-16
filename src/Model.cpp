@@ -70,10 +70,9 @@ void Model::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 	}
 }
 
-const Material* Model::GetMaterial(const size_t idx) const
+size_t Model::GetMeshCount() const
 {
-	if (m_Materials.size() <= idx) { return nullptr; }
-	return m_Materials[idx];
+	return m_Meshes.size();
 }
 
 OptixTraversableHandle Model::GetTraversHandle() const
@@ -241,13 +240,14 @@ void Model::BuildAccel(const OptixDeviceContext optixDeviceContext)
 	size_t sbtOffset = 0;
 	for (size_t idx = 0; idx < meshCount; ++idx)
 	{
-		OptixInstance instance{};
+		OptixInstance& instance = instances[idx];
+		instance = {};
 		instance.flags = OPTIX_INSTANCE_FLAG_NONE;
 		instance.instanceId = idx;
 		instance.sbtOffset = sbtOffset;
 		instance.visibilityMask = 1;
 		instance.traversableHandle = m_Meshes[idx]->GetTraversHandle();
-		reinterpret_cast<glm::mat3x4&>(instance.transform) = glm::transpose(glm::mat4x3(glm::mat4(1.0f)));
+		reinterpret_cast<glm::mat3x4&>(instance.transform) = glm::mat3x4(1.0f);
 
 		++sbtOffset;
 	}

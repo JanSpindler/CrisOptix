@@ -182,8 +182,7 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
 OptixModule Pipeline::GetCachedModule(const std::string &ptx_filename)
 {
     OptixModule &ptx_module = m_ModuleCache[ptx_filename];
-    if (ptx_module == nullptr)
-        ptx_module = CreateNewModule(ptx_filename);
+    if (ptx_module == nullptr) { ptx_module = CreateNewModule(ptx_filename); }
     return ptx_module;
 }
 

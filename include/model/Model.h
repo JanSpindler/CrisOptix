@@ -17,7 +17,7 @@ public:
 
 	void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const;
 
-	const Material* GetMaterial(const size_t idx) const;
+	size_t GetMeshCount() const;
 	OptixTraversableHandle GetTraversHandle() const;
 
 private:
