@@ -126,14 +126,6 @@ static void RunImGui()
     ImGui::Render();
 }
 
-template <typename T>
-static constexpr std::vector<char> ToVecByte(const T& val)
-{
-    std::vector<char> vec(sizeof(T));
-    std::memcpy(vec.data(), &val, sizeof(T));
-    return vec;
-}
-
 int main()
 {
     std::cout << "Hello there" << std::endl;
@@ -156,22 +148,24 @@ int main()
     const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
     const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
     
+    // Shader
     // Pipeline
     Pipeline pipeline(optixDeviceContext);
     const OptixProgramGroup raygenPG = pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
     const OptixProgramGroup surfaceMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__main" });
     const OptixProgramGroup occlusionMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
-    const OptixProgramGroup closesthitPG = pipeline.AddTrianglesHitGroupShader({ "test.ptx", "__closesthit__mesh" }, {});
-    const OptixProgramGroup ggxPG = pipeline.AddCallableShader({ "brdf.ptx", "__direct_callable__ggx" });
-    pipeline.CreatePipeline();
     
     // Sbt
     ShaderBindingTable sbt(optixDeviceContext);
     sbt.AddRaygenEntry(raygenPG);
     const uint32_t surfaceMissIdx = sbt.AddMissEntry(surfaceMissPG);
     const uint32_t occlusionMissIdx = sbt.AddMissEntry(occlusionMissPG);
-    sbt.AddHitEntry(closesthitPG);
-    const uint32_t ggxIdx = sbt.AddCallableEntry(ggxPG, ToVecByte(dragonModel.GetMaterial(0)->GetGgxDataPtr()));
+
+    // Shader from models
+    dragonModel.AddShader(pipeline, sbt);
+
+    // Create pipeline and sbt
+    pipeline.CreatePipeline();
     sbt.CreateSBT();
 
     // Camera

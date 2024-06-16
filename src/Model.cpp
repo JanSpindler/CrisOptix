@@ -32,10 +32,10 @@ Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceCo
 
 	// Process scene
 	if (scene->HasMaterials()) { LoadMaterials(scene); }
-	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
+	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f), optixDeviceContext);
 
-	// Build acceleration structure
-	BuildAccelStructure(optixDeviceContext);
+	// Build accel
+	BuildAccel(optixDeviceContext);
 }
 
 Model::~Model()
@@ -56,9 +56,18 @@ Model::~Model()
 	}
 }
 
-OptixTraversableHandle Model::GetTraversableHandle() const
+void Model::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 {
-	return m_TraversHandle;
+	// Call material before mesh
+	for (Material* material : m_Materials)
+	{
+		material->AddShader(pipeline, sbt);
+	}
+
+	for (Mesh* mesh : m_Meshes)
+	{
+		mesh->AddShader(pipeline, sbt);
+	}
 }
 
 const Material* Model::GetMaterial(const size_t idx) const
@@ -67,7 +76,12 @@ const Material* Model::GetMaterial(const size_t idx) const
 	return m_Materials[idx];
 }
 
-void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT)
+OptixTraversableHandle Model::GetTraversHandle() const
+{
+	return m_TraversHandle;
+}
+
+void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT, const OptixDeviceContext optixDeviceContext)
 {
 	// Assert
 	Log::Assert(node != nullptr);
@@ -88,7 +102,7 @@ void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& par
 	for (size_t meshIdx = 0; meshIdx < meshCount; ++meshIdx)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[meshIdx]];
-		LoadMesh(mesh, scene, totalT);
+		LoadMesh(mesh, scene, totalT, optixDeviceContext);
 	}
 
 	// Get children
@@ -96,11 +110,11 @@ void Model::ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& par
 	//Log::Info("\tNode has " + std::to_string(childCount) + " children");
 	for (size_t childIdx = 0; childIdx < childCount; ++childIdx)
 	{
-		ProcessNode(node->mChildren[childIdx], scene, totalT);
+		ProcessNode(node->mChildren[childIdx], scene, totalT, optixDeviceContext);
 	}
 }
 
-void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t)
+void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t, const OptixDeviceContext optixDeviceContext)
 {
 	// Assert
 	Log::Assert(mesh != nullptr);
@@ -162,7 +176,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t)
 	}
 
 	// Store mesh
-	m_Meshes.push_back(new Mesh(vertices, indices, m_Materials[mesh->mMaterialIndex]));
+	m_Meshes.push_back(new Mesh(vertices, indices, m_Materials[mesh->mMaterialIndex], optixDeviceContext));
 }
 
 void Model::LoadMaterials(const aiScene* scene)
@@ -218,16 +232,36 @@ void Model::LoadMaterials(const aiScene* scene)
 	}
 }
 
-void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
+void Model::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
-	// Get OptixBuildInputs from all sub meshes
-	std::vector<OptixBuildInput> buildInputs(m_Meshes.size());
-	for (size_t idx = 0; idx < buildInputs.size(); ++idx)
+	// Construct array of OptixInstance
+	const size_t meshCount = m_Meshes.size();
+	std::vector<OptixInstance> instances(meshCount);
+
+	size_t sbtOffset = 0;
+	for (size_t idx = 0; idx < meshCount; ++idx)
 	{
-		buildInputs[idx] = m_Meshes[idx]->GetBuildInput(optixDeviceContext);
+		OptixInstance instance{};
+		instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+		instance.instanceId = idx;
+		instance.sbtOffset = sbtOffset;
+		instance.visibilityMask = 1;
+		instance.traversableHandle = m_Meshes[idx]->GetTraversHandle();
+		reinterpret_cast<glm::mat3x4&>(instance.transform) = glm::transpose(glm::mat4x3(glm::mat4(1.0f)));
+
+		++sbtOffset;
 	}
 
-	// Get memory requirements
+	// Construct build input
+	DeviceBuffer<OptixInstance> optixDevInstances(meshCount);
+	optixDevInstances.Upload(instances.data());
+
+	OptixBuildInput instanceInput{};
+	instanceInput.type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	instanceInput.instanceArray.instances = optixDevInstances.GetCuPtr();
+	instanceInput.instanceArray.numInstances = meshCount;
+
+	// Build options
 	OptixAccelBuildOptions buildOptions{};
 	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
 	buildOptions.motionOptions.numKeys = 1;
@@ -236,35 +270,31 @@ void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
 	buildOptions.motionOptions.timeEnd = 1.0f;
 	buildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
-	OptixAccelBufferSizes blasBufferSizes{};
-	ASSERT_OPTIX(optixAccelComputeMemoryUsage(
-		optixDeviceContext, 
-		&buildOptions, 
-		buildInputs.data(), 
-		buildInputs.size(), 
-		&blasBufferSizes));
+	// Get memory usage
+	OptixAccelBufferSizes accelBufferSizes{};
+	ASSERT_OPTIX(optixAccelComputeMemoryUsage(optixDeviceContext, &buildOptions, &instanceInput, 1, &accelBufferSizes));
 
-	// Build
 	DeviceBuffer<uint64_t> compactSizeBuf(1);
-	DeviceBuffer<uint8_t> tempBuf(blasBufferSizes.tempSizeInBytes);
-	DeviceBuffer<uint8_t> outputBuf(blasBufferSizes.outputSizeInBytes);
+	DeviceBuffer<uint8_t> tempBuffer(accelBufferSizes.tempSizeInBytes);
+	DeviceBuffer<uint8_t> outputBuffer(accelBufferSizes.outputSizeInBytes);
 
 	OptixAccelEmitDesc emitDesc;
 	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
 	emitDesc.result = compactSizeBuf.GetCuPtr();
 
+	// Build
 	ASSERT_OPTIX(optixAccelBuild(
-		optixDeviceContext, 
-		0, 
-		&buildOptions, 
-		buildInputs.data(), 
-		buildInputs.size(), 
-		tempBuf.GetCuPtr(), 
-		tempBuf.GetByteSize(),
-		outputBuf.GetCuPtr(),
-		outputBuf.GetByteSize(),
-		&m_TraversHandle, 
-		&emitDesc, 
+		optixDeviceContext,
+		0,
+		&buildOptions,
+		&instanceInput,
+		1,
+		tempBuffer.GetCuPtr(),
+		tempBuffer.GetByteSize(),
+		outputBuffer.GetCuPtr(),
+		outputBuffer.GetByteSize(),
+		&m_TraversHandle,
+		&emitDesc,
 		1));
 
 	// Sync
@@ -274,13 +304,13 @@ void Model::BuildAccelStructure(const OptixDeviceContext optixDeviceContext)
 	uint64_t compactedSize = 0;
 	compactSizeBuf.Download(&compactedSize);
 
-	m_AccelStructBuf.Alloc(compactedSize);
+	m_AccelBuf.Alloc(compactedSize);
 	ASSERT_OPTIX(optixAccelCompact(
-		optixDeviceContext, 
-		0, 
-		m_TraversHandle, 
-		m_AccelStructBuf.GetCuPtr(), 
-		m_AccelStructBuf.GetByteSize(), 
+		optixDeviceContext,
+		0,
+		m_TraversHandle,
+		m_AccelBuf.GetCuPtr(),
+		m_AccelBuf.GetByteSize(),
 		&m_TraversHandle));
 
 	// Sync

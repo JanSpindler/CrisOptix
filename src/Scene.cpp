@@ -9,6 +9,9 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 	m_Pipeline(pipeline),
 	m_Sbt(sbt)
 {
+	m_TraversableHandle = modelInstances[0].GetModel().GetTraversHandle();
+	return;
+
 	static constexpr uint32_t rayCount = 8; // TODO
 
 	const size_t modelInstanceCount = m_ModelInstances.size();
@@ -24,7 +27,7 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 		optixInstance.instanceId = idx;
 		optixInstance.sbtOffset = sbtOffset;
 		optixInstance.visibilityMask = 1;
-		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversableHandle();
+		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetModelMat()));
 		sbtOffset += rayCount;
 	}

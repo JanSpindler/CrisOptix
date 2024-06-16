@@ -11,6 +11,14 @@ struct HitGroupSBTData
     void *bsdf_data_ptr;
 };
 
+template <typename T>
+static constexpr std::vector<char> ToVecByte(const T& val)
+{
+    std::vector<char> vec(sizeof(T));
+    std::memcpy(vec.data(), &val, sizeof(T));
+    return vec;
+}
+
 class ShaderBindingTable
 {
 public:

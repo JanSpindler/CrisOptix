@@ -2,14 +2,6 @@
 
 #include <glm/glm.hpp>
 
-struct GgxData
-{
-    glm::vec3 diffColor;
-    glm::vec3 specF0;
-    float roughTangent;
-    float roughBitangent;
-};
-
 struct BrdfResult
 {
     // BSDF value for the given direction. NOTE: This is not divided by the BSDF sampling PDF!

@@ -5,7 +5,7 @@
 #include <optix_device.h>
 #include <util/glm_cuda.h>
 #include <graph/Interaction.h>
-#include <optix_stubs.h>
+#include <model/Material.h>
 
 static constexpr float PI = 3.14159265358979323846264f;
 
@@ -63,7 +63,7 @@ static constexpr __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::v
 extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction& interaction, const glm::vec3& outDir)
 {
     // Get ggx data
-    const GgxData* ggxData = *reinterpret_cast<const GgxData**>(optixGetSbtDataPointer());
+    const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
 
     // Calc diffuse brdf result
     const glm::vec3 diffBrdf = ggxData->diffColor / PI;
@@ -91,8 +91,9 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
 
     // Result
     BrdfResult result{};
-    result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
+    //result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
+    //result.brdfResult = ggxData->diffColor;
+    result.brdfResult = glm::vec3(0.5f);
     result.samplingPdf = 0.0f;
-    result.brdfResult = glm::vec3(1.0f, 0.0f, 0.0f);
     return result;
 }
