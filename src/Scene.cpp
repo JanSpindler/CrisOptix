@@ -9,9 +9,6 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 	m_Pipeline(pipeline),
 	m_Sbt(sbt)
 {
-	m_TraversableHandle = modelInstances[0].GetModel().GetTraversHandle();
-	return;
-
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
 

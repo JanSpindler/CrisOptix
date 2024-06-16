@@ -117,10 +117,9 @@ extern "C" __global__ void __raygen__main()
 
 		if (!interaction.valid) { continue; }
 
-		const MeshSbtData* meshSbtData = interaction.meshSbtData;
 		const glm::vec3 dirLightDir(0.0f, 0.0f, 1.0f);
 		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
-			meshSbtData->evalMaterialSbtIdx, 
+			interaction.meshSbtData->evalMaterialSbtIdx, 
 			interaction, 
 			dirLightDir);
 		outputRadiance = brdfResult.brdfResult;

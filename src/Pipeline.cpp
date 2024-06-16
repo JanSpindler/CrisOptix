@@ -22,7 +22,7 @@ Pipeline::Pipeline(OptixDeviceContext context) :
     m_PipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
 
     // Set default pipeline link options
-    m_PipelineLinkOptions.maxTraceDepth            = 2;//MAX_TRACE_DEPTH;
+    m_PipelineLinkOptions.maxTraceDepth            = 8;//MAX_TRACE_DEPTH;
 }
 
 Pipeline::~Pipeline()
@@ -195,6 +195,7 @@ void Pipeline::CreatePipeline()
     std::vector<OptixProgramGroup> program_groups;
     std::transform(m_ProgramGroups.begin(), m_ProgramGroups.end(), std::back_inserter(program_groups), [](const auto &entry){return entry.second;});
 
+    // Create
     OptixResult result = optixPipelineCreate(
         m_Context, 
         &m_PipelineCompileOptions, 
@@ -208,4 +209,8 @@ void Pipeline::CreatePipeline()
     {
         Log::Error(log, true);
     }
+
+    // Set stack size
+    // TODO: Get ideal values?
+    optixPipelineSetStackSize(m_Handle, 4, 4, 4, 4);
 }
