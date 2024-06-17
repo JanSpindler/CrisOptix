@@ -18,7 +18,7 @@ message("OptiX install dir: " ${OptiX_INSTALL_DIR})
 list(APPEND CMAKE_MODULE_PATH "./cmake")
 
 # C++
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Include dirs
 include_directories(${PROJECT_NAME} PUBLIC 
