@@ -1,12 +1,16 @@
 #include <model/Material.h>
 
-Material::Material(const glm::vec4& diffColor, const Texture* diffTex)
+Material::Material(
+	const glm::vec4& diffColor,
+	const glm::vec4& specColor,
+	const float roughness,
+	const Texture* diffTex)
 {
 	MaterialSbtData data{};
 	data.diffColor = glm::vec3(diffColor.x, diffColor.y, diffColor.z);
-	data.specF0 = glm::vec3(0.3f, 0.0f, 0.0f);
-	data.roughTangent = 0.2f;
-	data.roughBitangent = 0.2f;
+	data.specF0 = glm::vec3(specColor.x, specColor.y, specColor.z);
+	data.roughTangent = roughness;
+	data.roughBitangent = roughness;
 	m_SbtDataBuf.Alloc(1);
 	m_SbtDataBuf.Upload(&data);
 }

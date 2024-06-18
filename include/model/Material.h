@@ -18,7 +18,11 @@ struct MaterialSbtData
 class Material
 {
 public:
-	Material(const glm::vec4& diffColor, const Texture* diffTex);
+	Material(
+        const glm::vec4& diffColor, 
+        const glm::vec4& specColor, 
+        const float roughness, 
+        const Texture* diffTex);
 	
     void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt);
 

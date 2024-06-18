@@ -212,11 +212,32 @@ void Model::LoadMaterials(const aiScene* scene)
 		{
 			diffColor = { aiDiffuseColor.r, aiDiffuseColor.g, aiDiffuseColor.b, aiDiffuseColor.a };
 		}
-		Log::Info("Diffuse Color (" +
+		Log::Info("Diffuse color (" +
 			std::to_string(diffColor.r) + ", " +
 			std::to_string(diffColor.g) + ", " +
 			std::to_string(diffColor.b) + ", " +
 			std::to_string(diffColor.a) + ")");
+
+		// Specular color
+		aiColor4D aiSpecColor{};
+		glm::vec4 specColor(1.0f);
+		if (aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, &aiSpecColor) == AI_SUCCESS)
+		{
+			specColor = { aiSpecColor.r, aiSpecColor.g, aiSpecColor.b, aiSpecColor.a };
+		}
+		Log::Info("Specular color (" +
+			std::to_string(specColor.r) + ", " +
+			std::to_string(specColor.g) + ", " +
+			std::to_string(specColor.b) + ", " +
+			std::to_string(specColor.a) + ")");
+
+		// Roughness
+		ai_real roughness = 1.0f;
+		if (aiGetMaterialFloat(material, AI_MATKEY_ROUGHNESS_FACTOR, &roughness) != AI_SUCCESS)
+		{
+			roughness = 1.0f;
+		}
+		Log::Info("Roughness " + std::to_string(roughness));
 
 		// Diffuse texture
 		const size_t diffTexCount = material->GetTextureCount(aiTextureType_DIFFUSE);
@@ -241,7 +262,7 @@ void Model::LoadMaterials(const aiScene* scene)
 		}
 
 		// Add material
-		m_Materials.push_back(new Material(diffColor, diffTex));
+		m_Materials.push_back(new Material(diffColor, specColor, roughness, diffTex));
 	}
 }
 
