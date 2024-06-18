@@ -104,8 +104,3 @@ const ShaderBindingTable& Scene::GetSbt() const
 {
 	return m_Sbt;
 }
-
-void Scene::BuildTlas()
-{
-
-}

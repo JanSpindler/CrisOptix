@@ -25,6 +25,4 @@ private:
 	const ShaderBindingTable& m_Sbt;
 
 	DeviceBuffer<uint8_t> m_AccelBuf;
-
-	void BuildTlas();
 };

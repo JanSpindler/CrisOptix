@@ -251,19 +251,16 @@ void Model::BuildAccel(const OptixDeviceContext optixDeviceContext)
 	const size_t meshCount = m_Meshes.size();
 	std::vector<OptixInstance> instances(meshCount);
 
-	size_t sbtOffset = 0;
 	for (size_t idx = 0; idx < meshCount; ++idx)
 	{
 		OptixInstance& instance = instances[idx];
 		instance = {};
 		instance.flags = OPTIX_INSTANCE_FLAG_NONE;
 		instance.instanceId = idx;
-		instance.sbtOffset = sbtOffset;
+		instance.sbtOffset = idx;
 		instance.visibilityMask = 1;
 		instance.traversableHandle = m_Meshes[idx]->GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(instance.transform) = glm::mat3x4(1.0f);
-
-		++sbtOffset;
 	}
 
 	// Construct build input
