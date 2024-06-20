@@ -6,6 +6,7 @@
 #include <util/glm_cuda.h>
 #include <graph/Interaction.h>
 #include <model/Material.h>
+#include <texture_indirect_functions.h>
 
 static constexpr float PI = 3.14159265358979323846264f;
 
@@ -65,8 +66,18 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
 
+    // Get values if possible from texture
+    const glm::vec2 uv = interaction.uv;
+
+    glm::vec3 diffColor = ggxData->diffColor;
+    if (ggxData->hasDiffTex)
+    {
+        const float4 cuTex4 = tex2D<float4>(ggxData->diffTex, uv.x, uv.y);
+        diffColor = glm::vec3(cuTex4.x, cuTex4.y, cuTex4.z);
+    }
+
     // Calc diffuse brdf result
-    const glm::vec3 diffBrdf = ggxData->diffColor / PI;
+    const glm::vec3 diffBrdf = diffColor / PI;
 
     // Transform vectors into tangent space
     const glm::mat3 w2t = World2Tan(interaction.normal, interaction.tangent, glm::cross(interaction.normal, interaction.tangent));

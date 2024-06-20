@@ -10,6 +10,8 @@ public:
 	Texture(std::string filePath);
 	~Texture();
 
+	cudaTextureObject_t GetTextureObjext() const;
+
 private:
 	cudaArray_t m_DeviceData = nullptr;
 	cudaTextureObject_t m_DeviceTex = 0;

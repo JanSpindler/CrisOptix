@@ -34,6 +34,10 @@ Texture::~Texture()
 	ASSERT_CUDA(cudaFreeArray(m_DeviceData));
 }
 
+cudaTextureObject_t Texture::GetTextureObjext() const
+{
+	return m_DeviceTex;
+}
 
 void Texture::LoadToDevice(const stbi_uc* imageData, const int width, const int height)
 {

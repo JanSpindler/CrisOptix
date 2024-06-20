@@ -13,6 +13,9 @@ struct MaterialSbtData
     glm::vec3 specF0;
     float roughTangent;
     float roughBitangent;
+
+    bool hasDiffTex;
+    cudaTextureObject_t diffTex;
 };
 
 class Material

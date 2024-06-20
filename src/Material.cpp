@@ -11,6 +11,10 @@ Material::Material(
 	data.specF0 = glm::vec3(specColor.x, specColor.y, specColor.z);
 	data.roughTangent = roughness;
 	data.roughBitangent = roughness;
+
+	data.hasDiffTex = diffTex != nullptr;
+	if (diffTex != nullptr) { data.diffTex = diffTex->GetTextureObjext(); }
+
 	m_SbtDataBuf.Alloc(1);
 	m_SbtDataBuf.Upload(&data);
 }
