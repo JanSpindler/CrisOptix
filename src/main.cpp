@@ -142,10 +142,6 @@ int main()
     OutputBuffer<glm::u8vec3> outputBuffer(width, height);
     DeviceBuffer<glm::vec3> hdrBuffer(pixelCount);
 
-    // Models
-    const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
-    const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
-
     // Camera
     Camera cam(
         glm::vec3(0.0f, 4.0f, -15.0f),
@@ -153,6 +149,10 @@ int main()
         glm::vec3(0.0f, 1.0f, 0.0f),
         static_cast<float>(width) / static_cast<float>(height),
         glm::radians(60.0f));
+
+    // Models
+    const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
+    const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
 
     // Scene
     const std::vector<ModelInstance> modelInstances = { dragonInstance };

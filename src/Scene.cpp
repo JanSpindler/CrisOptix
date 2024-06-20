@@ -1,4 +1,5 @@
 #include <model/Scene.h>
+#include <map>
 
 Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<ModelInstance>& modelInstances) :
 	m_ModelInstances(modelInstances)
@@ -6,10 +7,20 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<Mode
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
 
+	std::map<const Model*, size_t> modelSbtOffsetMap{};
+
 	uint32_t sbtOffset = 0;
 	for (size_t idx = 0; idx < modelInstanceCount; ++idx)
 	{
 		const ModelInstance& modelInstance = m_ModelInstances[idx];
+		const Model& model = modelInstance.GetModel();
+
+		// Use stored sbt offset if it exists
+		size_t currentSbtOffset = sbtOffset;
+		const bool modelNew = modelSbtOffsetMap.find(&model) == modelSbtOffsetMap.end();
+		if (!modelNew) { currentSbtOffset = modelSbtOffsetMap[&model]; }
+
+		// Construct OptixInstance
 		OptixInstance& optixInstance = optixInstances[idx];
 		optixInstance = {};
 		optixInstance.flags = OPTIX_INSTANCE_FLAG_NONE;
@@ -19,7 +30,8 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<Mode
 		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetTransform()));
 		
-		sbtOffset += modelInstance.GetModel().GetMeshCount();
+		// Increase sbt offset if model was new
+		if (modelNew) { sbtOffset += model.GetMeshCount(); }
 	}
 
 	DeviceBuffer<OptixInstance> optixDevInstances(modelInstanceCount);
@@ -86,9 +98,10 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<Mode
 
 void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 {
-	for (const ModelInstance& modelInstance : m_ModelInstances)
+	// Add shader for each model in order
+	for (size_t idx = 0; idx < m_ModelInstances.size(); ++idx)
 	{
-		modelInstance.GetModel().AddShader(pipeline, sbt);
+		m_ModelInstances[idx].GetModel().AddShader(pipeline, sbt);
 	}
 }
 

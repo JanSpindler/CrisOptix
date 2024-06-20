@@ -18,5 +18,5 @@ private:
 	OptixTraversableHandle m_TraversableHandle = 0;
 	const std::vector<ModelInstance>& m_ModelInstances;
 
-	DeviceBuffer<uint8_t> m_AccelBuf;
+	DeviceBuffer<uint8_t> m_AccelBuf{};
 };
