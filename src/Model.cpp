@@ -36,7 +36,10 @@ Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceCo
 	Log::Info("Model has " + std::to_string(scene->mNumMaterials) + " materials");
 
 	// Process scene
+	// Load materials
 	if (scene->HasMaterials()) { LoadMaterials(scene); }
+
+	// Load model
 	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f), optixDeviceContext);
 
 	// Build accel

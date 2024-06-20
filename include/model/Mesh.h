@@ -43,4 +43,5 @@ private:
 	DeviceBuffer<uint8_t> m_AccelBuf{};
 
 	void BuildAccel(const OptixDeviceContext optixDeviceContext);
+	void UploadSbtData();
 };

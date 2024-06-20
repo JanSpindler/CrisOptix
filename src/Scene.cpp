@@ -25,7 +25,7 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<Mode
 		optixInstance = {};
 		optixInstance.flags = OPTIX_INSTANCE_FLAG_NONE;
 		optixInstance.instanceId = idx;
-		optixInstance.sbtOffset = sbtOffset;
+		optixInstance.sbtOffset = currentSbtOffset;
 		optixInstance.visibilityMask = 1;
 		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetTransform()));

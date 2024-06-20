@@ -23,6 +23,7 @@ void Material::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt)
 {
 	const OptixProgramGroup pg = pipeline.AddCallableShader({ "brdf.ptx", "__direct_callable__ggx" });
 	m_EvalSbtIdx = sbt.AddCallableEntry(pg, ToVecByte(m_SbtDataBuf.GetCuPtr()));
+	int test = 0;
 }
 
 uint32_t Material::GetEvalSbtIdx() const
