@@ -2,14 +2,14 @@
 
 #include <graph/Camera.h>
 #include <cuda.h>
-#include <graph/Scene.h>
+#include <model/Scene.h>
 #include <graph/DeviceBuffer.h>
 #include <graph/LaunchParams.h>
 
 class SimpleRenderer
 {
 public:
-	SimpleRenderer(Camera& cam, const Scene& scene, const uint32_t surfaceMissIdx, const uint32_t occlusionMissIdx);
+	SimpleRenderer(const OptixDeviceContext optixDeviceContext, Camera& cam, const Scene& scene);
 
 	void LaunchFrame(
 		const CUstream stream,
@@ -24,4 +24,7 @@ private:
 	uint32_t m_OcclusionMissIdx = 0;
 
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
+
+	Pipeline m_Pipeline;
+	ShaderBindingTable m_Sbt;
 };

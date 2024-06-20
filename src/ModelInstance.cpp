@@ -1,8 +1,8 @@
 #include <model/ModelInstance.h>
 
-ModelInstance::ModelInstance(const Model& model, const glm::mat4& modelMat) :
+ModelInstance::ModelInstance(const Model& model, const glm::mat4& transform) :
 	m_Model(model),
-	m_ModelMat(modelMat)
+	m_Transform(transform)
 {
 }
 
@@ -11,12 +11,12 @@ const Model& ModelInstance::GetModel() const
 	return m_Model;
 }
 
-const glm::mat4& ModelInstance::GetModelMat() const
+const glm::mat4& ModelInstance::GetTransform() const
 {
-	return m_ModelMat;
+	return m_Transform;
 }
 
-void ModelInstance::SetModelMat(const glm::mat4& modelMat)
+void ModelInstance::SetTransform(const glm::mat4& transform)
 {
-	m_ModelMat = modelMat;
+	m_Transform = transform;
 }

@@ -17,7 +17,7 @@
 #include <model/Model.h>
 #include <graph/Pipeline.h>
 #include <graph/ShaderBindingTable.h>
-#include <graph/Scene.h>
+#include <model/Scene.h>
 #include <graph/SimpleRenderer.h>
 #include <chrono>
 #include <cmath>
@@ -145,26 +145,6 @@ int main()
     // Models
     const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
     const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
-    
-    // Shader
-    // Pipeline
-    Pipeline pipeline(optixDeviceContext);
-    const OptixProgramGroup raygenPG = pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
-    const OptixProgramGroup surfaceMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__main" });
-    const OptixProgramGroup occlusionMissPG = pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
-    
-    // Sbt
-    ShaderBindingTable sbt(optixDeviceContext);
-    sbt.AddRaygenEntry(raygenPG);
-    const uint32_t surfaceMissIdx = sbt.AddMissEntry(surfaceMissPG);
-    const uint32_t occlusionMissIdx = sbt.AddMissEntry(occlusionMissPG);
-
-    // Shader from models
-    dragonModel.AddShader(pipeline, sbt);
-
-    // Create pipeline and sbt
-    pipeline.CreatePipeline();
-    sbt.CreateSBT();
 
     // Camera
     Camera cam(
@@ -176,10 +156,10 @@ int main()
 
     // Scene
     const std::vector<ModelInstance> modelInstances = { dragonInstance };
-    Scene scene(optixDeviceContext, modelInstances, pipeline, sbt);
+    Scene scene(optixDeviceContext, modelInstances);
 
     // Renderer
-    SimpleRenderer renderer(cam, scene, surfaceMissIdx, occlusionMissIdx);
+    SimpleRenderer renderer(optixDeviceContext, cam, scene);
 
     // Main loop
     ASSERT_CUDA(cudaDeviceSynchronize());

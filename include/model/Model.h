@@ -23,6 +23,7 @@ public:
 private:
 	OptixTraversableHandle m_TraversHandle = 0;
 	DeviceBuffer<uint8_t> m_AccelBuf{};
+	mutable bool m_ShaderAdded = false;
 
 	std::string m_FilePath{};
 	std::string m_DirPath{};

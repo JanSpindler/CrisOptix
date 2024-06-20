@@ -1,13 +1,7 @@
-#include <graph/Scene.h>
+#include <model/Scene.h>
 
-Scene::Scene(const OptixDeviceContext optixDeviceContext,
-	const std::vector<ModelInstance>& modelInstances,
-	const Pipeline& pipeline,
-	const ShaderBindingTable& sbt) 
-	:
-	m_ModelInstances(modelInstances),
-	m_Pipeline(pipeline),
-	m_Sbt(sbt)
+Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<ModelInstance>& modelInstances) :
+	m_ModelInstances(modelInstances)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
@@ -23,7 +17,7 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 		optixInstance.sbtOffset = sbtOffset;
 		optixInstance.visibilityMask = 1;
 		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversHandle();
-		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetModelMat()));
+		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetTransform()));
 		
 		sbtOffset += modelInstance.GetModel().GetMeshCount();
 	}
@@ -90,17 +84,15 @@ Scene::Scene(const OptixDeviceContext optixDeviceContext,
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
 
+void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
+{
+	for (const ModelInstance& modelInstance : m_ModelInstances)
+	{
+		modelInstance.GetModel().AddShader(pipeline, sbt);
+	}
+}
+
 OptixTraversableHandle Scene::GetTraversableHandle() const
 {
 	return m_TraversableHandle;
-}
-
-const Pipeline& Scene::GetPipeline() const
-{
-	return m_Pipeline;
-}
-
-const ShaderBindingTable& Scene::GetSbt() const
-{
-	return m_Sbt;
 }

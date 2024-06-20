@@ -1,12 +1,24 @@
 #include <graph/SimpleRenderer.h>
 #include <optix_stubs.h>
 
-SimpleRenderer::SimpleRenderer(Camera& cam, const Scene& scene, const uint32_t surfaceMissIdx, const uint32_t occlusionMissIdx) :
+SimpleRenderer::SimpleRenderer(const OptixDeviceContext optixDeviceContext, Camera& cam, const Scene& scene) :
 	m_Cam(cam),
 	m_Scene(scene),
-	m_SurfaceMissIdx(surfaceMissIdx),
-	m_OcclusionMissIdx(occlusionMissIdx)
+	m_Pipeline(optixDeviceContext),
+	m_Sbt(optixDeviceContext)
 {
+	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
+	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__main" });
+	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
+	
+	m_Sbt.AddRaygenEntry(raygenPG);
+	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
+	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
+
+	m_Scene.AddShader(m_Pipeline, m_Sbt);
+
+	m_Pipeline.CreatePipeline();
+	m_Sbt.CreateSBT();
 }
 
 void SimpleRenderer::LaunchFrame(
@@ -33,11 +45,11 @@ void SimpleRenderer::LaunchFrame(
 
 	ASSERT_CUDA(cudaDeviceSynchronize());
 	ASSERT_OPTIX(optixLaunch(
-		m_Scene.GetPipeline().GetHandle(), 
+		m_Pipeline.GetHandle(), 
 		stream, 
 		m_LaunchParamsBuf.GetCuPtr(), 
 		m_LaunchParamsBuf.GetByteSize(),
-		m_Scene.GetSbt().GetSBT(0),
+		m_Sbt.GetSBT(0),
 		width, 
 		height, 
 		1));
