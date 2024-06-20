@@ -19,6 +19,7 @@ list(APPEND CMAKE_MODULE_PATH "./cmake")
 
 # C++
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_STANDARD 20)
 
 # Include dirs
 include_directories(${PROJECT_NAME} PUBLIC 
