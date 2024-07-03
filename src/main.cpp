@@ -25,6 +25,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <model/Emitter.h>
 
 void MyOptixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -144,13 +145,18 @@ int main()
 
     // Camera
     Camera cam(
-        glm::vec3(0.0f, 4.0f, -15.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 0.0f, 1.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         static_cast<float>(width) / static_cast<float>(height),
         glm::radians(60.0f));
 
     // Models
+    const Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
+    const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
+    const ModelInstance cubeInstance(cubeModel, cubeTransform);
+    const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(1.0f));
+
     //const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
     //const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
 
@@ -158,11 +164,11 @@ int main()
     //const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));
 
     const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, optixDeviceContext);
-    const ModelInstance bistroInstance(bistroModel, glm::mat4(1.0f));
+    const ModelInstance bistroInstance(bistroModel, glm::identity<glm::mat4>());
 
     // Scene
-    const std::vector<ModelInstance> modelInstances = { bistroInstance };
-    Scene scene(optixDeviceContext, modelInstances);
+    const std::vector<ModelInstance> modelInstances = { bistroInstance, cubeInstance };
+    Scene scene(optixDeviceContext, modelInstances, { cubeEmitter });
 
     // Renderer
     SimpleRenderer renderer(optixDeviceContext, cam, scene);

@@ -1,8 +1,13 @@
 #include <model/Scene.h>
 #include <map>
 
-Scene::Scene(const OptixDeviceContext optixDeviceContext, const std::vector<ModelInstance>& modelInstances) :
-	m_ModelInstances(modelInstances)
+Scene::Scene(
+	const OptixDeviceContext optixDeviceContext, 
+	const std::vector<ModelInstance>& modelInstances,
+	const std::vector<Emitter>& emitter) 
+	:
+	m_ModelInstances(modelInstances),
+	m_Emitter(emitter)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);

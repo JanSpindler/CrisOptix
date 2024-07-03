@@ -27,6 +27,8 @@ public:
 	void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const;
 
 	OptixTraversableHandle GetTraversHandle() const;
+	const DeviceBuffer<Vertex>& GetDeviceVertexBuffer() const;
+	const DeviceBuffer<uint32_t>& GetDeviceIndexBuffer() const;
 
 private:
 	static constexpr std::array<uint32_t, 1> m_TriangleInputFlags = { 0 };

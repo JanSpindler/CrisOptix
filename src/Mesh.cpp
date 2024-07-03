@@ -36,6 +36,16 @@ OptixTraversableHandle Mesh::GetTraversHandle() const
 	return m_TraversHandle;
 }
 
+const DeviceBuffer<Vertex>& Mesh::GetDeviceVertexBuffer() const
+{
+	return m_DeviceVertexBuffer;
+}
+
+const DeviceBuffer<uint32_t>& Mesh::GetDeviceIndexBuffer() const
+{
+	return m_DeviceIndexBuffer;
+}
+
 void Mesh::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
 	// Triangle input

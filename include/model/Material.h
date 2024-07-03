@@ -39,8 +39,10 @@ public:
     void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt);
 
     uint32_t GetEvalSbtIdx() const;
+    bool IsEmissive() const;
 
 private:
 	DeviceBuffer<MaterialSbtData> m_SbtDataBuf{};
     uint32_t m_EvalSbtIdx = 0;
+    const bool m_Emissive;
 };

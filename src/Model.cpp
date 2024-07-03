@@ -83,6 +83,12 @@ size_t Model::GetMeshCount() const
 	return m_Meshes.size();
 }
 
+const Mesh* Model::GetMesh(const size_t idx) const
+{
+	if (idx >= GetMeshCount()) { return nullptr; }
+	return m_Meshes[idx];
+}
+
 OptixTraversableHandle Model::GetTraversHandle() const
 {
 	return m_TraversHandle;
