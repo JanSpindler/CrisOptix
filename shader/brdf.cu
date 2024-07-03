@@ -133,8 +133,8 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
 
     // Result
     BrdfResult result{};
-    result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
-    //result.brdfResult = specF0;
+    result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL + ggxData->emissiveColor;
+    //result.brdfResult = ;
     result.samplingPdf = 0.0f;
     return result;
 }

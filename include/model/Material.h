@@ -11,6 +11,7 @@ struct MaterialSbtData
 {
     glm::vec3 diffColor;
     glm::vec3 specF0;
+    glm::vec3 emissiveColor;
     float roughness;
 
     bool hasDiffTex;
@@ -29,6 +30,7 @@ public:
 	Material(
         const glm::vec4& diffColor, 
         const glm::vec4& specColor, 
+        const glm::vec4& emissiveColor,
         const float roughness, 
         const Texture* diffTex,
         const Texture* specTex,

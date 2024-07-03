@@ -242,6 +242,27 @@ void Model::LoadMaterials(const aiScene* scene)
 		}
 		Log::Info("Roughness " + std::to_string(roughness));
 
+		// Metalness
+		ai_real metalness = 0.0f;
+		if (aiGetMaterialFloat(material, AI_MATKEY_METALLIC_FACTOR, &metalness) != AI_SUCCESS)
+		{
+			metalness = 0.0f;
+		}
+		Log::Info("Metalness " + std::to_string(metalness));
+
+		// Emissive
+		aiColor4D aiEmissiveColor{};
+		glm::vec4 emissiveColor(0.0f);
+		if (aiGetMaterialColor(material, AI_MATKEY_COLOR_EMISSIVE, &aiEmissiveColor) == AI_SUCCESS)
+		{
+			emissiveColor = { aiEmissiveColor.r, aiEmissiveColor.g, aiEmissiveColor.b, aiEmissiveColor.a };
+		}
+		Log::Info("Emissive color (" +
+			std::to_string(emissiveColor.r) + ", " +
+			std::to_string(emissiveColor.g) + ", " +
+			std::to_string(emissiveColor.b) + ", " +
+			std::to_string(emissiveColor.a) + ")");
+
 		// Diffuse texture
 		const size_t diffTexCount = material->GetTextureCount(aiTextureType_DIFFUSE);
 		Log::Info("Has " + std::to_string(diffTexCount) + " diffuse textures");
@@ -308,8 +329,37 @@ void Model::LoadMaterials(const aiScene* scene)
 			}
 		}
 
+		// Roughness texture
+		const size_t metalTexCount = material->GetTextureCount(aiTextureType_METALNESS);
+		Log::Info("Has " + std::to_string(metalTexCount) + " metalness textures");
+		Texture* metalTex = nullptr;
+		if (metalTexCount > 0)
+		{
+			aiString texFileName{};
+			material->GetTexture(aiTextureType_METALNESS, 0, &texFileName);
+			Log::Info("Metalness texture: " + std::string(texFileName.C_Str()));
+
+			const std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
+			if (m_Textures.find(texFilePath) == m_Textures.end())
+			{
+				metalTex = new Texture(texFilePath);
+				m_Textures[texFilePath] = metalTex;
+			}
+			else
+			{
+				metalTex = m_Textures[texFilePath];
+			}
+		}
+
+		// Emissive texture
+		const size_t emissiveTexCount = material->GetTextureCount(aiTextureType_EMISSION_COLOR);
+		if (emissiveTexCount > 0)
+		{
+			int kek = 0;
+		}
+
 		// Add material
-		m_Materials.push_back(new Material(diffColor, specColor, roughness, diffTex, specTex, roughTex));
+		m_Materials.push_back(new Material(diffColor, specColor, emissiveColor, roughness, diffTex, specTex, roughTex));
 	}
 }
 

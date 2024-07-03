@@ -3,6 +3,7 @@
 Material::Material(
 	const glm::vec4& diffColor,
 	const glm::vec4& specColor,
+	const glm::vec4& emissiveColor,
 	const float roughness,
 	const Texture* diffTex,
 	const Texture* specTex,
@@ -11,6 +12,7 @@ Material::Material(
 	MaterialSbtData data{};
 	data.diffColor = glm::vec3(diffColor.x, diffColor.y, diffColor.z);
 	data.specF0 = glm::vec3(specColor.x, specColor.y, specColor.z);
+	data.emissiveColor = glm::vec3(emissiveColor.x, emissiveColor.y, emissiveColor.z);
 	data.roughness = roughness;
 	
 	data.hasDiffTex = diffTex != nullptr;
