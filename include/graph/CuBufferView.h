@@ -7,11 +7,18 @@
 template <typename T>
 struct CuBufferView
 {
+#ifdef __CUDACC__
+	CUdeviceptr data;
+	uint32_t count;
+	uint16_t byteStride;
+	uint16_t elemByteSize;
+#else
 	CUdeviceptr data = 0;
 	uint32_t count = 0;
 	uint16_t byteStride = sizeof(T);
 	uint16_t elemByteSize = sizeof(T);
-
+#endif
+	
 	CuBufferView() = default;
 
 	CuBufferView(

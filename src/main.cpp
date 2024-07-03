@@ -168,8 +168,8 @@ int main()
 
     // Scene
     const std::vector<const ModelInstance*> modelInstances = { &bistroInstance, &cubeInstance };
-    const std::vector<const Emitter*> emitter = { &cubeEmitter };
-    Scene scene(optixDeviceContext, modelInstances, emitter);
+    const std::vector<const Emitter*> emitters = { &cubeEmitter };
+    Scene scene(optixDeviceContext, modelInstances, emitters);
 
     // Renderer
     SimpleRenderer renderer(optixDeviceContext, cam, scene);

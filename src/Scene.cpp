@@ -4,9 +4,34 @@
 Scene::Scene(
 	const OptixDeviceContext optixDeviceContext, 
 	const std::vector<const ModelInstance*>& modelInstances,
-	const std::vector<const Emitter*>& emitter) 
+	const std::vector<const Emitter*>& emitters) 
 	:
 	m_ModelInstances(modelInstances)
+{
+	BuildAccel(optixDeviceContext);
+	BuildEmitterTable(emitters);
+}
+
+void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
+{
+	// Add shader for each model in order
+	for (size_t idx = 0; idx < m_ModelInstances.size(); ++idx)
+	{
+		m_ModelInstances[idx]->GetModel().AddShader(pipeline, sbt);
+	}
+}
+
+OptixTraversableHandle Scene::GetTraversableHandle() const
+{
+	return m_TraversableHandle;
+}
+
+CuBufferView<EmitterData> Scene::GetEmitterTable() const
+{
+	return CuBufferView<EmitterData>(m_EmitterTable.GetCuPtr(), m_EmitterTable.GetCount());
+}
+
+void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
@@ -33,7 +58,7 @@ Scene::Scene(
 		optixInstance.visibilityMask = 1;
 		optixInstance.traversableHandle = modelInstance->GetModel().GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance->GetTransform()));
-		
+
 		// Increase sbt offset if model was new
 		if (modelNew) { sbtOffset += model.GetMeshCount(); }
 	}
@@ -100,16 +125,13 @@ Scene::Scene(
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
 
-void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
+void Scene::BuildEmitterTable(const std::vector<const Emitter*>& emitters)
 {
-	// Add shader for each model in order
-	for (size_t idx = 0; idx < m_ModelInstances.size(); ++idx)
+	std::vector<EmitterData> emitterData{};
+	for (const Emitter* emitter : emitters)
 	{
-		m_ModelInstances[idx]->GetModel().AddShader(pipeline, sbt);
+		emitterData.push_back(emitter->GetData());
 	}
-}
-
-OptixTraversableHandle Scene::GetTraversableHandle() const
-{
-	return m_TraversableHandle;
+	m_EmitterTable.Alloc(emitterData.size());
+	m_EmitterTable.Upload(emitterData.data());
 }

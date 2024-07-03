@@ -33,10 +33,13 @@ void SimpleRenderer::LaunchFrame(
 	launchParams.height = height;
 	launchParams.traversableHandle = m_Scene.GetTraversableHandle();
 	launchParams.cameraData = m_Cam.GetData();
+	launchParams.emitterTable = m_Scene.GetEmitterTable();
+
 	launchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	launchParams.surfaceTraceParams.sbtOffset = 0;
 	launchParams.surfaceTraceParams.sbtStride = 1;
 	launchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
+	
 	launchParams.occlusionTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
 	launchParams.occlusionTraceParams.sbtOffset = 0;
 	launchParams.occlusionTraceParams.sbtStride = 1;
