@@ -152,10 +152,10 @@ int main()
         glm::radians(60.0f));
 
     // Models
-    const Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
-    const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
-    const ModelInstance cubeInstance(cubeModel, cubeTransform);
-    const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(1.0f));
+    //const Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
+    //const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
+    //const ModelInstance cubeInstance(cubeModel, cubeTransform);
+    //const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(10.0f));
 
     //const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
     //const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
@@ -168,8 +168,8 @@ int main()
 
     // Scene
     const std::vector<const ModelInstance*> modelInstances = { &bistroInstance };
-    //const std::vector<const Emitter*> emitters = { &cubeEmitter };
-    Scene scene(optixDeviceContext, modelInstances, {});
+    const std::vector<const Emitter*> emitters = { };
+    Scene scene(optixDeviceContext, modelInstances, emitters);
 
     // Renderer
     SimpleRenderer renderer(optixDeviceContext, cam, scene);

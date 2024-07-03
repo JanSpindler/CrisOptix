@@ -10,7 +10,6 @@
 #include <graph/brdf.h>
 #include <util/random.h>
 
-static constexpr uint32_t MAX_TRACE_OPS = 32;
 static constexpr uint32_t MAX_TRACE_DEPTH = 8;
 
 __constant__ LaunchParams params;
@@ -166,7 +165,7 @@ extern "C" __global__ void __raygen__main()
 	}
 
 	// Trace
-	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
+	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_DEPTH; ++traceIdx)
 	{
 		if (!nextRayValid) { break; }
 
@@ -206,9 +205,7 @@ extern "C" __global__ void __raygen__main()
 			interaction, 
 			emitterSample.dir);
 		outputRadiance = brdfResult.brdfResult * emitterSample.color;
-
-		// Return if ray depth exceeded
-		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
+		if (traceIdx == 0) { outputRadiance += brdfResult.emission; }
 	}
 
 	// Store radiance output
