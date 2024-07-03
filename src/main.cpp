@@ -63,6 +63,8 @@ static OptixDeviceContext InitOptix()
 
 static void HandleCamMove(const float deltaTime, Camera& cam)
 {
+    bool changed = false;
+
     // Key movement
     const float camSpeed = Window::IsKeyPressed(GLFW_KEY_LEFT_SHIFT) ? 20.0f : 5.0f;
     glm::vec3 camMove(0.0f);
@@ -75,7 +77,11 @@ static void HandleCamMove(const float deltaTime, Camera& cam)
     if (Window::IsKeyPressed(GLFW_KEY_C)) { camMove += glm::vec3(0.0f, -1.0f, 0.0f); }
 
     const float camMoveLen = glm::length(camMove);
-    if (camMoveLen > 0.001f) { camMove = glm::normalize(camMove) * deltaTime * camSpeed; }
+    if (camMoveLen > 0.001f)
+    { 
+        camMove = glm::normalize(camMove) * deltaTime * camSpeed;
+        changed = true;
+    }
     if (!std::isinf(camMoveLen) && !std::isnan(camMoveLen)) { cam.Move(camMove); }
 
     // Mouse rotation
@@ -86,7 +92,14 @@ static void HandleCamMove(const float deltaTime, Camera& cam)
     
     const bool rightMouseBtn = Window::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
     Window::EnableCursor(!rightMouseBtn);
-    if (rightMouseBtn) { cam.RotateViewDir(mouseMove.x, mouseMove.y); }
+    if (rightMouseBtn)
+    { 
+        cam.RotateViewDir(mouseMove.x, mouseMove.y); 
+        if (glm::length(mouseMove) > 0.001f) { changed = true; }
+    }
+
+    // Changed?
+    cam.SetChanged(changed);
 }
 
 static void RenderAndDispay(

@@ -209,5 +209,7 @@ extern "C" __global__ void __raygen__main()
 	}
 
 	// Store radiance output
-	params.outputBuffer[pixelIdx] = outputRadiance;
+	const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+	const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+	params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
 }

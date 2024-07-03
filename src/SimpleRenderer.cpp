@@ -28,6 +28,7 @@ void SimpleRenderer::LaunchFrame(
 	const uint32_t height)
 {
 	++m_FrameIdx;
+	if (m_Cam.HasChanged()) { m_FrameIdx = 0; }
 
 	LaunchParams launchParams{};
 	launchParams.frameIdx = m_FrameIdx;
