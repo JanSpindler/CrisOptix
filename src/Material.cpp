@@ -9,7 +9,7 @@ Material::Material(
 	const Texture* specTex,
 	const Texture* roughTex) 
 	:
-	m_Emissive(emissiveColor.x > 0.0f || emissiveColor.y > 0.0f || emissiveColor.z > 0.0f)
+	m_EmissiveColor(emissiveColor)
 {
 	MaterialSbtData data{};
 	data.diffColor = glm::vec3(diffColor.x, diffColor.y, diffColor.z);
@@ -41,7 +41,7 @@ uint32_t Material::GetEvalSbtIdx() const
 	return m_EvalSbtIdx;
 }
 
-bool Material::IsEmissive() const
+glm::vec3 Material::GetEmissiveColor() const
 {
-	return m_Emissive;
+	return m_EmissiveColor;
 }

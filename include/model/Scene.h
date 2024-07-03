@@ -12,7 +12,8 @@ public:
 	Scene(
 		const OptixDeviceContext optixDeviceContext, 
 		const std::vector<const ModelInstance*>& modelInstances,
-		const std::vector<const Emitter*>& emitters);
+		const std::vector<const Emitter*>& explicitEmitters);
+	~Scene();
 
 	void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const;
 
@@ -22,10 +23,11 @@ public:
 private:
 	OptixTraversableHandle m_TraversableHandle = 0;
 	const std::vector<const ModelInstance*>& m_ModelInstances;
+	std::vector<Emitter*> m_ImplicitEmitters{};
 	
 	DeviceBuffer<uint8_t> m_AccelBuf{};
 	DeviceBuffer<EmitterData> m_EmitterTable{};
 
 	void BuildAccel(const OptixDeviceContext optixDeviceContext);
-	void BuildEmitterTable(const std::vector<const Emitter*>& emitters);
+	void BuildEmitterTable(const std::vector<const Emitter*>& explicitEmitters);
 };

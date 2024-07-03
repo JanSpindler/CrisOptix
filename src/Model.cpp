@@ -89,6 +89,11 @@ const Mesh* Model::GetMesh(const size_t idx) const
 	return m_Meshes[idx];
 }
 
+const std::vector<Mesh*>& Model::GetMeshes() const
+{
+	return m_Meshes;
+}
+
 OptixTraversableHandle Model::GetTraversHandle() const
 {
 	return m_TraversHandle;

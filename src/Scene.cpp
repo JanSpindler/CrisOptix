@@ -4,12 +4,21 @@
 Scene::Scene(
 	const OptixDeviceContext optixDeviceContext, 
 	const std::vector<const ModelInstance*>& modelInstances,
-	const std::vector<const Emitter*>& emitters) 
+	const std::vector<const Emitter*>& explicitEmitters)
 	:
 	m_ModelInstances(modelInstances)
 {
 	BuildAccel(optixDeviceContext);
-	BuildEmitterTable(emitters);
+	BuildEmitterTable(explicitEmitters);
+}
+
+Scene::~Scene()
+{
+	for (Emitter* emitter : m_ImplicitEmitters)
+	{
+		delete emitter;
+	}
+	m_ImplicitEmitters.clear();
 }
 
 void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
@@ -125,13 +134,32 @@ void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
 
-void Scene::BuildEmitterTable(const std::vector<const Emitter*>& emitters)
+void Scene::BuildEmitterTable(const std::vector<const Emitter*>& explicitEmitters)
 {
+	// Add explicit emitters
 	std::vector<EmitterData> emitterData{};
-	for (const Emitter* emitter : emitters)
+	for (const Emitter* emitter : explicitEmitters)
 	{
 		emitterData.push_back(emitter->GetData());
 	}
+
+	// Add implicit emitters
+	for (const ModelInstance* modelInstance : m_ModelInstances)
+	{
+		for (const Mesh* mesh : modelInstance->GetModel().GetMeshes())
+		{
+			const Material* material = mesh->GetMaterial();
+			const glm::vec3 emissiveColor = material->GetEmissiveColor();
+			if (glm::length(emissiveColor) > 0.01f)
+			{
+				Emitter* emitter = new Emitter(mesh, modelInstance->GetTransform(), glm::vec3(1.0f));
+				m_ImplicitEmitters.push_back(emitter);
+				emitterData.push_back(emitter->GetData());
+			}
+		}
+	}
+
+	// Upload
 	m_EmitterTable.Alloc(emitterData.size());
 	m_EmitterTable.Upload(emitterData.data());
 }

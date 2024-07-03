@@ -46,6 +46,11 @@ const DeviceBuffer<uint32_t>& Mesh::GetDeviceIndexBuffer() const
 	return m_DeviceIndexBuffer;
 }
 
+const Material* Mesh::GetMaterial() const
+{
+	return m_Material;
+}
+
 void Mesh::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
 	// Triangle input

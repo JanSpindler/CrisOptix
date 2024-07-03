@@ -29,6 +29,7 @@ public:
 	OptixTraversableHandle GetTraversHandle() const;
 	const DeviceBuffer<Vertex>& GetDeviceVertexBuffer() const;
 	const DeviceBuffer<uint32_t>& GetDeviceIndexBuffer() const;
+	const Material* GetMaterial() const;
 
 private:
 	static constexpr std::array<uint32_t, 1> m_TriangleInputFlags = { 0 };

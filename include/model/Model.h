@@ -19,6 +19,8 @@ public:
 
 	size_t GetMeshCount() const;
 	const Mesh* GetMesh(const size_t idx) const;
+	const std::vector<Mesh*>& GetMeshes() const;
+
 	OptixTraversableHandle GetTraversHandle() const;
 
 private:
