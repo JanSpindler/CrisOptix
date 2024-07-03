@@ -8,6 +8,7 @@
 #include <graph/Interaction.h>
 #include <graph/trace.h>
 #include <graph/brdf.h>
+#include <util/random.h>
 
 static constexpr uint32_t MAX_TRACE_OPS = 32;
 static constexpr uint32_t MAX_TRACE_DEPTH = 8;
@@ -105,22 +106,53 @@ extern "C" __global__ void __miss__occlusion()
 	SetOcclusionPayload(false);
 }
 
+struct EmitterSample
+{
+	glm::vec3 dir;
+	glm::vec3 color;
+};
+
+static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 currentPos, PCG32& rng)
+{
+	const size_t emitterCount = params.emitterTable.count;
+	const size_t emitterIdx = rng.NextUint64() % emitterCount;
+	const EmitterData& emitter = params.emitterTable[emitterIdx];
+	const size_t faceIdx = rng.NextUint64() % emitter.areaBuffer.count; // TODO: Use area or solid angle sampling
+
+	const glm::vec3 v0 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 0]].pos;
+	const glm::vec3 v1 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 1]].pos;
+	const glm::vec3 v2 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 2]].pos;
+
+	const float r1 = rng.NextFloat();
+	const float r2 = rng.NextFloat();
+	const glm::vec3 emitterPoint = (1.0f - r1 - r2) * v0 + r1 * v1 + r2 * v2;
+
+	const glm::vec3 lightDir = glm::normalize(emitterPoint - currentPos);
+	
+	return { lightDir, emitter.color };
+}
+
 extern "C" __global__ void __raygen__main()
 {
+	//
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
 
+	// Exit if invalid launch idx
 	if (launchIdx.x >= params.width || launchIdx.y >= params.height || launchIdx.z >= 1)
 	{
 		return;
 	}
 
+	// Init RNG
 	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
-	const uint64_t seed = SampleTEA64(pixelIdx, 1);
+	const uint64_t seed = SampleTEA64(pixelIdx, params.frameIdx);
 	PCG32 rng(seed);
 
+	// Init radiance with 0
 	glm::vec3 outputRadiance(0.0f);
 
+	// Spawn camera ray
 	bool nextRayValid = true;
 	Ray nextRay{};
 	{
@@ -131,6 +163,7 @@ extern "C" __global__ void __raygen__main()
 		nextRay.depth = 0;
 	}
 
+	// Trace
 	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
 	{
 		if (!nextRayValid) { break; }
@@ -138,6 +171,7 @@ extern "C" __global__ void __raygen__main()
 		Ray currentRay = nextRay;
 		nextRayValid = false;
 
+		// Sample surface interaction
 		SurfaceInteraction interaction{};
 		TraceWithDataPointer<SurfaceInteraction>(
 			params.traversableHandle, 
@@ -148,17 +182,23 @@ extern "C" __global__ void __raygen__main()
 			params.surfaceTraceParams, 
 			&interaction);
 
+		// Exit if no surface found
 		if (!interaction.valid) { continue; }
 
-		const glm::vec3 dirLightDir(0.0f, 1.0f, 0.0f);
+		// Sample light source
+		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+
+		// Calc brdf
 		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
 			interaction.meshSbtData->evalMaterialSbtIdx, 
 			interaction, 
-			dirLightDir);
-		outputRadiance = brdfResult.brdfResult;
+			emitterSample.dir);
+		outputRadiance = brdfResult.brdfResult * emitterSample.color;
 
+		// Return if ray depth exceeded
 		if (currentRay.depth >= MAX_TRACE_DEPTH) { continue; }
 	}
 
+	// Store radiance output
 	params.outputBuffer[pixelIdx] = outputRadiance;
 }

@@ -23,6 +23,7 @@ private:
 	uint32_t m_SurfaceMissIdx = 0;
 	uint32_t m_OcclusionMissIdx = 0;
 
+	size_t m_FrameIdx = 0;
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 
 	Pipeline m_Pipeline;

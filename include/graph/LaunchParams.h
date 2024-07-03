@@ -8,6 +8,7 @@
 
 struct LaunchParams
 {
+	size_t frameIdx;
 	glm::vec3* outputBuffer;
 	uint32_t width;
 	uint32_t height;

@@ -134,7 +134,7 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     // Result
     BrdfResult result{};
     result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
-    result.brdfResult = diffBrdf;
+    //result.brdfResult = diffBrdf;
     result.samplingPdf = 0.0f;
     return result;
 }

@@ -27,7 +27,10 @@ void SimpleRenderer::LaunchFrame(
 	const uint32_t width,
 	const uint32_t height)
 {
+	++m_FrameIdx;
+
 	LaunchParams launchParams{};
+	launchParams.frameIdx = m_FrameIdx;
 	launchParams.outputBuffer = outputBuffer;
 	launchParams.width = width;
 	launchParams.height = height;
