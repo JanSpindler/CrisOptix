@@ -110,6 +110,7 @@ struct EmitterSample
 {
 	glm::vec3 dir;
 	glm::vec3 color;
+	float distance;
 };
 
 static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 currentPos, PCG32& rng)
@@ -128,8 +129,9 @@ static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 current
 	const glm::vec3 emitterPoint = (1.0f - r1 - r2) * v0 + r1 * v1 + r2 * v2;
 
 	const glm::vec3 lightDir = glm::normalize(emitterPoint - currentPos);
+	const float distance = glm::length(emitterPoint - currentPos);
 	
-	return { lightDir, emitter.color };
+	return { lightDir, emitter.color, distance };
 }
 
 extern "C" __global__ void __raygen__main()
@@ -187,6 +189,16 @@ extern "C" __global__ void __raygen__main()
 
 		// Sample light source
 		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+
+		// Cast shadow ray
+		const bool occluded = TraceOcclusion(
+			params.traversableHandle,
+			interaction.pos,
+			emitterSample.dir,
+			1e-3,
+			emitterSample.distance,
+			params.occlusionTraceParams);
+		if (occluded) { continue; }
 
 		// Calc brdf
 		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
