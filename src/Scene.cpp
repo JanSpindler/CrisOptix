@@ -3,11 +3,10 @@
 
 Scene::Scene(
 	const OptixDeviceContext optixDeviceContext, 
-	const std::vector<ModelInstance>& modelInstances,
-	const std::vector<Emitter>& emitter) 
+	const std::vector<const ModelInstance*>& modelInstances,
+	const std::vector<const Emitter*>& emitter) 
 	:
-	m_ModelInstances(modelInstances),
-	m_Emitter(emitter)
+	m_ModelInstances(modelInstances)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
@@ -17,8 +16,8 @@ Scene::Scene(
 	uint32_t sbtOffset = 0;
 	for (size_t idx = 0; idx < modelInstanceCount; ++idx)
 	{
-		const ModelInstance& modelInstance = m_ModelInstances[idx];
-		const Model& model = modelInstance.GetModel();
+		const ModelInstance* modelInstance = m_ModelInstances[idx];
+		const Model& model = modelInstance->GetModel();
 
 		// Use stored sbt offset if it exists
 		size_t currentSbtOffset = sbtOffset;
@@ -32,8 +31,8 @@ Scene::Scene(
 		optixInstance.instanceId = idx;
 		optixInstance.sbtOffset = sbtOffset;
 		optixInstance.visibilityMask = 1;
-		optixInstance.traversableHandle = modelInstance.GetModel().GetTraversHandle();
-		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance.GetTransform()));
+		optixInstance.traversableHandle = modelInstance->GetModel().GetTraversHandle();
+		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance->GetTransform()));
 		
 		// Increase sbt offset if model was new
 		if (modelNew) { sbtOffset += model.GetMeshCount(); }
@@ -106,7 +105,7 @@ void Scene::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 	// Add shader for each model in order
 	for (size_t idx = 0; idx < m_ModelInstances.size(); ++idx)
 	{
-		m_ModelInstances[idx].GetModel().AddShader(pipeline, sbt);
+		m_ModelInstances[idx]->GetModel().AddShader(pipeline, sbt);
 	}
 }
 

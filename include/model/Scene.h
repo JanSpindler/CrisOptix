@@ -11,8 +11,8 @@ class Scene
 public:
 	Scene(
 		const OptixDeviceContext optixDeviceContext, 
-		const std::vector<ModelInstance>& modelInstances,
-		const std::vector<Emitter>& emitter);
+		const std::vector<const ModelInstance*>& modelInstances,
+		const std::vector<const Emitter*>& emitter);
 
 	void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const;
 
@@ -20,8 +20,7 @@ public:
 
 private:
 	OptixTraversableHandle m_TraversableHandle = 0;
-	const std::vector<ModelInstance>& m_ModelInstances;
-	std::vector<Emitter> m_Emitter{};
-
+	const std::vector<const ModelInstance*>& m_ModelInstances;
+	
 	DeviceBuffer<uint8_t> m_AccelBuf{};
 };

@@ -43,6 +43,8 @@ public:
 	{
 		m_Count = 0;
 		m_AllocCount = 0;
+
+		if (m_Ptr == nullptr) { return; }
 		ASSERT_CUDA(cudaFree(m_Ptr));
 		m_Ptr = nullptr;
 	}

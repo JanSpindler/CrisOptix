@@ -167,8 +167,9 @@ int main()
     const ModelInstance bistroInstance(bistroModel, glm::identity<glm::mat4>());
 
     // Scene
-    const std::vector<ModelInstance> modelInstances = { bistroInstance, cubeInstance };
-    Scene scene(optixDeviceContext, modelInstances, { cubeEmitter });
+    const std::vector<const ModelInstance*> modelInstances = { &bistroInstance, &cubeInstance };
+    const std::vector<const Emitter*> emitter = { &cubeEmitter };
+    Scene scene(optixDeviceContext, modelInstances, emitter);
 
     // Renderer
     SimpleRenderer renderer(optixDeviceContext, cam, scene);
