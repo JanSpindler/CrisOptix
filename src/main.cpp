@@ -151,11 +151,17 @@ int main()
         glm::radians(60.0f));
 
     // Models
-    const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
-    const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
+    //const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
+    //const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
+
+    //const Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
+    //const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));
+
+    const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, optixDeviceContext);
+    const ModelInstance bistroInstance(bistroModel, glm::mat4(1.0f));
 
     // Scene
-    const std::vector<ModelInstance> modelInstances = { backpackInstance };
+    const std::vector<ModelInstance> modelInstances = { bistroInstance };
     Scene scene(optixDeviceContext, modelInstances);
 
     // Renderer

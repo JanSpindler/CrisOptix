@@ -252,7 +252,7 @@ void Model::LoadMaterials(const aiScene* scene)
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &texFileName);
 			Log::Info("Diffuse texture: " + std::string(texFileName.C_Str()));
 
-			std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
+			const std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
 			if (m_Textures.find(texFilePath) == m_Textures.end())
 			{
 				diffTex = new Texture(texFilePath);
@@ -264,8 +264,52 @@ void Model::LoadMaterials(const aiScene* scene)
 			}
 		}
 
+		// Specular texture
+		const size_t specTexCount = material->GetTextureCount(aiTextureType_SPECULAR);
+		Log::Info("Has " + std::to_string(specTexCount) + " specular textures");
+		Texture* specTex = nullptr;
+		if (specTexCount > 0)
+		{
+			aiString texFileName{};
+			material->GetTexture(aiTextureType_SPECULAR, 0, &texFileName);
+			Log::Info("Specular texture: " + std::string(texFileName.C_Str()));
+
+			const std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
+			if (m_Textures.find(texFilePath) == m_Textures.end())
+			{
+				specTex = new Texture(texFilePath);
+				m_Textures.insert_or_assign(texFilePath, specTex);
+			}
+			else
+			{
+				specTex = m_Textures[texFilePath];
+			}
+		}
+
+		// Roughness texture
+		const size_t roughTexCount = material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS);
+		Log::Info("Has " + std::to_string(roughTexCount) + " roughness textures");
+		Texture* roughTex = nullptr;
+		if (roughTexCount > 0)
+		{
+			aiString texFileName{};
+			material->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &texFileName);
+			Log::Info("Roughness texture: " + std::string(texFileName.C_Str()));
+
+			const std::string texFilePath = m_DirPath + "/" + texFileName.C_Str();
+			if (m_Textures.find(texFilePath) == m_Textures.end())
+			{
+				roughTex = new Texture(texFilePath);
+				m_Textures[texFilePath] = roughTex;
+			}
+			else
+			{
+				roughTex = m_Textures[texFilePath];
+			}
+		}
+
 		// Add material
-		m_Materials.push_back(new Material(diffColor, specColor, roughness, diffTex));
+		m_Materials.push_back(new Material(diffColor, specColor, roughness, diffTex, specTex, roughTex));
 	}
 }
 

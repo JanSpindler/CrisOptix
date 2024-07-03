@@ -52,8 +52,8 @@ void Texture::LoadToDevice(const stbi_uc* imageData, const int width, const int 
 	resDesc.res.array.array = m_DeviceData;
 
 	cudaTextureDesc texDesc{};
-	texDesc.addressMode[0] = cudaAddressModeClamp;
-	texDesc.addressMode[1] = cudaAddressModeClamp;
+	texDesc.addressMode[0] = cudaAddressModeWrap;
+	texDesc.addressMode[1] = cudaAddressModeWrap;
 	texDesc.addressMode[2] = cudaAddressModeWrap;
 	texDesc.filterMode = cudaFilterModeLinear;
 	texDesc.readMode = cudaReadModeNormalizedFloat;

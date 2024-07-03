@@ -61,6 +61,40 @@ static constexpr __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::v
     return glm::transpose(glm::mat3(tan, bitan, n));
 }
 
+static constexpr __device__ glm::vec3 GetFromTexIfPossible(
+    const bool hasTex, 
+    const glm::vec3& defaultVal,
+    const glm::vec2 uv,
+    const cudaTextureObject_t tex)
+{
+    if (hasTex)
+    {
+        const float4 cuTex4 = tex2D<float4>(tex, uv.x, uv.y);
+        return glm::vec3(cuTex4.x, cuTex4.y, cuTex4.z);
+    }
+    else
+    {
+        return defaultVal;
+    }
+}
+
+static constexpr __device__ float GetFromTexIfPossible(
+    const bool hasTex,
+    const float defaultVal,
+    const glm::vec2 uv,
+    const cudaTextureObject_t tex)
+{
+    if (hasTex)
+    {
+        const float4 cuTex4 = tex2D<float4>(tex, uv.x, uv.y);
+        return cuTex4.x;
+    }
+    else
+    {
+        return defaultVal;
+    }
+}
+
 extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction& interaction, const glm::vec3& outDir)
 {
     // Get ggx data
@@ -69,12 +103,9 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     // Get values if possible from texture
     const glm::vec2 uv = interaction.uv;
 
-    glm::vec3 diffColor = ggxData->diffColor;
-    if (ggxData->hasDiffTex)
-    {
-        const float4 cuTex4 = tex2D<float4>(ggxData->diffTex, uv.x, uv.y);
-        diffColor = glm::vec3(cuTex4.x, cuTex4.y, cuTex4.z);
-    }
+    const glm::vec3 diffColor = GetFromTexIfPossible(ggxData->hasDiffTex, ggxData->diffColor, uv, ggxData->diffTex);
+    const glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
+    const float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
 
     // Calc diffuse brdf result
     const glm::vec3 diffBrdf = diffColor / PI;
@@ -86,8 +117,8 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     const glm::vec3 l = w2t * outDir;
     const glm::vec3 v = w2t * -interaction.inRayDir;
     const glm::vec3 h = glm::normalize(l + v);
-    const float a = ggxData->roughTangent;
-    const float b = ggxData->roughBitangent;
+    const float a = ggxData->roughness;
+    const float b = ggxData->roughness;
 
     // Calc specular brdf
     const glm::vec3 specBrdf = FresnelSchlick(ggxData->specF0, glm::dot(h, v))
@@ -103,6 +134,7 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
     // Result
     BrdfResult result{};
     result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
+    //result.brdfResult = specF0;
     result.samplingPdf = 0.0f;
     return result;
 }

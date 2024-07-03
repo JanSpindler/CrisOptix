@@ -150,7 +150,7 @@ extern "C" __global__ void __raygen__main()
 
 		if (!interaction.valid) { continue; }
 
-		const glm::vec3 dirLightDir(0.0f, 0.0f, -1.0f);
+		const glm::vec3 dirLightDir(0.0f, 1.0f, 0.0f);
 		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
 			interaction.meshSbtData->evalMaterialSbtIdx, 
 			interaction, 
