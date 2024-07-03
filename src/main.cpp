@@ -151,11 +151,11 @@ int main()
         glm::radians(60.0f));
 
     // Models
-    const Model dragonModel("./data/model/basic/dragon.obj", false, optixDeviceContext);
-    const ModelInstance dragonInstance(dragonModel, glm::mat4(1.0f));
+    const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
+    const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
 
     // Scene
-    const std::vector<ModelInstance> modelInstances = { dragonInstance };
+    const std::vector<ModelInstance> modelInstances = { backpackInstance };
     Scene scene(optixDeviceContext, modelInstances);
 
     // Renderer

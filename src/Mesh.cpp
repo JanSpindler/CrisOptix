@@ -20,20 +20,13 @@ Mesh::Mesh(
 	// Helper variable
 	m_VertexDevPtr = m_DeviceVertexBuffer.GetCuPtr();
 
-	// Sbt data
-	MeshSbtData data{};
-	data.vertices = CuBufferView<Vertex>(m_DeviceVertexBuffer.GetCuPtr(), m_DeviceVertexBuffer.GetCount());
-	data.indices = CuBufferView<uint32_t>(m_DeviceIndexBuffer.GetCuPtr(), m_DeviceIndexBuffer.GetCount());
-	data.evalMaterialSbtIdx = m_Material->GetEvalSbtIdx();
-	m_SbtDataBuf.Alloc(1);
-	m_SbtDataBuf.Upload(&data);
-
 	// Build accel
 	BuildAccel(optixDeviceContext);
 }
 
 void Mesh::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 {
+	UploadSbtData();
 	const OptixProgramGroup pg = pipeline.AddTrianglesHitGroupShader({ "test.ptx", "__closesthit__mesh" }, {});
 	sbt.AddHitEntry(pg, ToVecByte(m_SbtDataBuf.GetCuPtr()));
 }
@@ -124,4 +117,14 @@ void Mesh::BuildAccel(const OptixDeviceContext optixDeviceContext)
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
+}
+
+void Mesh::UploadSbtData() const
+{
+	MeshSbtData data{};
+	data.vertices = CuBufferView<Vertex>(m_DeviceVertexBuffer.GetCuPtr(), m_DeviceVertexBuffer.GetCount());
+	data.indices = CuBufferView<uint32_t>(m_DeviceIndexBuffer.GetCuPtr(), m_DeviceIndexBuffer.GetCount());
+	data.evalMaterialSbtIdx = m_Material->GetEvalSbtIdx();
+	m_SbtDataBuf.Alloc(1);
+	m_SbtDataBuf.Upload(&data);
 }

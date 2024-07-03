@@ -37,10 +37,11 @@ private:
 	DeviceBuffer<uint32_t> m_DeviceIndexBuffer{};
 	CUdeviceptr m_VertexDevPtr = 0;
 
-	DeviceBuffer<MeshSbtData> m_SbtDataBuf{};
+	mutable DeviceBuffer<MeshSbtData> m_SbtDataBuf{};
 
 	OptixTraversableHandle m_TraversHandle = 0;
 	DeviceBuffer<uint8_t> m_AccelBuf{};
 
 	void BuildAccel(const OptixDeviceContext optixDeviceContext);
+	void UploadSbtData() const;
 };
