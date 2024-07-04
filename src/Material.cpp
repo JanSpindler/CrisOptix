@@ -7,7 +7,8 @@ Material::Material(
 	const float roughness,
 	const Texture* diffTex,
 	const Texture* specTex,
-	const Texture* roughTex) 
+	const Texture* roughTex,
+	const SpecTexUsage specTexUsage)
 	:
 	m_EmissiveColor(emissiveColor)
 {
@@ -25,6 +26,8 @@ Material::Material(
 
 	data.hasRoughTex = roughTex != nullptr;
 	if (roughTex != nullptr) { data.roughTex = roughTex->GetTextureObjext(); }
+
+	data.specTexUsage = specTexUsage;
 
 	m_SbtDataBuf.Alloc(1);
 	m_SbtDataBuf.Upload(&data);

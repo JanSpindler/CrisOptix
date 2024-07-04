@@ -165,7 +165,7 @@ int main()
         glm::radians(60.0f));
 
     // Models
-    const Model cubeModel("./data/model/basic/cube.obj", false, optixDeviceContext);
+    const Model cubeModel("./data/model/basic/cube.obj", false, SpecTexUsage::Color, optixDeviceContext);
     const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
     const ModelInstance cubeInstance(cubeModel, cubeTransform);
     const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(10.0f));
@@ -176,11 +176,12 @@ int main()
     //const Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, optixDeviceContext);
     //const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));
 
-    const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, optixDeviceContext);
+    const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, SpecTexUsage::OccRoughMetal, optixDeviceContext);
     const ModelInstance bistroInstance(bistroModel, glm::identity<glm::mat4>());
 
     // Scene
     const std::vector<const ModelInstance*> modelInstances = { &bistroInstance };
+    //const std::vector<const ModelInstance*> modelInstances = { &zeroDayInstance };
     const std::vector<const Emitter*> emitters = { &cubeEmitter };
     Scene scene(optixDeviceContext, modelInstances, emitters);
 

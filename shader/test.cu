@@ -195,7 +195,7 @@ extern "C" __global__ void __raygen__main()
 		if (!interaction.valid) { continue; }
 
 		// Decide if NEE or continue PT
-		const float neeProb = 0.5f;
+		const float neeProb = 0.25f;
 		if (rng.NextFloat() < neeProb || currentRay.depth >= MAX_TRACE_DEPTH)
 		{
 			// NEE

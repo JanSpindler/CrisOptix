@@ -12,7 +12,7 @@
 class Model
 {
 public:
-	Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext);
+	Model(const std::string& filePath, const bool flipUv, const SpecTexUsage specTexUsage, const OptixDeviceContext optixDeviceContext);
 	~Model();
 
 	void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const;
@@ -37,6 +37,6 @@ private:
 
 	void ProcessNode(aiNode* node, const aiScene* scene, const glm::mat4& parentT, const OptixDeviceContext optixDeviceContext);
 	void LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t, const OptixDeviceContext optixDeviceContext);
-	void LoadMaterials(const aiScene* scene);
+	void LoadMaterials(const aiScene* scene, const SpecTexUsage specTexUsage);
 	void BuildAccel(const OptixDeviceContext optixDeviceContext);
 };

@@ -7,6 +7,12 @@
 #include <graph/Pipeline.h>
 #include <graph/ShaderBindingTable.h>
 
+enum class SpecTexUsage
+{
+    Color,
+    OccRoughMetal
+};
+
 struct MaterialSbtData
 {
     glm::vec3 diffColor;
@@ -22,6 +28,8 @@ struct MaterialSbtData
 
     bool hasRoughTex;
     cudaTextureObject_t roughTex;
+
+    SpecTexUsage specTexUsage;
 };
 
 class Material
@@ -34,7 +42,8 @@ public:
         const float roughness, 
         const Texture* diffTex,
         const Texture* specTex,
-        const Texture* roughTex);
+        const Texture* roughTex, 
+        const SpecTexUsage specTexUsage);
 	
     void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt);
 

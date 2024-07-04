@@ -6,7 +6,7 @@
 #include <optix_stubs.h>
 #include <optix_host.h>
 
-Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceContext optixDeviceContext) :
+Model::Model(const std::string& filePath, const bool flipUv, const SpecTexUsage specTexUsage, const OptixDeviceContext optixDeviceContext) :
 	m_FilePath(filePath)
 {
 	// Assert
@@ -36,7 +36,7 @@ Model::Model(const std::string& filePath, const bool flipUv, const OptixDeviceCo
 	Log::Info("Model has " + std::to_string(scene->mNumMaterials) + " materials");
 
 	// Process scene
-	if (scene->HasMaterials()) { LoadMaterials(scene); }
+	if (scene->HasMaterials()) { LoadMaterials(scene, specTexUsage); }
 	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f), optixDeviceContext);
 
 	// Build accel
@@ -206,7 +206,7 @@ void Model::LoadMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t, con
 	m_Meshes.push_back(new Mesh(vertices, indices, m_Materials[mesh->mMaterialIndex], optixDeviceContext));
 }
 
-void Model::LoadMaterials(const aiScene* scene)
+void Model::LoadMaterials(const aiScene* scene, const SpecTexUsage specTexUsage)
 {
 	// Assert
 	Log::Assert(scene != nullptr);
@@ -366,11 +366,10 @@ void Model::LoadMaterials(const aiScene* scene)
 		const size_t emissiveTexCount = material->GetTextureCount(aiTextureType_EMISSION_COLOR);
 		if (emissiveTexCount > 0)
 		{
-			int kek = 0;
 		}
 
 		// Add material
-		m_Materials.push_back(new Material(diffColor, specColor, emissiveColor, roughness, diffTex, specTex, roughTex));
+		m_Materials.push_back(new Material(diffColor, specColor, emissiveColor, roughness, diffTex, specTex, roughTex, specTexUsage));
 	}
 }
 
