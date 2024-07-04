@@ -123,9 +123,15 @@ static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 current
 	const glm::vec3 v1 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 1]].pos;
 	const glm::vec3 v2 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 2]].pos;
 
-	const float r1 = rng.NextFloat();
-	const float r2 = rng.NextFloat();
-	const glm::vec3 emitterPoint = (1.0f - r1 - r2) * v0 + r1 * v1 + r2 * v2;
+	float r0 = rng.NextFloat();
+	float r1 = rng.NextFloat();
+	float r2 = rng.NextFloat();
+	const float rSum = r0 + r1 + r2;
+	r0 /= rSum;
+	r1 /= rSum;
+	r2 /= rSum;
+
+	const glm::vec3 emitterPoint = r0 * v0 + r1 * v1 + r2 * v2;
 
 	const glm::vec3 lightDir = glm::normalize(emitterPoint - currentPos);
 	const float distance = glm::length(emitterPoint - currentPos);
