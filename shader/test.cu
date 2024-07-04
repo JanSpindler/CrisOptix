@@ -10,6 +10,7 @@
 #include <graph/brdf.h>
 #include <util/random.h>
 
+static constexpr uint32_t MAX_TRACE_OPS = 16;
 static constexpr uint32_t MAX_TRACE_DEPTH = 8;
 
 __constant__ LaunchParams params;
@@ -166,15 +167,16 @@ extern "C" __global__ void __raygen__main()
 		glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
 		uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 		SpawnCameraRay(params.cameraData, uv, nextRay.origin, nextRay.dir);
-		nextRay.throughput = glm::vec3(1);
+		nextRay.throughput = glm::vec3(1.0f);
 		nextRay.depth = 0;
 	}
 
 	// Trace
-	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_DEPTH; ++traceIdx)
+	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
 	{
 		if (!nextRayValid) { break; }
 
+		//
 		Ray currentRay = nextRay;
 		nextRayValid = false;
 
@@ -192,38 +194,49 @@ extern "C" __global__ void __raygen__main()
 		// Exit if no surface found
 		if (!interaction.valid) { continue; }
 
+		// Decide if NEE or continue PT
+		const float neeProb = 0.5f;
+		if (rng.NextFloat() < neeProb || currentRay.depth >= MAX_TRACE_DEPTH)
+		{
+			// NEE
+			// Sample light source
+			const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+
+			// Cast shadow ray
+			const bool occluded = TraceOcclusion(
+				params.traversableHandle,
+				interaction.pos,
+				emitterSample.dir,
+				1e-3,
+				emitterSample.distance,
+				params.occlusionTraceParams);
+			if (occluded) { continue; }
+
+			// Calc brdf
+			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+				interaction.meshSbtData->evalMaterialSbtIdx,
+				interaction,
+				emitterSample.dir);
+			outputRadiance = currentRay.throughput * brdfEvalResult.brdfResult * emitterSample.color;
+			if (currentRay.depth == 0) { outputRadiance += brdfEvalResult.emission; }
+
+			// Exit from PT
+			break;
+		}
+
 		// Indirect illumination, generate next ray
-		//BrdfSampleResult brdfSampleResult = 
-		//BSDFSamplingResult bsdf_sampling_result = si.bsdf->sampleBSDF(si, BSDFComponentFlag::Any, rng);
-		//if (bsdf_sampling_result.sampling_pdf != 0)
-		//{
-		//	next_ray.origin = si.position;
-		//	next_ray.direction = bsdf_sampling_result.outgoing_ray_dir;
-		//	next_ray.throughput = current_ray.throughput * bsdf_sampling_result.bsdf_weight;
-		//	next_ray.depth = current_ray.depth + 1;
-		//	next_ray_valid = true;
-		//}
-
-		// Sample light source
-		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
-
-		// Cast shadow ray
-		const bool occluded = TraceOcclusion(
-			params.traversableHandle,
-			interaction.pos,
-			emitterSample.dir,
-			1e-3,
-			emitterSample.distance,
-			params.occlusionTraceParams);
-		if (occluded) { continue; }
-
-		// Calc brdf
-		const BrdfEvalResult brdfResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
-			interaction.meshSbtData->evalMaterialSbtIdx, 
+		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction, 
-			emitterSample.dir);
-		outputRadiance = brdfResult.brdfResult * emitterSample.color;
-		if (traceIdx == 0) { outputRadiance += brdfResult.emission; }
+			rng);
+		if (brdfSampleResult.samplingPdf > 0.0f)
+		{
+			nextRay.origin = interaction.pos;
+			nextRay.dir = brdfSampleResult.outDir;
+			nextRay.throughput = currentRay.throughput * brdfSampleResult.weight;
+			nextRay.depth = currentRay.depth + 1;
+			nextRayValid = true;
+		}
 	}
 
 	// Store radiance output

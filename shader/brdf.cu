@@ -96,6 +96,22 @@ static constexpr __device__ float GetFromTexIfPossible(
     }
 }
 
+static constexpr __device__ float D_GGX(const float NdotH, const float roughness)
+{
+    float a2 = roughness * roughness;
+    float d = (NdotH * a2 - NdotH) * NdotH + 1.0f;
+    return a2 / (PI * d * d);
+}
+
+static constexpr __device__ float V_SmithJointGGX(float NdotL, float NdotV, float roughness)
+{
+    float a2 = roughness * roughness;
+    float lambdaV = NdotL * glm::sqrt(NdotV * NdotV * (1 - a2) + a2);
+    float lambdaL = NdotV * glm::sqrt(NdotL * NdotL * (1 - a2) + a2);
+    return 0.5f / (lambdaV + lambdaL);
+}
+
+
 extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceInteraction& interaction, const glm::vec3& outDir)
 {
     // Get ggx data
@@ -140,6 +156,28 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
     return result;
 }
 
+static constexpr __device__ glm::mat3 ComputeLocalFrame(const glm::vec3& localZ)
+{
+    float x = localZ.x;
+    float y = localZ.y;
+    float z = localZ.z;
+    float sz = (z >= 0) ? 1 : -1;
+    float a = 1 / (sz + z);
+    float ya = y * a;
+    float b = x * ya;
+    float c = x * sz;
+
+    glm::vec3 localX = glm::vec3(c * x * a - 1, sz * b, c);
+    glm::vec3 localY = glm::vec3(b, y * ya - sz, y);
+
+    glm::mat3 frame(1.0f);
+    // Set columns of matrix
+    frame[0] = localX;
+    frame[1] = localY;
+    frame[2] = localZ;
+    return frame;
+}
+
 extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const SurfaceInteraction& interaction, PCG32& rng)
 {
     // Get ggx data
@@ -152,23 +190,107 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
     const glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
     const float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
 
-    // Gen random theta and phi
-    const float theta = rng.NextFloat() * PI * 0.5f;
-    const float phi = rng.NextFloat() * PI * 2.0f;
+    // Get info from interaction
+    const glm::vec3 normal = interaction.normal;
+    const glm::vec3 viewDir = -interaction.inRayDir;
 
-    // Construct dir vector in tangent space
-    const glm::vec3 tangentDir(
-        glm::sin(theta) * glm::cos(phi), 
-        glm::cos(theta), 
-        glm::sin(theta) * glm::sin(phi));
-
-    // Transform into world space
-    const glm::mat3 w2t = World2Tan(interaction.normal, interaction.tangent, glm::cross(interaction.normal, interaction.tangent));
-    const glm::vec3 worldDir = glm::inverse(w2t) * tangentDir;
+    // Check if valid
+    BrdfSampleResult result{};
+    const float nDotV = glm::dot(normal, viewDir);
+    if (nDotV <= 0)
+    {
+        result.outDir = glm::vec3(0.0f);
+        result.weight = glm::vec3(0.0f);
+        result.samplingPdf = 0.0f;
+        return result;
+    }
 
     //
-    BrdfSampleResult result{};
-    result.outDir = worldDir;
-    result.weight = glm::vec3(1.0f);
-    result.samplingPdf = 1.0f / (2.0f * PI);
+    const glm::mat3 localFrame = ComputeLocalFrame(normal);
+
+    //
+    const float diffProb = glm::dot(diffColor, glm::vec3(1)) / (glm::dot(diffColor, glm::vec3(1)) + glm::dot(specF0, glm::vec3(1)));
+
+    //
+    bool sampleInvalid = false;
+
+    //
+    if (rng.NextFloat() < diffProb)
+    {
+        // Diffuse
+        // Malleys method
+        const float phi = rng.NextFloat() * 2.0f * PI;
+        const float r = glm::sqrt(rng.NextFloat());
+
+        const float x = r * glm::cos(phi);
+        const float y = r * glm::sin(phi);
+        const float z = glm::sqrt(glm::clamp<float>(1.0f - P2(x) - P2(y), 0.0f, 1.0f));
+
+        result.outDir = localFrame * glm::vec3(x, y, z);
+    }
+    else
+    {
+        // Specular
+        //
+        const float u = rng.NextFloat();
+
+        // Sample z using iCDF
+        const float microNormalZ = glm::sqrt(glm::clamp<float>((1 - u) / (1 + (P2(roughness) - 1) * u), 0, 1));
+        const float microNormalR = glm::sqrt(glm::clamp<float>(1 - P2(microNormalZ), 0, 1));
+
+        // Pick phi uniformly
+        const float phi = rng.NextFloat() * 2.0f * PI;
+        glm::vec3 microNormal(microNormalR * glm::cos(phi), microNormalR * glm::sin(phi), microNormalZ);
+
+        //
+        if (glm::dot(result.outDir, normal) < 0.0f)
+        {
+            sampleInvalid = true;
+        }
+    }
+
+    // Invalid sample
+    if (sampleInvalid)
+    {
+        result.outDir = glm::vec3(0.0f);
+        result.weight = glm::vec3(0.0f);
+        result.samplingPdf = 0.0f;
+        return result;
+    }
+
+    // Compute brdf
+    // Compute diffuse brdf
+    const glm::vec3 diffBrdf = diffColor / PI;
+
+    // Specular brdf
+    const glm::vec3 lightDir = result.outDir;
+    const float nDotL = glm::dot(normal, lightDir);
+    const glm::vec3 halfway = glm::normalize(lightDir + viewDir);
+    const float nDotH = glm::dot(halfway, normal);
+    const float lDotH = glm::dot(halfway, lightDir);
+
+    // Compute specular BSDF
+    glm::vec3 specBrdf = glm::vec3(0.0f);
+    // Only compute specular component if specular_f0 is not zero!
+    if (glm::dot(specF0, specF0) > 1e-6)
+    {
+        // Normal distribution
+        const float d = D_GGX(nDotH, roughness);
+
+        // Visibility
+        const float v = V_SmithJointGGX(nDotL, nDotV, roughness);
+
+        // Fresnel
+        const glm::vec3 f = FresnelSchlick(specF0, lDotH);
+
+        // not sure why /(4*NdotL*NdotV) is missing in eval_BSDF, but we're
+        // doing that here too.
+        specBrdf = d * v * f;
+    }
+
+    // calculate pdf according to one-sample balance heuristic.
+    result.outDir = lightDir;
+    result.samplingPdf = diffProb * nDotL / PI + (1.0f - diffProb) * D_GGX(nDotH, roughness) * nDotH / (4.0f * lDotH);
+    result.weight = (diffBrdf + specBrdf) * nDotL / result.samplingPdf;
+    return result;
 }
