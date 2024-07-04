@@ -32,13 +32,21 @@ Material::Material(
 
 void Material::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt)
 {
-	const OptixProgramGroup pg = pipeline.AddCallableShader({ "brdf.ptx", "__direct_callable__ggx" });
-	m_EvalSbtIdx = sbt.AddCallableEntry(pg, ToVecByte(m_SbtDataBuf.GetCuPtr()));
+	const OptixProgramGroup evalPG = pipeline.AddCallableShader({ "brdf.ptx", "__direct_callable__ggx_eval" });
+	m_EvalSbtIdx = sbt.AddCallableEntry(evalPG, ToVecByte(m_SbtDataBuf.GetCuPtr()));
+
+	const OptixProgramGroup samplePG = pipeline.AddCallableShader({ "brdf.ptx", "__direct_callable__ggx_sample" });
+	m_SampleSbtIdx = sbt.AddCallableEntry(samplePG, ToVecByte(m_SbtDataBuf.GetCuPtr()));
 }
 
 uint32_t Material::GetEvalSbtIdx() const
 {
 	return m_EvalSbtIdx;
+}
+
+uint32_t Material::GetSampleSbtIdx() const
+{
+	return m_SampleSbtIdx;
 }
 
 glm::vec3 Material::GetEmissiveColor() const

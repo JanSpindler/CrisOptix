@@ -192,6 +192,18 @@ extern "C" __global__ void __raygen__main()
 		// Exit if no surface found
 		if (!interaction.valid) { continue; }
 
+		// Indirect illumination, generate next ray
+		//BrdfSampleResult brdfSampleResult = 
+		//BSDFSamplingResult bsdf_sampling_result = si.bsdf->sampleBSDF(si, BSDFComponentFlag::Any, rng);
+		//if (bsdf_sampling_result.sampling_pdf != 0)
+		//{
+		//	next_ray.origin = si.position;
+		//	next_ray.direction = bsdf_sampling_result.outgoing_ray_dir;
+		//	next_ray.throughput = current_ray.throughput * bsdf_sampling_result.bsdf_weight;
+		//	next_ray.depth = current_ray.depth + 1;
+		//	next_ray_valid = true;
+		//}
+
 		// Sample light source
 		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
 
@@ -206,7 +218,7 @@ extern "C" __global__ void __raygen__main()
 		if (occluded) { continue; }
 
 		// Calc brdf
-		const BrdfResult brdfResult = optixDirectCall<BrdfResult, const SurfaceInteraction&, const glm::vec3&>(
+		const BrdfEvalResult brdfResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
 			interaction.meshSbtData->evalMaterialSbtIdx, 
 			interaction, 
 			emitterSample.dir);

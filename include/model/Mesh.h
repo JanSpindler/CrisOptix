@@ -12,7 +12,7 @@ struct MeshSbtData
 	CuBufferView<Vertex> vertices;
 	CuBufferView<uint32_t> indices;
 	uint32_t evalMaterialSbtIdx;
-	//uint32_t sampleMaterialSbtIdx;
+	uint32_t sampleMaterialSbtIdx;
 };
 
 class Mesh

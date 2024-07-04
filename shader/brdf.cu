@@ -7,6 +7,7 @@
 #include <graph/Interaction.h>
 #include <model/Material.h>
 #include <texture_indirect_functions.h>
+#include <util/random.h>
 
 static constexpr float PI = 3.14159265358979323846264f;
 
@@ -95,7 +96,7 @@ static constexpr __device__ float GetFromTexIfPossible(
     }
 }
 
-extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction& interaction, const glm::vec3& outDir)
+extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceInteraction& interaction, const glm::vec3& outDir)
 {
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
@@ -132,9 +133,42 @@ extern "C" __device__ BrdfResult __direct_callable__ggx(const SurfaceInteraction
         glm::dot(outDir, interaction.normal) * -glm::sign(glm::dot(interaction.inRayDir, interaction.normal)));
 
     // Result
-    BrdfResult result{};
+    BrdfEvalResult result{};
     result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
-    result.samplingPdf = 0.0f;
+    result.samplingPdf = 1.0f / (2.0f * PI); // 1 over area(unit hemisphere)
     result.emission = ggxData->emissiveColor;
     return result;
+}
+
+extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const SurfaceInteraction& interaction, PCG32& rng)
+{
+    // Get ggx data
+    const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
+
+    // Get values if possible from texture
+    const glm::vec2 uv = interaction.uv;
+
+    const glm::vec3 diffColor = GetFromTexIfPossible(ggxData->hasDiffTex, ggxData->diffColor, uv, ggxData->diffTex);
+    const glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
+    const float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
+
+    // Gen random theta and phi
+    const float theta = rng.NextFloat() * PI * 0.5f;
+    const float phi = rng.NextFloat() * PI * 2.0f;
+
+    // Construct dir vector in tangent space
+    const glm::vec3 tangentDir(
+        glm::sin(theta) * glm::cos(phi), 
+        glm::cos(theta), 
+        glm::sin(theta) * glm::sin(phi));
+
+    // Transform into world space
+    const glm::mat3 w2t = World2Tan(interaction.normal, interaction.tangent, glm::cross(interaction.normal, interaction.tangent));
+    const glm::vec3 worldDir = glm::inverse(w2t) * tangentDir;
+
+    //
+    BrdfSampleResult result{};
+    result.outDir = worldDir;
+    result.weight = glm::vec3(1.0f);
+    result.samplingPdf = 1.0f / (2.0f * PI);
 }

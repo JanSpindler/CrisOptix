@@ -39,10 +39,12 @@ public:
     void AddShader(Pipeline& pipeline, ShaderBindingTable& sbt);
 
     uint32_t GetEvalSbtIdx() const;
+    uint32_t GetSampleSbtIdx() const;
     glm::vec3 GetEmissiveColor() const;
 
 private:
 	DeviceBuffer<MaterialSbtData> m_SbtDataBuf{};
     uint32_t m_EvalSbtIdx = 0;
+    uint32_t m_SampleSbtIdx = 0;
     const glm::vec3 m_EmissiveColor;
 };

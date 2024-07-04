@@ -140,6 +140,7 @@ void Mesh::UploadSbtData() const
 	data.vertices = CuBufferView<Vertex>(m_DeviceVertexBuffer.GetCuPtr(), m_DeviceVertexBuffer.GetCount());
 	data.indices = CuBufferView<uint32_t>(m_DeviceIndexBuffer.GetCuPtr(), m_DeviceIndexBuffer.GetCount());
 	data.evalMaterialSbtIdx = m_Material->GetEvalSbtIdx();
+	data.sampleMaterialSbtIdx = m_Material->GetSampleSbtIdx();
 	m_SbtDataBuf.Alloc(1);
 	m_SbtDataBuf.Upload(&data);
 }
