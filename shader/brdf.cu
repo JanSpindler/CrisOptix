@@ -124,34 +124,51 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
     const glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
     const float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
 
+    //
+    BrdfEvalResult result{};
+
+    //
+    const glm::vec3 lightDir = outDir;
+    const glm::vec3 viewDir = -interaction.inRayDir;
+    const glm::vec3 normal = interaction.normal;
+
+    const float nDotV = glm::dot(normal, viewDir);
+    const float nDotL = glm::dot(normal, lightDir);
+    if (nDotV <= 0.0f || nDotL < 0.0f)
+    {
+        result.brdfResult = glm::vec3(0.0f);
+        result.emission = glm::vec3(0.0f);
+        result.samplingPdf = 0.0f;
+        return result;
+    }
+
     // Calc diffuse brdf result
     const glm::vec3 diffBrdf = diffColor / PI;
 
-    // Transform vectors into tangent space
-    const glm::mat3 w2t = World2Tan(interaction.normal, interaction.tangent, glm::cross(interaction.normal, interaction.tangent));
+    // Compute specular brdf
+    glm::vec3 specBrdf = glm::vec3(0.0f);
+    // Only compute specular component if specular_f0 is not zero!
+    if (glm::dot(specF0, specF0) > 1e-6)
+    {
+        const glm::vec3 halfway = glm::normalize(lightDir + viewDir);
+        const float nDotH = glm::dot(halfway, normal);
+        const float lDotH = glm::dot(halfway, lightDir);
 
-    // Get vectors and scalars for equation
-    const glm::vec3 l = w2t * outDir;
-    const glm::vec3 v = w2t * -interaction.inRayDir;
-    const glm::vec3 h = glm::normalize(l + v);
-    const float a = ggxData->roughness;
-    const float b = ggxData->roughness;
+        // Normal distribution
+        const float d = D_GGX(nDotH, roughness);
 
-    // Calc specular brdf
-    const glm::vec3 specBrdf = FresnelSchlick(ggxData->specF0, glm::dot(h, v))
-        * D(h, a, b)
-        * G2(v, l, h, a, b)
-        / (4.0f * l.z * v.z);
+        // Visibility
+        const float v = V_SmithJointGGX(nDotL, nDotV, roughness);
 
-    // <n, l>
-    const float clampedNdotL = glm::max<float>(
-        0.0f,
-        glm::dot(outDir, interaction.normal) * -glm::sign(glm::dot(interaction.inRayDir, interaction.normal)));
+        // Fresnel
+        const glm::vec3 f = FresnelSchlick(specF0, lDotH);
+
+        specBrdf = d * v * f;
+    }
 
     // Result
-    BrdfEvalResult result{};
-    result.brdfResult = (diffBrdf + specBrdf) * clampedNdotL;
-    result.samplingPdf = 1.0f / (2.0f * PI); // 1 over area(unit hemisphere)
+    result.brdfResult = (diffBrdf + specBrdf) * nDotL;
+    result.samplingPdf = 0.0f;
     result.emission = ggxData->emissiveColor;
     return result;
 }
