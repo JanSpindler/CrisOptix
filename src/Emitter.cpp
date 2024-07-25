@@ -47,9 +47,18 @@ Emitter::Emitter(const Mesh* mesh, const glm::mat4& transform, const glm::vec3& 
 		m_TotalArea += area;
 	}
 
+	// Calculate area cdf
+	std::vector<float> areaCdf(areas.size());
+	float sum = 0.0;
+	for (size_t faceIdx = 0; faceIdx < areas.size(); ++faceIdx)
+	{
+		sum += areas[faceIdx];
+		areaCdf[faceIdx] = sum;
+	}
+
 	// Upload areas
-	m_DeviceAreaBuffer.Alloc(areas.size());
-	m_DeviceAreaBuffer.Upload(areas.data());
+	m_DeviceAreaCdfBuffer.Alloc(areaCdf.size());
+	m_DeviceAreaCdfBuffer.Upload(areaCdf.data());
 }
 
 EmitterData Emitter::GetData() const
@@ -59,6 +68,6 @@ EmitterData Emitter::GetData() const
 		m_TotalArea,
 		CuBufferView<Vertex>(m_DeviceVertexBuffer.GetCuPtr(), m_DeviceVertexBuffer.GetCount()),
 		CuBufferView<uint32_t>(m_DeviceIndexBuffer.GetCuPtr(), m_DeviceIndexBuffer.GetCount()),
-		CuBufferView<float>(m_DeviceAreaBuffer.GetCuPtr(), m_DeviceAreaBuffer.GetCount())
+		CuBufferView<float>(m_DeviceAreaCdfBuffer.GetCuPtr(), m_DeviceAreaCdfBuffer.GetCount())
 	};
 }

@@ -37,10 +37,9 @@ static __host__ __device__ uint64_t SampleTEA64(uint32_t val0, uint32_t val1, ui
     return static_cast<uint64_t>(v0) | (static_cast<uint64_t>(v1) << 32);
 }
 
-
-constexpr uint64_t PCG32_DEFAULT_STATE = 0x853c49e6748fea9bULL;
-constexpr uint64_t PCG32_DEFAULT_STREAM = 0xda3e39cb94b95bdbULL;
-constexpr uint64_t PCG32_MULT = 0x5851f42d4c957f2dULL;
+static constexpr uint64_t PCG32_DEFAULT_STATE = 0x853c49e6748fea9bULL;
+static constexpr uint64_t PCG32_DEFAULT_STREAM = 0xda3e39cb94b95bdbULL;
+static constexpr uint64_t PCG32_MULT = 0x5851f42d4c957f2dULL;
 
 /// PCG32 pseudorandom number generator proposed by Melissa O'Neill
 struct PCG32

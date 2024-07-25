@@ -113,13 +113,17 @@ struct EmitterSample
 	float distance;
 };
 
-static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 currentPos, PCG32& rng)
+static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3& currentPos, PCG32& rng)
 {
+	// Sample emitter
 	const size_t emitterCount = params.emitterTable.count;
 	const size_t emitterIdx = rng.NextUint64() % emitterCount;
 	const EmitterData& emitter = params.emitterTable[emitterIdx];
-	const size_t faceIdx = rng.NextUint64() % emitter.areaBuffer.count; // TODO: Use area or solid angle sampling
 
+	// Sample face
+	const size_t faceIdx = emitter.SampleFaceAreaWeighted(rng);
+
+	// Sample emitter point on face
 	const glm::vec3 v0 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 0]].pos;
 	const glm::vec3 v1 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 1]].pos;
 	const glm::vec3 v2 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 2]].pos;
@@ -134,6 +138,7 @@ static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3 current
 
 	const glm::vec3 emitterPoint = r0 * v0 + r1 * v1 + r2 * v2;
 
+	// Return
 	const glm::vec3 lightDir = glm::normalize(emitterPoint - currentPos);
 	const float distance = glm::length(emitterPoint - currentPos);
 	
