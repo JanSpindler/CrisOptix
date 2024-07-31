@@ -3,6 +3,12 @@
 #include <model/ModelInstance.h>
 #include <util/random.h>
 
+struct EmitterSample
+{
+	glm::vec3 pos;
+	glm::vec3 color;
+};
+
 struct EmitterData
 {
 	glm::vec3 color;
@@ -11,7 +17,7 @@ struct EmitterData
 	CuBufferView<uint32_t> indexBuffer;
 	CuBufferView<float> areaCdfBuffer;
 
-	__device__ __host__ size_t SampleFaceAreaWeighted(PCG32& rng) const
+	__host__ __device__ size_t SampleFaceAreaWeighted(PCG32& rng) const
 	{
 		//const float randCumArea = rng.NextFloat() * totalArea;
 		//for (size_t faceIdx = 0; faceIdx < areaCdfBuffer.count; ++faceIdx)
@@ -22,6 +28,28 @@ struct EmitterData
 		//	}
 		//}
 		return rng.NextUint64() % areaCdfBuffer.count;
+	}
+
+	__host__ __device__ EmitterSample SamplePoint(PCG32& rng) const
+	{
+		// Get face
+		const size_t faceIdx = SampleFaceAreaWeighted(rng);
+		
+		// Sample emitter point on face
+		const glm::vec3 v0 = vertexBuffer[indexBuffer[faceIdx * 3 + 0]].pos;
+		const glm::vec3 v1 = vertexBuffer[indexBuffer[faceIdx * 3 + 1]].pos;
+		const glm::vec3 v2 = vertexBuffer[indexBuffer[faceIdx * 3 + 2]].pos;
+
+		float r0 = rng.NextFloat();
+		float r1 = rng.NextFloat();
+		float r2 = rng.NextFloat();
+		const float rSum = r0 + r1 + r2;
+		r0 /= rSum;
+		r1 /= rSum;
+		r2 /= rSum;
+
+		const glm::vec3 emitterPoint = r0 * v0 + r1 * v1 + r2 * v2;
+		return { emitterPoint, color };
 	}
 };
 

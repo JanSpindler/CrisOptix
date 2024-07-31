@@ -127,17 +127,6 @@ static void RenderAndDispay(
     Window::Display(outputBuffer.GetPbo());
 }
 
-static void RunImGui()
-{
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    ImGui::Begin("Test");
-    ImGui::Text("Hello there");
-    ImGui::End();
-    ImGui::Render();
-}
-
 int main()
 {
     std::cout << "Hello there" << std::endl;
@@ -158,8 +147,8 @@ int main()
 
     // Camera
     Camera cam(
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f),
+        glm::vec3(9.0f, 2.0f, -1.0f),
+        glm::vec3(-1.0f, 0.0f, -0.5f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         static_cast<float>(width) / static_cast<float>(height),
         glm::radians(60.0f));
@@ -206,7 +195,20 @@ int main()
         Window::HandleIO();
 
         // Imgui
-        RunImGui();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("General Info");
+        ImGui::Text("Hello there");
+
+        ImGui::Text("Frametime: %f s", deltaTime);
+
+        const glm::vec3& camPos = cam.GetPos();
+        ImGui::Text("Cam Pos: (%f, %f, %f)", camPos.x, camPos.y, camPos.z);
+
+        ImGui::End();
+        ImGui::Render();
             
         // Render and display
         RenderAndDispay(outputBuffer, renderer, hdrBuffer, width, height);

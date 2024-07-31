@@ -9,9 +9,10 @@
 #include <graph/trace.h>
 #include <graph/brdf.h>
 #include <util/random.h>
+#include <model/Emitter.h>
 
 static constexpr uint32_t MAX_TRACE_OPS = 16;
-static constexpr uint32_t MAX_TRACE_DEPTH = 8;
+static constexpr uint32_t MAX_TRACE_DEPTH = 0;
 
 __constant__ LaunchParams params;
 
@@ -106,13 +107,6 @@ extern "C" __global__ void __miss__occlusion()
 	SetOcclusionPayload(false);
 }
 
-struct EmitterSample
-{
-	glm::vec3 dir;
-	glm::vec3 color;
-	float distance;
-};
-
 static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3& currentPos, PCG32& rng)
 {
 	// Sample emitter
@@ -120,29 +114,8 @@ static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3& curren
 	const size_t emitterIdx = rng.NextUint64() % emitterCount;
 	const EmitterData& emitter = params.emitterTable[emitterIdx];
 
-	// Sample face
-	const size_t faceIdx = emitter.SampleFaceAreaWeighted(rng);
-
-	// Sample emitter point on face
-	const glm::vec3 v0 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 0]].pos;
-	const glm::vec3 v1 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 1]].pos;
-	const glm::vec3 v2 = emitter.vertexBuffer[emitter.indexBuffer[faceIdx * 3 + 2]].pos;
-
-	float r0 = rng.NextFloat();
-	float r1 = rng.NextFloat();
-	float r2 = rng.NextFloat();
-	const float rSum = r0 + r1 + r2;
-	r0 /= rSum;
-	r1 /= rSum;
-	r2 /= rSum;
-
-	const glm::vec3 emitterPoint = r0 * v0 + r1 * v1 + r2 * v2;
-
-	// Return
-	const glm::vec3 lightDir = glm::normalize(emitterPoint - currentPos);
-	const float distance = glm::length(emitterPoint - currentPos);
-	
-	return { lightDir, emitter.color, distance };
+	// Sample emitter point
+	return emitter.SamplePoint(rng);
 }
 
 extern "C" __global__ void __raygen__main()
@@ -206,14 +179,16 @@ extern "C" __global__ void __raygen__main()
 			// NEE
 			// Sample light source
 			const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+			const float distance = glm::length(emitterSample.pos - interaction.pos);
 
 			// Cast shadow ray
 			const bool occluded = TraceOcclusion(
 				params.traversableHandle,
 				interaction.pos,
-				emitterSample.dir,
+				lightDir,
 				1e-3,
-				emitterSample.distance,
+				distance,
 				params.occlusionTraceParams);
 			if (occluded) { continue; }
 
@@ -221,7 +196,7 @@ extern "C" __global__ void __raygen__main()
 			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
 				interaction.meshSbtData->evalMaterialSbtIdx,
 				interaction,
-				emitterSample.dir);
+				lightDir);
 			outputRadiance = currentRay.throughput * brdfEvalResult.brdfResult * emitterSample.color;
 			if (currentRay.depth == 0) { outputRadiance += brdfEvalResult.emission; }
 
