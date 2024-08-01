@@ -6,14 +6,13 @@ struct CameraData
 {
 	glm::vec3 pos;
 	glm::vec3 U, V, W;
+	glm::mat4 currW2V;
+	glm::mat4 prevW2V;
 };
 
 class Camera
 {
 public:
-	static void Init();
-	static void Shutdown();
-
 	Camera(
 		const glm::vec3& pos, 
 		const glm::vec3& viewDir, 
@@ -64,4 +63,6 @@ private:
 	float m_Fov = glm::radians(60.0f);
 	float m_NearPlane = 0.01f;
 	float m_FarPlane = 100.0f;
+
+	mutable CameraData m_CamData{};
 };

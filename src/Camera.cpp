@@ -19,15 +19,16 @@ Camera::Camera(
 
 CameraData Camera::GetData() const
 {
-	const glm::mat4 toWorld = glm::inverse(glm::lookAt(m_Pos, m_Pos + m_ViewDir, m_Up));
+	m_CamData.prevW2V = m_CamData.currW2V;
+	m_CamData.currW2V = glm::lookAt(m_Pos, m_Pos + m_ViewDir, m_Up);
+	const glm::mat4 toWorld = glm::inverse(m_CamData.currW2V);
 
-	CameraData data{};
-	data.pos = m_Pos;
-	data.U = glm::normalize(glm::vec3(toWorld[0])) * glm::tan(0.5f * m_Fov) * m_AspectRatio;
-	data.V = -glm::normalize(glm::vec3(toWorld[1])) * glm::tan(0.5f * m_Fov);
-	data.W = -glm::normalize(glm::vec3(toWorld[2]));
+	m_CamData.pos = m_Pos;
+	m_CamData.U = glm::normalize(glm::vec3(toWorld[0])) * glm::tan(0.5f * m_Fov) * m_AspectRatio;
+	m_CamData.V = -glm::normalize(glm::vec3(toWorld[1])) * glm::tan(0.5f * m_Fov);
+	m_CamData.W = -glm::normalize(glm::vec3(toWorld[2]));
 
-	return data;
+	return m_CamData;
 }
 
 void Camera::RotateAroundOrigin(const glm::vec3& axis, float angle)

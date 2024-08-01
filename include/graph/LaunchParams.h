@@ -5,6 +5,7 @@
 #include <optix.h>
 #include <graph/trace.h>
 #include <model/Emitter.h>
+#include <graph/Reservoir.h>
 
 struct LaunchParams
 {
@@ -14,6 +15,7 @@ struct LaunchParams
 	uint32_t height;
 	CameraData cameraData;
 	CuBufferView<EmitterData> emitterTable;
+	CuBufferView<Reservoir<EmitterSample>> diReservoirs;
 	OptixTraversableHandle traversableHandle;
 	TraceParameters surfaceTraceParams;
 	TraceParameters occlusionTraceParams;

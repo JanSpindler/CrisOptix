@@ -10,15 +10,19 @@
 class SimpleRenderer
 {
 public:
-	SimpleRenderer(const OptixDeviceContext optixDeviceContext, Camera& cam, const Scene& scene);
+	SimpleRenderer(
+		const uint32_t width,
+		const uint32_t height,
+		const OptixDeviceContext optixDeviceContext, 
+		Camera& cam, 
+		const Scene& scene);
 
-	void LaunchFrame(
-		const CUstream stream,
-		glm::vec3* outputBuffer, 
-		const uint32_t width, 
-		const uint32_t height);
+	void LaunchFrame(glm::vec3* outputBuffer);
 
 private:
+	uint32_t m_Width = 0;
+	uint32_t m_Height = 0;
+
 	Camera& m_Cam;
 	const Scene& m_Scene;
 	uint32_t m_SurfaceMissIdx = 0;
@@ -26,6 +30,8 @@ private:
 
 	size_t m_FrameIdx = 0;
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
+
+	DeviceBuffer<Reservoir<EmitterSample>> m_DiReservoirs{};
 
 	Pipeline m_Pipeline;
 	ShaderBindingTable m_Sbt;

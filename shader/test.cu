@@ -118,6 +118,96 @@ static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3& curren
 	return emitter.SamplePoint(rng);
 }
 
+static constexpr __device__ float GetPHatDi(const SurfaceInteraction& interaction, const EmitterSample& emitterSample, PCG32& rng)
+{
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+		interaction.meshSbtData->evalMaterialSbtIdx,
+		interaction,
+		glm::normalize(emitterSample.pos - interaction.pos));
+	const float pHat = glm::length(brdfEvalResult.brdfResult);
+	return pHat;
+}
+
+static constexpr __device__ Reservoir<EmitterSample>& GetDiReservoir(const uint32_t x, const uint32_t y)
+{
+	return params.diReservoirs[y * params.width + x];
+}
+
+static constexpr __device__ Reservoir<EmitterSample> CombineReservoirDi(
+	const Reservoir<EmitterSample>& r1, 
+	const Reservoir<EmitterSample>& r2,
+	const SurfaceInteraction& interaction,
+	PCG32& rng)
+{
+	const float pHat1 = GetPHatDi(interaction, r1.y, rng);
+	const float pHat2 = GetPHatDi(interaction, r2.y, rng);
+
+	Reservoir<EmitterSample> res = { {}, 0.0f, 0 };
+	res.Update(r1.y, pHat1 * r1.W * r1.M, rng);
+	res.Update(r2.y, pHat2 * r2.W * r2.M, rng);
+	
+	res.M = r1.M + r2.M;
+	res.W = GetPHatDi(interaction, res.y, rng) * res.wSum / static_cast<float>(res.M);
+}
+
+static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInteraction& interaction, const size_t sampleCount, PCG32& rng)
+{
+	Reservoir<EmitterSample> reservoir = { {}, 0.0f, 0 };
+
+	for (size_t idx = 0; idx < sampleCount; ++idx)
+	{
+		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+		const float pHat = GetPHatDi(interaction, emitterSample, rng);
+		reservoir.Update(emitterSample, pHat / emitterSample.p, rng);
+	}
+
+	return reservoir;
+}
+
+static constexpr __device__ void RestirDi(
+	const glm::uvec3& launchIdx,
+	const SurfaceInteraction& interaction, 
+	PCG32& rng)
+{
+	// Generate new samples
+	Reservoir<EmitterSample> newReservoir = RestirRis(interaction, 4, rng);
+
+	// Check if shadowed
+	const bool occluded = TraceOcclusion(
+		params.traversableHandle,
+		interaction.pos,
+		glm::normalize(newReservoir.y.pos - interaction.pos),
+		1e-3f,
+		glm::length(newReservoir.y.pos - interaction.pos),
+		params.occlusionTraceParams);
+	if (occluded) { newReservoir.W = 0.0f; }
+
+	// Temporal reuse
+	if (params.frameIdx > 1)
+	{
+		const glm::vec2 oldUV = params.cameraData.prevW2V * glm::vec4(interaction.pos, 1.0f);
+		if (oldUV.x == glm::clamp(oldUV.x, 0.0f, 1.0f) && oldUV.y == glm::clamp(oldUV.y, 0.0f, 1.0f))
+		{
+			newReservoir = CombineReservoirDi(newReservoir, GetDiReservoir(launchIdx.x, launchIdx.y), interaction, rng);
+		}
+	}
+
+	// Spatial reuse
+	const size_t N = 2;
+	for (size_t n = 0; n < 3; ++n)
+	{
+		const size_t nX = launchIdx.x + (rng.NextUint32() % (2 * N + 1)) - N;
+		const size_t nY = launchIdx.y + (rng.NextUint32() % (2 * N + 1)) - N;
+		if (nX < params.width && nY < params.height)
+		{
+			newReservoir = CombineReservoirDi(newReservoir, GetDiReservoir(nX, nY), interaction, rng);
+		}
+	}
+
+	// Store reservoir
+	GetDiReservoir(launchIdx.x, launchIdx.y) = newReservoir;
+}
+
 extern "C" __global__ void __raygen__main()
 {
 	//
@@ -178,7 +268,9 @@ extern "C" __global__ void __raygen__main()
 		{
 			// NEE
 			// Sample light source
-			const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+			RestirDi(launchIdx, interaction, rng);
+			//const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
+			const EmitterSample emitterSample = GetDiReservoir(launchIdx.x, launchIdx.y).y;
 			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
 			const float distance = glm::length(emitterSample.pos - interaction.pos);
 
@@ -222,5 +314,6 @@ extern "C" __global__ void __raygen__main()
 	// Store radiance output
 	const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
 	const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
-	params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+	//params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+	params.outputBuffer[pixelIdx] = outputRadiance;
 }

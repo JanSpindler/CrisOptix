@@ -7,6 +7,7 @@ struct EmitterSample
 {
 	glm::vec3 pos;
 	glm::vec3 color;
+	float p;
 };
 
 struct EmitterData
@@ -49,7 +50,7 @@ struct EmitterData
 		r2 /= rSum;
 
 		const glm::vec3 emitterPoint = r0 * v0 + r1 * v1 + r2 * v2;
-		return { emitterPoint, color };
+		return { emitterPoint, color, 1.0f };
 	}
 };
 

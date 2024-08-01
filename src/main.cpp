@@ -113,7 +113,7 @@ static void RenderAndDispay(
 
     // Render
     outputBuffer.MapCuda();
-    renderer.LaunchFrame(0, hdrBuffer.GetPtr(), width, height);
+    renderer.LaunchFrame(hdrBuffer.GetPtr());
 
     // Tonemapping
     CuBufferView<glm::vec3> hdrBufferView(hdrBuffer.GetCuPtr(), hdrBuffer.GetCount());
@@ -175,7 +175,7 @@ int main()
     Scene scene(optixDeviceContext, modelInstances, emitters);
 
     // Renderer
-    SimpleRenderer renderer(optixDeviceContext, cam, scene);
+    SimpleRenderer renderer(width, height, optixDeviceContext, cam, scene);
 
     // Main loop
     ASSERT_CUDA(cudaDeviceSynchronize());

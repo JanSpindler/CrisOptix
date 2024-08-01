@@ -1,9 +1,18 @@
 #include <graph/SimpleRenderer.h>
 #include <optix_stubs.h>
 
-SimpleRenderer::SimpleRenderer(const OptixDeviceContext optixDeviceContext, Camera& cam, const Scene& scene) :
+SimpleRenderer::SimpleRenderer(
+	const uint32_t width,
+	const uint32_t height,
+	const OptixDeviceContext optixDeviceContext, 
+	Camera& cam, 
+	const Scene& scene) 
+	:
+	m_Width(width),
+	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
+	m_DiReservoirs(width * height),
 	m_Pipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
@@ -11,6 +20,16 @@ SimpleRenderer::SimpleRenderer(const OptixDeviceContext optixDeviceContext, Came
 	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__main" });
 	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
 	
+	const size_t pixelCount = width * height;
+	std::vector<Reservoir<EmitterSample>> reservoirs(width * height);
+	for (size_t idx = 0; idx < pixelCount; ++idx)
+	{
+		reservoirs[idx] = { {}, 0.0f, 0 };
+	}
+
+	m_DiReservoirs.Alloc(pixelCount);
+	m_DiReservoirs.Upload(reservoirs.data());
+
 	m_Sbt.AddRaygenEntry(raygenPG);
 	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
 	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
@@ -21,11 +40,7 @@ SimpleRenderer::SimpleRenderer(const OptixDeviceContext optixDeviceContext, Came
 	m_Sbt.CreateSBT();
 }
 
-void SimpleRenderer::LaunchFrame(
-	const CUstream stream,
-	glm::vec3* outputBuffer,
-	const uint32_t width,
-	const uint32_t height)
+void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 {
 	++m_FrameIdx;
 	if (m_Cam.HasChanged()) { m_FrameIdx = 0; }
@@ -33,11 +48,13 @@ void SimpleRenderer::LaunchFrame(
 	LaunchParams launchParams{};
 	launchParams.frameIdx = m_FrameIdx;
 	launchParams.outputBuffer = outputBuffer;
-	launchParams.width = width;
-	launchParams.height = height;
+	launchParams.width = m_Width;
+	launchParams.height = m_Height;
 	launchParams.traversableHandle = m_Scene.GetTraversableHandle();
 	launchParams.cameraData = m_Cam.GetData();
+	
 	launchParams.emitterTable = m_Scene.GetEmitterTable();
+	launchParams.diReservoirs = CuBufferView<Reservoir<EmitterSample>>(m_DiReservoirs.GetCuPtr(), m_DiReservoirs.GetCount());
 
 	launchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	launchParams.surfaceTraceParams.sbtOffset = 0;
@@ -53,12 +70,12 @@ void SimpleRenderer::LaunchFrame(
 	ASSERT_CUDA(cudaDeviceSynchronize());
 	ASSERT_OPTIX(optixLaunch(
 		m_Pipeline.GetHandle(), 
-		stream, 
+		0, 
 		m_LaunchParamsBuf.GetCuPtr(), 
 		m_LaunchParamsBuf.GetByteSize(),
 		m_Sbt.GetSBT(0),
-		width, 
-		height, 
+		m_Width, 
+		m_Height, 
 		1));
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
