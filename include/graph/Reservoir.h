@@ -2,6 +2,14 @@
 
 #include <util/random.h>
 
+struct RestirDiParams
+{
+	bool enableTemporal;
+	int canonicalCount;
+	int spatialCount;
+	int spatialKernelSize;
+};
+
 template <typename T>
 struct Reservoir
 {

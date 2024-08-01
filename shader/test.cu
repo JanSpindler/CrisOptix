@@ -170,7 +170,7 @@ static constexpr __device__ void RestirDi(
 	PCG32& rng)
 {
 	// Generate new samples
-	Reservoir<EmitterSample> newReservoir = RestirRis(interaction, 4, rng);
+	Reservoir<EmitterSample> newReservoir = RestirRis(interaction, params.restirDiParams.canonicalCount, rng);
 
 	// Check if shadowed
 	const bool occluded = TraceOcclusion(
@@ -183,7 +183,7 @@ static constexpr __device__ void RestirDi(
 	if (occluded) { newReservoir.W = 0.0f; }
 
 	// Temporal reuse
-	if (params.frameIdx > 1)
+	if (params.frameIdx > 1 && params.restirDiParams.enableTemporal)
 	{
 		const glm::vec2 oldUV = params.cameraData.prevW2V * glm::vec4(interaction.pos, 1.0f);
 		if (oldUV.x == glm::clamp(oldUV.x, 0.0f, 1.0f) && oldUV.y == glm::clamp(oldUV.y, 0.0f, 1.0f))
@@ -193,8 +193,8 @@ static constexpr __device__ void RestirDi(
 	}
 
 	// Spatial reuse
-	const size_t N = 2;
-	for (size_t n = 0; n < 3; ++n)
+	const size_t N = params.restirDiParams.spatialKernelSize;
+	for (size_t n = 0; n < params.restirDiParams.spatialCount; ++n)
 	{
 		const size_t nX = launchIdx.x + (rng.NextUint32() % (2 * N + 1)) - N;
 		const size_t nY = launchIdx.y + (rng.NextUint32() % (2 * N + 1)) - N;
@@ -222,7 +222,7 @@ extern "C" __global__ void __raygen__main()
 
 	// Init RNG
 	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
-	const uint64_t seed = SampleTEA64(pixelIdx, params.frameIdx);
+	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
 
 	// Init radiance with 0
@@ -312,8 +312,14 @@ extern "C" __global__ void __raygen__main()
 	}
 
 	// Store radiance output
-	const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
-	const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
-	//params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
-	params.outputBuffer[pixelIdx] = outputRadiance;
+	if (params.enableAccum)
+	{
+		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+		const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+		params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+	}
+	else
+	{
+		params.outputBuffer[pixelIdx] = outputRadiance;
+	}
 }

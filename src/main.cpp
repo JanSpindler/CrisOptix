@@ -200,12 +200,13 @@ int main()
         ImGui::NewFrame();
 
         ImGui::Begin("General Info");
-        ImGui::Text("Hello there");
 
         ImGui::Text("Frametime: %f s", deltaTime);
 
         const glm::vec3& camPos = cam.GetPos();
         ImGui::Text("Cam Pos: (%f, %f, %f)", camPos.x, camPos.y, camPos.z);
+
+        renderer.RunImGui();
 
         ImGui::End();
         ImGui::Render();

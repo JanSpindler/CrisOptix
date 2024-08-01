@@ -17,6 +17,7 @@ public:
 		Camera& cam, 
 		const Scene& scene);
 
+	void RunImGui();
 	void LaunchFrame(glm::vec3* outputBuffer);
 
 private:
@@ -28,7 +29,7 @@ private:
 	uint32_t m_SurfaceMissIdx = 0;
 	uint32_t m_OcclusionMissIdx = 0;
 
-	size_t m_FrameIdx = 0;
+	LaunchParams m_LaunchParams{};
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 
 	DeviceBuffer<Reservoir<EmitterSample>> m_DiReservoirs{};
