@@ -4,6 +4,7 @@
 #include <util/custom_assert.h>
 #include <util/read_file.h>
 #include <graph/Interaction.h>
+#include <graph/Path.h>
 
 Pipeline::Pipeline(OptixDeviceContext context) :
     m_Context { context }
@@ -212,5 +213,5 @@ void Pipeline::CreatePipeline()
 
     // Set stack size
     // TODO: Get ideal values?
-    ASSERT_OPTIX(optixPipelineSetStackSize(m_Handle, 8, 8, 8, 8));
+    ASSERT_OPTIX(optixPipelineSetStackSize(m_Handle, 16, 16, 16, 16));
 }

@@ -4,8 +4,9 @@
 #include <graph/Camera.h>
 #include <optix.h>
 #include <graph/trace.h>
-#include <model/Emitter.h>
 #include <graph/Reservoir.h>
+#include <model/Emitter.h>
+#include <graph/Path.h>
 
 struct LaunchParams
 {
@@ -19,6 +20,7 @@ struct LaunchParams
 	RestirDiParams restirDiParams;
 	CuBufferView<EmitterData> emitterTable;
 	CuBufferView<Reservoir<EmitterSample>> diReservoirs;
+	CuBufferView<Reservoir<Path>> suffixReservoirs;
 	OptixTraversableHandle traversableHandle;
 	TraceParameters surfaceTraceParams;
 	TraceParameters occlusionTraceParams;

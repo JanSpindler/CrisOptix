@@ -11,19 +11,9 @@
 #include <util/random.h>
 #include <model/Emitter.h>
 #include <graph/restir_di.h>
-
-static constexpr uint32_t MAX_TRACE_OPS = 16;
-static constexpr uint32_t MAX_TRACE_DEPTH = 0;
+#include <graph/path_functions.h>
 
 __constant__ LaunchParams params;
-
-struct Ray
-{
-	glm::vec3 origin;
-	glm::vec3 dir;
-	glm::vec3 throughput; // Contribution to final radiance value of pixel
-	uint32_t depth;
-};
 
 static constexpr __device__ glm::vec3 PointObjectToWorld(const glm::vec3& point)
 {
@@ -129,87 +119,14 @@ extern "C" __global__ void __raygen__main()
 	glm::vec3 outputRadiance(0.0f);
 
 	// Spawn camera ray
-	bool nextRayValid = true;
-	Ray nextRay{};
-	{
-		glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
-		uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
-		SpawnCameraRay(params.cameraData, uv, nextRay.origin, nextRay.dir);
-		nextRay.throughput = glm::vec3(1.0f);
-		nextRay.depth = 0;
-	}
+	glm::vec3 origin(0.0f);
+	glm::vec3 dir(0.0f);
+	glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
+	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
+	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
-	// Trace
-	for (uint32_t traceIdx = 0; traceIdx < MAX_TRACE_OPS; ++traceIdx)
-	{
-		if (!nextRayValid) { break; }
-
-		//
-		Ray currentRay = nextRay;
-		nextRayValid = false;
-
-		// Sample surface interaction
-		SurfaceInteraction interaction{};
-		TraceWithDataPointer<SurfaceInteraction>(
-			params.traversableHandle, 
-			currentRay.origin, 
-			currentRay.dir, 
-			1e-3, 
-			1e16, 
-			params.surfaceTraceParams, 
-			&interaction);
-
-		// Exit if no surface found
-		if (!interaction.valid) { continue; }
-
-		// Decide if NEE or continue PT
-		const float neeProb = 0.25f;
-		if (rng.NextFloat() < neeProb || currentRay.depth >= MAX_TRACE_DEPTH)
-		{
-			// NEE
-			// Sample light source
-			RestirDi(launchIdx, interaction, rng, params);
-			//const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng);
-			const EmitterSample emitterSample = GetDiReservoir(launchIdx.x, launchIdx.y, params).y;
-			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
-			const float distance = glm::length(emitterSample.pos - interaction.pos);
-
-			// Cast shadow ray
-			const bool occluded = TraceOcclusion(
-				params.traversableHandle,
-				interaction.pos,
-				lightDir,
-				1e-3f,
-				distance,
-				params.occlusionTraceParams);
-			if (occluded) { continue; }
-
-			// Calc brdf
-			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
-				interaction.meshSbtData->evalMaterialSbtIdx,
-				interaction,
-				lightDir);
-			outputRadiance = currentRay.throughput * brdfEvalResult.brdfResult * emitterSample.color;
-			if (currentRay.depth == 0) { outputRadiance += brdfEvalResult.emission; }
-
-			// Exit from PT
-			break;
-		}
-
-		// Indirect illumination, generate next ray
-		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
-			interaction.meshSbtData->sampleMaterialSbtIdx,
-			interaction, 
-			rng);
-		if (brdfSampleResult.samplingPdf > 0.0f)
-		{
-			nextRay.origin = interaction.pos;
-			nextRay.dir = brdfSampleResult.outDir;
-			nextRay.throughput = currentRay.throughput * brdfSampleResult.weight;
-			nextRay.depth = currentRay.depth + 1;
-			nextRayValid = true;
-		}
-	}
+	Path path = SamplePath(origin, dir, rng, params);
+	outputRadiance = path.outputRadiance;
 
 	// Store radiance output
 	if (params.enableAccum)

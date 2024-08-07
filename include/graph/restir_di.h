@@ -1,20 +1,8 @@
 #pragma once
 
-#ifdef __CUDACC__
-
 #include <graph/LaunchParams.h>
 #include <graph/Reservoir.h>
-
-static constexpr __device__ EmitterSample SampleLightDir(const glm::vec3& currentPos, PCG32& rng, const LaunchParams& params)
-{
-	// Sample emitter
-	const size_t emitterCount = params.emitterTable.count;
-	const size_t emitterIdx = rng.NextUint64() % emitterCount;
-	const EmitterData& emitter = params.emitterTable[emitterIdx];
-
-	// Sample emitter point
-	return emitter.SamplePoint(rng);
-}
+#include <graph/sample_emitter.h>
 
 static constexpr __device__ float GetPHatDi(const SurfaceInteraction& interaction, const EmitterSample& emitterSample, PCG32& rng)
 {
@@ -54,7 +42,7 @@ static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInte
 
 	for (size_t idx = 0; idx < sampleCount; ++idx)
 	{
-		const EmitterSample emitterSample = SampleLightDir(interaction.pos, rng, params);
+		const EmitterSample emitterSample = SampleEmitter(interaction.pos, rng, params);
 		const float pHat = GetPHatDi(interaction, emitterSample, rng);
 		reservoir.Update(emitterSample, pHat / emitterSample.p, rng);
 	}
@@ -106,5 +94,3 @@ static constexpr __device__ void RestirDi(
 	// Store reservoir
 	GetDiReservoir(launchIdx.x, launchIdx.y, params) = newReservoir;
 }
-
-#endif

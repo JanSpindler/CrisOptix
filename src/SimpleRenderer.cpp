@@ -5,6 +5,10 @@
 #include <limits>
 #include <random>
 
+static std::random_device r;
+static std::default_random_engine e1(r());
+static std::uniform_int_distribution<uint32_t> uniformDist(0, 0xFFFFFFFF);
+
 SimpleRenderer::SimpleRenderer(
 	const uint32_t width,
 	const uint32_t height,
@@ -62,10 +66,6 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 {
 	++m_LaunchParams.frameIdx;
 	if (m_Cam.HasChanged() || !m_LaunchParams.enableAccum) { m_LaunchParams.frameIdx = 0; }
-
-	std::random_device r;
-	std::default_random_engine e1(r());
-	std::uniform_int_distribution<uint32_t> uniformDist(0, 0xFFFFFFFF);
 
 	m_LaunchParams.random = uniformDist(e1);
 	m_LaunchParams.outputBuffer = outputBuffer;
