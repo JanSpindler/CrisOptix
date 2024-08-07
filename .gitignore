@@ -5,6 +5,7 @@
 *.exe
 *.pdb
 *.log
+*.ncu-rep
 
 /Release
 /Debug

@@ -44,17 +44,6 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		++currentDepth;
 		path.vertices[currentDepth] = interaction.pos;
 
-		// Indirect illumination, generate next ray
-		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
-			interaction.meshSbtData->sampleMaterialSbtIdx,
-			interaction,
-			rng);
-		if (brdfSampleResult.samplingPdf <= 0.0f) { break; }
-
-		currentPos = interaction.pos;
-		currentDir = brdfSampleResult.outDir;
-		currentThroughput *= brdfSampleResult.weight;
-
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < NEE_PROB || currentDepth >= MAX_TRACE_DEPTH)
 		{
@@ -85,6 +74,17 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 			// Exit from PT
 			break;
 		}
+
+		// Indirect illumination, generate next ray
+		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+			interaction.meshSbtData->sampleMaterialSbtIdx,
+			interaction,
+			rng);
+		if (brdfSampleResult.samplingPdf <= 0.0f) { break; }
+
+		currentPos = interaction.pos;
+		currentDir = brdfSampleResult.outDir;
+		currentThroughput *= brdfSampleResult.weight;
 	}
 
 	return path;
