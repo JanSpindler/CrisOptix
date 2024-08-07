@@ -17,7 +17,7 @@ struct LaunchParams
 	uint32_t height;
 	CameraData cameraData;
 	bool enableAccum;
-	RestirDiParams restirDiParams;
+	RestirParams restirParams;
 	CuBufferView<EmitterData> emitterTable;
 	CuBufferView<Reservoir<EmitterSample>> diReservoirs;
 	CuBufferView<Reservoir<Path>> suffixReservoirs;

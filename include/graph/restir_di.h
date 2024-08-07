@@ -57,7 +57,7 @@ static constexpr __device__ void RestirDi(
 	LaunchParams& params)
 {
 	// Generate new samples
-	Reservoir<EmitterSample> newReservoir = RestirRis(interaction, params.restirDiParams.canonicalCount, rng, params);
+	Reservoir<EmitterSample> newReservoir = RestirRis(interaction, params.restirParams.canonicalCount, rng, params);
 
 	// Check if shadowed
 	const bool occluded = TraceOcclusion(
@@ -70,7 +70,7 @@ static constexpr __device__ void RestirDi(
 	if (occluded) { newReservoir.W = 0.0f; }
 
 	// Temporal reuse
-	if (params.frameIdx > 1 && params.restirDiParams.enableTemporal)
+	if (params.frameIdx > 1 && params.restirParams.enableTemporal)
 	{
 		const glm::vec2 oldUV = params.cameraData.prevW2V * glm::vec4(interaction.pos, 1.0f);
 		if (oldUV.x == glm::clamp(oldUV.x, 0.0f, 1.0f) && oldUV.y == glm::clamp(oldUV.y, 0.0f, 1.0f))
@@ -80,14 +80,17 @@ static constexpr __device__ void RestirDi(
 	}
 
 	// Spatial reuse
-	const size_t N = params.restirDiParams.spatialKernelSize;
-	for (size_t n = 0; n < params.restirDiParams.spatialCount; ++n)
+	if (params.restirParams.enableSpatial)
 	{
-		const size_t nX = launchIdx.x + (rng.NextUint32() % (2 * N + 1)) - N;
-		const size_t nY = launchIdx.y + (rng.NextUint32() % (2 * N + 1)) - N;
-		if (nX < params.width && nY < params.height)
+		const size_t N = params.restirParams.spatialKernelSize;
+		for (size_t n = 0; n < params.restirParams.spatialCount; ++n)
 		{
-			newReservoir = CombineReservoirDi(newReservoir, GetDiReservoir(nX, nY, params), interaction, rng);
+			const size_t nX = launchIdx.x + (rng.NextUint32() % (2 * N + 1)) - N;
+			const size_t nY = launchIdx.y + (rng.NextUint32() % (2 * N + 1)) - N;
+			if (nX < params.width && nY < params.height)
+			{
+				newReservoir = CombineReservoirDi(newReservoir, GetDiReservoir(nX, nY, params), interaction, rng);
+			}
 		}
 	}
 

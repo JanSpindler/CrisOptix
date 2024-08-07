@@ -2,9 +2,10 @@
 
 #include <util/random.h>
 
-struct RestirDiParams
+struct RestirParams
 {
 	bool enableTemporal;
+	bool enableSpatial;
 	int canonicalCount;
 	int spatialCount;
 	int spatialKernelSize;

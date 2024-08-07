@@ -180,12 +180,14 @@ int main()
     // Main loop
     ASSERT_CUDA(cudaDeviceSynchronize());
     auto lastTime = std::chrono::high_resolution_clock::now();
+    float totalTime = 0.0f;
     while (!Window::IsClosed())
     {
         // Delta time
         const auto newTime = std::chrono::high_resolution_clock::now();
         const std::chrono::duration<float> duration = newTime - lastTime;
         const float deltaTime = duration.count();
+        totalTime += deltaTime;
         lastTime = newTime;
 
         // Camera movement
