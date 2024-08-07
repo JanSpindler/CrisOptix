@@ -9,8 +9,8 @@
 #include <optix_device.h>
 
 static constexpr size_t MAX_TRACE_OPS = 8;
-static constexpr size_t MAX_TRACE_DEPTH = 4;
-static constexpr float NEE_PROB = 0.75f;
+static constexpr size_t MAX_TRACE_DEPTH = 8;
+static constexpr float NEE_PROB = 0.5f;
 
 static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::vec3& dir, PCG32& rng, LaunchParams& params)
 {
@@ -49,7 +49,7 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		{
 			// NEE
 			// Sample light source
-			const EmitterSample emitterSample = SampleEmitter(interaction.pos, rng, params);
+			const EmitterSample emitterSample = SampleEmitter(rng, params);
 			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
 			const float distance = glm::length(emitterSample.pos - interaction.pos);
 
