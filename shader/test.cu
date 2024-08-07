@@ -125,7 +125,7 @@ extern "C" __global__ void __raygen__main()
 	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
-	Path path = SamplePath(origin, dir, rng, params);
+	const Path path = SamplePath(origin, dir, rng, params);
 	outputRadiance = path.outputRadiance;
 
 	// Store radiance output
