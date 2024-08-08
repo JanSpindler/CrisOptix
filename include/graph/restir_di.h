@@ -42,7 +42,7 @@ static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInte
 
 	for (size_t idx = 0; idx < sampleCount; ++idx)
 	{
-		const EmitterSample emitterSample = SampleEmitter(rng, params);
+		const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
 		const float pHat = GetPHatDi(interaction, emitterSample, rng);
 		reservoir.Update(emitterSample, pHat / emitterSample.p, rng);
 	}

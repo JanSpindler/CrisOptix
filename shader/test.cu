@@ -10,7 +10,6 @@
 #include <graph/brdf.h>
 #include <util/random.h>
 #include <model/Emitter.h>
-#include <graph/restir_di.h>
 #include <graph/path_functions.h>
 
 __constant__ LaunchParams params;

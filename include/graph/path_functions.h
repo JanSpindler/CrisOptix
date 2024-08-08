@@ -49,7 +49,7 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		{
 			// NEE
 			// Sample light source
-			const EmitterSample emitterSample = SampleEmitter(rng, params);
+			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
 			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
 			const float distance = glm::length(emitterSample.pos - interaction.pos);
 

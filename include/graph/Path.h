@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 
 static constexpr size_t MAX_PATH_LEN = 8; // 0 = direct illumination
-static constexpr size_t MAX_PATH_RAND_COUNT = 5; // 3 for BRDF sampling and 5 for emitter sampling
+static constexpr size_t MAX_PATH_RAND_COUNT = 3; // 3 for BRDF sampling and 5 for emitter sampling
 
 struct Path
 {
