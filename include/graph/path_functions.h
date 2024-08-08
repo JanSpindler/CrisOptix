@@ -76,10 +76,15 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		}
 
 		// Indirect illumination, generate next ray
-		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+		const glm::vec3 brdfRand = rng.Next3d();
+		path.randomVars[currentDepth][0].randFloat = brdfRand[0];
+		path.randomVars[currentDepth][1].randFloat = brdfRand[1];
+		path.randomVars[currentDepth][2].randFloat = brdfRand[2];
+
+		BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, const glm::vec3&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
-			rng);
+			brdfRand);
 		if (brdfSampleResult.samplingPdf <= 0.0f) { break; }
 
 		currentPos = interaction.pos;
