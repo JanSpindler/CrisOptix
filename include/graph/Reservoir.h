@@ -4,11 +4,15 @@
 
 struct RestirParams
 {
-	bool enableTemporal;
-	bool enableSpatial;
 	int canonicalCount;
+
+	bool enableTemporal;
+
+	bool enableSpatial;
 	int spatialCount;
 	int spatialKernelSize;
+
+	uint32_t prefixLength;
 };
 
 template <typename T>
@@ -19,7 +23,7 @@ struct Reservoir
 	size_t M;
 	float W;
 
-	__host__ __device__ constexpr void Update(const T& sample, const float weight, PCG32& rng)
+	constexpr __host__ __device__ void Update(const T& sample, const float weight, PCG32& rng)
 	{
 		wSum += weight;
 		++M;

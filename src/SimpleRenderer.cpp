@@ -65,6 +65,7 @@ SimpleRenderer::SimpleRenderer(
 void SimpleRenderer::RunImGui()
 {
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
+	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
 	ImGui::InputInt("Canonical Count", &m_LaunchParams.restirParams.canonicalCount, 1, 4);
 	ImGui::Checkbox("Enable Temporal", &m_LaunchParams.restirParams.enableTemporal);
 	ImGui::Checkbox("Enable Spatial", &m_LaunchParams.restirParams.enableSpatial);

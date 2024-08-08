@@ -11,6 +11,7 @@
 #include <util/random.h>
 #include <model/Emitter.h>
 #include <graph/path_functions.h>
+#include <graph/conditional_restir.h>
 
 __constant__ LaunchParams params;
 
@@ -124,7 +125,9 @@ extern "C" __global__ void __raygen__main()
 	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
-	const Path path = SamplePath(origin, dir, rng, params);
+	const Path path = params.enableRestir ? 
+		ConditionalRestir(launchIdx, origin, dir, rng, params) : 
+		SamplePath(origin, dir, MAX_PATH_LEN, rng, params);
 	outputRadiance = path.outputRadiance;
 
 	// Store radiance output

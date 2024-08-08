@@ -17,9 +17,11 @@ struct LaunchParams
 	uint32_t height;
 	CameraData cameraData;
 	bool enableAccum;
+	bool enableRestir;
 	RestirParams restirParams;
 	CuBufferView<EmitterData> emitterTable;
 	CuBufferView<Reservoir<EmitterSample>> diReservoirs;
+	CuBufferView<Reservoir<Path>> prefixReservoirs;
 	CuBufferView<Reservoir<Path>> suffixReservoirs;
 	OptixTraversableHandle traversableHandle;
 	TraceParameters surfaceTraceParams;
