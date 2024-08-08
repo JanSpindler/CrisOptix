@@ -38,7 +38,7 @@ static constexpr __device__ Reservoir<EmitterSample> CombineReservoirDi(
 
 static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInteraction& interaction, const size_t sampleCount, PCG32& rng, const LaunchParams& params)
 {
-	Reservoir<EmitterSample> reservoir = { {}, 0.0f, 0 };
+	Reservoir<EmitterSample> reservoir = { {}, 0.0f, 0, 0.0f };
 
 	for (size_t idx = 0; idx < sampleCount; ++idx)
 	{
