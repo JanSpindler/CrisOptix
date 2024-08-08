@@ -111,3 +111,8 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 		1));
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
+
+size_t SimpleRenderer::GetFrameIdx() const
+{
+	return m_LaunchParams.frameIdx;
+}

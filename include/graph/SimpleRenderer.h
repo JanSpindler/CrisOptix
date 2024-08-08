@@ -20,6 +20,8 @@ public:
 	void RunImGui();
 	void LaunchFrame(glm::vec3* outputBuffer);
 
+	size_t GetFrameIdx() const;
+
 private:
 	uint32_t m_Width = 0;
 	uint32_t m_Height = 0;

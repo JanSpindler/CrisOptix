@@ -70,7 +70,7 @@ struct OptixProgramGroupDescKey
 };
 
 template <typename T>
-inline void hash_combine(std::size_t &s, const T &v)
+static constexpr void hash_combine(std::size_t &s, const T &v)
 {
     std::hash<T> h;
     s^= h(v) + 0x9e3779b9 + (s << 6) + (s >> 2);
@@ -81,7 +81,7 @@ namespace std
     template<>
     struct hash<OptixProgramGroupEntryKey>
     {
-        size_t operator()(const OptixProgramGroupEntryKey &v) const
+        constexpr size_t operator()(const OptixProgramGroupEntryKey &v) const
         {
             size_t s = 0;
             hash_combine(s, v.module);
@@ -93,7 +93,7 @@ namespace std
     template<>
     struct hash<OptixProgramGroupDescKey>
     {
-        size_t operator()(const OptixProgramGroupDescKey &v) const
+        constexpr size_t operator()(const OptixProgramGroupDescKey &v) const
         {
             size_t s = 0;
             hash_combine(s, v.kind);

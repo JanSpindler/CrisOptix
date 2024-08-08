@@ -147,29 +147,33 @@ int main()
 
     // Camera
     Camera cam(
-        glm::vec3(9.0f, 2.0f, -1.0f),
-        glm::vec3(-1.0f, 0.0f, -0.5f),
+        glm::vec3(0.0f, 1.0f, 4.0f),
+        glm::vec3(0.0f, 0.0f, -1.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         static_cast<float>(width) / static_cast<float>(height),
         glm::radians(60.0f));
 
     // Models
-    /*const Model cubeModel("./data/model/basic/cube.obj", false, SpecTexUsage::Color, optixDeviceContext);
-    const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
-    const ModelInstance cubeInstance(cubeModel, cubeTransform);
-    const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(10.0f));*/
+    //const Model cubeModel("./data/model/basic/cube.obj", false, SpecTexUsage::Color, optixDeviceContext);
+    //const glm::mat4 cubeTransform = glm::translate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5f)), { 15.0f, 5.0f, 0.0f });
+    //const ModelInstance cubeInstance(cubeModel, cubeTransform);
+    //const Emitter cubeEmitter(cubeModel.GetMesh(0), cubeTransform, glm::vec3(10.0f));
 
     //const Model backpackModel("./data/model/backpack/backpack.obj", false, optixDeviceContext);
     //const ModelInstance backpackInstance(backpackModel, glm::mat4(1.0f));
 
-    /*const Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, SpecTexUsage::OccRoughMetal, optixDeviceContext);
-    const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));*/
+    //const Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, SpecTexUsage::OccRoughMetal, optixDeviceContext);
+    //const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));
 
-    const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, SpecTexUsage::OccRoughMetal, optixDeviceContext);
-    const ModelInstance bistroInstance(bistroModel, glm::identity<glm::mat4>());
+    const Model cornellModel("./data/model/Cornell/CornellBox-Original.obj", false, SpecTexUsage::Color, optixDeviceContext);
+    const ModelInstance cornellInstance(cornellModel, glm::identity<glm::mat4>());
+
+    //const Model bistroModel("./data/model/Bistro_v5_2/BistroInterior.fbx", true, SpecTexUsage::OccRoughMetal, optixDeviceContext);
+    //const ModelInstance bistroInstance(bistroModel, glm::identity<glm::mat4>());
 
     // Scene
-    const std::vector<const ModelInstance*> modelInstances = { &bistroInstance };
+    const std::vector<const ModelInstance*> modelInstances = { &cornellInstance };
+    //const std::vector<const ModelInstance*> modelInstances = { &bistroInstance };
     //const std::vector<const ModelInstance*> modelInstances = { &zeroDayInstance };
     const std::vector<const Emitter*> emitters = { };
     Scene scene(optixDeviceContext, modelInstances, emitters);
@@ -181,6 +185,7 @@ int main()
     ASSERT_CUDA(cudaDeviceSynchronize());
     auto lastTime = std::chrono::high_resolution_clock::now();
     float totalTime = 0.0f;
+    float renderTime = 0.0f;
     while (!Window::IsClosed())
     {
         // Delta time
@@ -203,10 +208,15 @@ int main()
 
         ImGui::Begin("General Info");
 
-        ImGui::Text("Frametime: %f s", deltaTime);
+        ImGui::Text("Total Delta Time: %fs", deltaTime);
+        ImGui::Text("Render Time: %fs", renderTime);
+        ImGui::Text("Frame Index: %d", renderer.GetFrameIdx());
 
         const glm::vec3& camPos = cam.GetPos();
         ImGui::Text("Cam Pos: (%f, %f, %f)", camPos.x, camPos.y, camPos.z);
+
+        const glm::vec3& camDir = cam.GetViewDir();
+        ImGui::Text("Cam Dir: (%f, %f, %f)", camDir.x, camDir.y, camDir.z);
 
         renderer.RunImGui();
 
@@ -214,7 +224,11 @@ int main()
         ImGui::Render();
             
         // Render and display
+        const auto renderStart = std::chrono::high_resolution_clock::now();
         RenderAndDispay(outputBuffer, renderer, hdrBuffer, width, height);
+        const auto renderEnd = std::chrono::high_resolution_clock::now();
+        const std::chrono::duration<float> renderDuration = renderEnd - renderStart;
+        renderTime = renderDuration.count();
     }
 
     // End
