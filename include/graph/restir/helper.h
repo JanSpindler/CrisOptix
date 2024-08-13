@@ -7,6 +7,8 @@
 #include <graph/Interaction.h>
 #include <optix_device.h>
 #include <graph/trace.h>
+#include <graph/restir/PrefixGBuffer.h>
+#include <graph/restir/PrefixReservoir.h>
 
 struct ReconnectionData
 {
@@ -25,7 +27,7 @@ static constexpr __device__ float CompCanonPairwiseMisWeight(
 	if (GetLuminance(basisPathContribAtBasis) <= 0.0f) { return 1.0f; }
 
 	const float atBasisTerm = GetLuminance(basisPathContribAtBasis) * canonM;
-	const float misWeightBasisPath = atBasisTerm / (atBasisTerm + basisPathContribAtNeigh * basisToNeighJacobian * neighM * pairwiseK);
+	const float misWeightBasisPath = atBasisTerm / (atBasisTerm + GetLuminance(basisPathContribAtNeigh) * basisToNeighJacobian * neighM * pairwiseK);
 	return misWeightBasisPath;
 }
 
@@ -40,7 +42,7 @@ static constexpr __device__ float CompNeighPairwiseMisWeight(
 	if (GetLuminance(neighPathContribAtNeigh) <= 0.0f) { return 0.0f; }
 
 	const float misWeightNeighPath = GetLuminance(neighPathContribAtNeigh) * neighM /
-		(neighPathContribAtNeigh * neighM + neighPathContribAtBasis * neighToBasisJacobian * canonM / pairwiseK);
+		(GetLuminance(neighPathContribAtNeigh) * neighM + GetLuminance(neighPathContribAtBasis) * neighToBasisJacobian * canonM / pairwiseK);
 	return misWeightNeighPath;
 }
 
@@ -281,15 +283,11 @@ static constexpr __device__ glm::vec3 ShiftPrefixRecon(
 
 static constexpr __device__ glm::vec3 ShiftPrefixReplay(
 	const SurfaceInteraction& interaction,
-	const Vertex& prefixVert,
 	LastVertexState& lastVertState,
 	PCG32& rng,
-	float& jacobian,
-	float& srcJacobian,
 	glm::vec3& newWo,
 	float& newPdf,
 	float& pathFootprint,
-	const bool shiftToPrevFrame,
 	const LaunchParams& params)
 {
 	// Sample brdf using rng
@@ -304,7 +302,8 @@ static constexpr __device__ glm::vec3 ShiftPrefixReplay(
 	newWo = -brdfSampleResult.outDir;
 
 	// Check if rough bounce
-	const bool isRoughBounce = brdfSampleResult.diffuse || brdfSampleResult.roughness > 0.5f; // TODO: roughness threshold
+	const float roughness = brdfSampleResult.roughness;
+	const bool isRoughBounce = brdfSampleResult.diffuse || roughness > 0.5f; // TODO: roughness threshold
 
 	// Sample surface interaction
 	SurfaceInteraction newInteraction{};
@@ -318,5 +317,148 @@ static constexpr __device__ glm::vec3 ShiftPrefixReplay(
 		&newInteraction);
 	if (!newInteraction.valid) { return glm::vec3(0.0f); }
 
+	// Calc vector between v_i and v_{i+1}
+	const glm::vec3 vector = newInteraction.pos - interaction.pos;
+	pathFootprint += glm::length(vector);
+	const bool isDistant = glm::length(vector) > 1.0f; // TODO: distance thresold
 
+	// Exit if more suitable for reconnection shift
+	if (isDistant && isRoughBounce) { return glm::vec3(0.0f); }
+
+	// Set last vert state
+	lastVertState.Init(isDistant, 0, false, false, isRoughBounce, isRoughBounce);
+
+	// Return
+	return brdfSampleResult.weight;
+}
+
+static constexpr __device__ glm::vec3 ShiftPrefix(
+	const SurfaceInteraction& interaction,
+	const Vertex& currentPrefixVert,
+	PCG32& neighInitRng,
+	const uint32_t prefixLen,
+	const Vertex& neighPrefixVert,
+	LastVertexState& lastVertState,
+	const bool needRandomReplay,
+	float& jacobian,
+	float& srcJacobian,
+	glm::vec3& newWo,
+	Vertex& prefixVert,
+	float& newPdf,
+	float& pathFootprint,
+	const bool shiftToPrevFrame,
+	const LaunchParams& params)
+{
+	// Default vals
+	newWo = glm::vec3(0.0f);
+	prefixVert = {};
+	jacobian = 0.0f;
+	newPdf = 0.0f;
+
+	// First path segment
+	const glm::vec3 x0x1 = currentPrefixVert.pos - params.cameraData.pos;
+
+	// Check if should reconnect
+	bool shouldReconnect = true;
+	// TODO
+	//if (!adaptivePrefixLength)
+	//{
+	//	shouldReconnect = !needRandomReplay;
+	//}
+	//else if (prefixLen > 2)
+	//{
+	//	shouldReconnect = roughness > threshold
+	//}
+
+	// TODO: Check if neighbor prefix hit is valid
+	//if (!neighPrefixVert.valid)
+	//{
+	//	return glm::vec3(0.0f);
+	//}
+
+	// Shift
+	glm::vec3 ret(0.0f);
+	if (shouldReconnect)
+	{
+		prefixVert = neighPrefixVert;
+		
+		//VertexData neighborPrefixVd = loadVertexData(neighborPrefixHit, shiftToPrevFrame);
+		ret = ShiftPrefixRecon(
+			interaction, 
+			prefixVert, 
+			lastVertState, 
+			neighInitRng, 
+			jacobian, 
+			srcJacobian, 
+			newWo, 
+			newPdf, 
+			pathFootprint, 
+			shiftToPrevFrame, 
+			params);
+	}
+	else
+	{
+		//if (adaptivePrefixLength) { return glm::vec3(0.0f); }
+		jacobian = 1.0f;
+		// TODO: pass prefixHit.isValid
+		ret = ShiftPrefixReplay(interaction, lastVertState, neighInitRng, newWo, newPdf, pathFootprint, params);
+	}
+
+	// Return
+	return ret;
+}
+
+static constexpr __device__ bool ResamplePrefix(
+	const bool isNeighborValid,
+	PathReservoir& res,
+	const PathReservoir& neighRes,
+	const int temporalHistoryLength,
+
+	const SurfaceInteraction& currentInteraction,
+	const SurfaceInteraction& neighInteraction,
+
+	const glm::vec3& currentReplayThroughput,
+	const glm::vec3& neighReplayThroughput,
+	PrefixGBuffer& currentPrefix,
+	PrefixReservoir& currentPrefixRes,
+	const PrefixGBuffer& neighPrefix,
+	PrefixReservoir& neighPrefixRes,
+	PCG32& rng,
+	int scratchVertexBufferOffset,
+	float& pathFootprint,
+	
+	const LaunchParams& params)
+{
+	// Defaults and init
+	float jacobianShift = 1.0f;
+	glm::vec3 outDirShifted(0.0f);
+
+	SurfaceInteraction shiftedPrefixHit{};
+
+	float pdfShift = 0.0f;
+	neighPrefixRes.setM(glm::min(temporalHistoryLength * currentPrefixRes.M(), neighPrefixRes.M()));
+	const uint32_t shiftedComponentType = neighPrefixRes.componentType();
+
+	LastVertexState shiftedLastVertState{};
+	shiftedLastVertState.Init(false, shiftedComponentType, false, false, false, false);
+
+	float neighJacobian = neighPrefixRes.reconJacobian;
+
+	// Shift prefix
+	glm::vec3 fShift = ShiftPrefix(
+		currentInteraction,
+		{},
+		neighRes.initRng,
+		neighRes.pathFlags.PrefixLength(),
+		neighPrefix.interaction,
+		shiftedLastVertState,
+		neighPrefixRes.needRandomReplay(),
+		jacobianShift,
+		neighJacobian,
+		outDirShifted,
+		shiftedPrefixHit,
+		pdfShift,
+		pathFootprint,
+		false,
+		params);
 }

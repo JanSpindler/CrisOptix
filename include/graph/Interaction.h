@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <model/Mesh.h>
+#include <cuda_runtime.h>
 
 struct SurfaceInteraction
 {
@@ -14,4 +15,17 @@ struct SurfaceInteraction
 	glm::vec2 uv;
 	uint32_t primitiveIdx;
 	const MeshSbtData* meshSbtData;
+
+	constexpr __device__ __host__ SurfaceInteraction() :
+		valid(false),
+		inRayDir(0.0f),
+		inRayDist(0.0f),
+		pos(0.0f),
+		normal(0.0f),
+		tangent(0.0f),
+		uv(0.0f),
+		primitiveIdx(0),
+		meshSbtData(nullptr)
+	{
+	}
 };
