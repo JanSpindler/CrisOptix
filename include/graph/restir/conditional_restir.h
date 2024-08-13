@@ -1,14 +1,8 @@
 #pragma once
 
 #include <graph/path_functions.h>
-
-static constexpr __device__ Path CombinePrefixSuffix(const Path& prefix, const Path& suffix)
-{
-	Path path{};
-	path.throughput = prefix.throughput * suffix.throughput;
-	path.outputRadiance = prefix.throughput * suffix.outputRadiance;
-	return path;
-}
+#include <graph/luminance.h>
+#include <graph/restir/helper.h>
 
 static constexpr __device__ Reservoir<Path>& GetPrefixReservoir(const uint32_t x, const uint32_t y, LaunchParams& params)
 {
@@ -35,6 +29,7 @@ static constexpr __device__ Path ConditionalRestir(
 	const glm::vec3 suffixOrigin = prefix.vertices[prefix.length];
 
 	// TODO: Temporal prefix reuse using GRIS / Xp
+	Reservoir<Path> prefixReservoir = { {}, 0.0f, 0, 0.0f };
 
 	// Suffix reuse using CRIS
 	// Xs <- TraceNewSuffix(Reservoirs[q].Xp)
@@ -42,10 +37,13 @@ static constexpr __device__ Path ConditionalRestir(
 
 	// Reservoirs[q].Xs <- CRIS(Xs, prevReservoirs[q'].Xs)
 	Reservoir<Path>& suffixReservoir = { {}, 0.0f, 0, 0.0f };
-	suffixReservoir.Update(suffix, 1.0f, rng);
+	suffixReservoir.Update(suffix, 1.0f, GetLuminance(suffix.outputRadiance), rng);
 
 	// Reservoirs[q].Xs <- SpatialSuffixReuse(Reservoirs)
+	
 	// prevReservoirs <- Reservoirs
+	GetPrefixReservoir(launchIdx.x, launchIdx.y, params) = prefixReservoir;
+	GetSuffixReservoir(launchIdx.x, launchIdx.y, params) = suffixReservoir;
 
 	// Final gather
 	// (Xp, Xs) <- TraceFullPath(q)
@@ -55,5 +53,5 @@ static constexpr __device__ Path ConditionalRestir(
 	// TODO: For loop
 
 	// Simply test if combining prefix and suffix works
-	return CombinePrefixSuffix(prefix, suffixReservoir.y);
+	return CombinePrefixSuffix(prefix, suffixReservoir.currentSample);
 }

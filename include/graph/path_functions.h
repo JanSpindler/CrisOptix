@@ -64,6 +64,7 @@ static constexpr __device__ Path SamplePrefix(const glm::vec3& origin, const glm
 
 	outDir = currentDir;
 
+	path.prefixLength = currentDepth;
 	path.length = currentDepth;
 	path.emitterSample.p = cuda::std::numeric_limits<float>::infinity();
 	return path;
@@ -133,15 +134,10 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		}
 
 		// Indirect illumination, generate next ray
-		const glm::vec3 brdfRand = rng.Next3d();
-		path.randomVars[currentDepth][0].randFloat = brdfRand[0];
-		path.randomVars[currentDepth][1].randFloat = brdfRand[1];
-		path.randomVars[currentDepth][2].randFloat = brdfRand[2];
-
-		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, const glm::vec3&>(
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
-			brdfRand);
+			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f) { break; }
 
 		currentPos = interaction.pos;
@@ -149,6 +145,7 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 		path.throughput *= brdfSampleResult.weight;
 	}
 
+	path.prefixLength = 0;
 	path.length = currentDepth;
 	return path;
 }

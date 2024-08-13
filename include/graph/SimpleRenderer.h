@@ -35,6 +35,7 @@ private:
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 
 	DeviceBuffer<Reservoir<EmitterSample>> m_DiReservoirs{};
+	DeviceBuffer<Reservoir<Path>> m_PrefixReservoirs{};
 	DeviceBuffer<Reservoir<Path>> m_SuffixReservoirs{};
 
 	Pipeline m_Pipeline;

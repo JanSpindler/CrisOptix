@@ -24,34 +24,40 @@ SimpleRenderer::SimpleRenderer(
 	m_Pipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
+	//
 	m_LaunchParams.restirParams.enableTemporal = true;
 	m_LaunchParams.restirParams.canonicalCount = 1;
 	m_LaunchParams.restirParams.spatialCount = 1;
 	m_LaunchParams.restirParams.spatialKernelSize = 1;
 
+	//
 	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
 	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__main" });
 	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
 	
+	//
 	const size_t pixelCount = width * height;
 	std::vector<Reservoir<EmitterSample>> diReservoirs(pixelCount);
+	std::vector<Reservoir<Path>> prefixReservoirs(pixelCount);
+	std::vector<Reservoir<Path>> suffixReservoirs(pixelCount);
+
 	for (size_t idx = 0; idx < pixelCount; ++idx)
 	{
 		diReservoirs[idx] = { {}, 0.0f, 0 };
+		prefixReservoirs[idx] = { { {}, {}, glm::vec3(0.0f) }, 0.0f, 0, 0.0f };
+		suffixReservoirs[idx] = { { {}, {}, glm::vec3(0.0f) }, 0.0f, 0, 0.0f };
 	}
 
 	m_DiReservoirs.Alloc(pixelCount);
 	m_DiReservoirs.Upload(diReservoirs.data());
 
-	std::vector<Reservoir<Path>> suffixReservoirs(pixelCount);
-	for (size_t idx = 0; idx < pixelCount; ++idx)
-	{
-		suffixReservoirs[idx] = { { {}, {}, glm::vec3(0.0f) }, 0.0f, 0 };
-	}
+	m_PrefixReservoirs.Alloc(pixelCount);
+	m_PrefixReservoirs.Upload(prefixReservoirs.data());
 
 	m_SuffixReservoirs.Alloc(pixelCount);
 	m_SuffixReservoirs.Upload(suffixReservoirs.data());
 
+	//
 	m_Sbt.AddRaygenEntry(raygenPG);
 	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
 	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
@@ -87,6 +93,7 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
 	m_LaunchParams.diReservoirs = CuBufferView<Reservoir<EmitterSample>>(m_DiReservoirs.GetCuPtr(), m_DiReservoirs.GetCount());
+	m_LaunchParams.prefixReservoirs = CuBufferView<Reservoir<Path>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
 	m_LaunchParams.suffixReservoirs = CuBufferView<Reservoir<Path>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;

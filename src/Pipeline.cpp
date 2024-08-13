@@ -213,5 +213,5 @@ void Pipeline::CreatePipeline()
 
     // Set stack size
     // TODO: Get ideal values?
-    ASSERT_OPTIX(optixPipelineSetStackSize(m_Handle, 16, 16, 128, 16));
+    ASSERT_OPTIX(optixPipelineSetStackSize(m_Handle, 16, 16, 1024, 16));
 }

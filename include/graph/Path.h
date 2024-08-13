@@ -19,6 +19,7 @@ struct Path
 	cuda::std::array<cuda::std::array<RandVar, MAX_PATH_RAND_COUNT>, MAX_PATH_LEN> randomVars;
 	glm::vec3 throughput;
 	glm::vec3 outputRadiance;
+	size_t prefixLength;
 	size_t length;
 	EmitterSample emitterSample;
 };

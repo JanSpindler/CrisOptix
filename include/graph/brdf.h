@@ -13,6 +13,8 @@ struct BrdfEvalResult
 
     // Technically not in brdf
     glm::vec3 emission;
+
+    float roughness;
 };
 
 struct BrdfSampleResult
@@ -23,4 +25,8 @@ struct BrdfSampleResult
     glm::vec3 weight;
     // The sampling PDF is useful for multiple importance sampling.
     float samplingPdf;
+
+    bool diffuse;
+
+    float roughness;
 };

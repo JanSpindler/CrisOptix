@@ -152,6 +152,7 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
         result.brdfResult = glm::vec3(0.0f);
         result.emission = glm::vec3(0.0f);
         result.samplingPdf = 0.0f;
+        result.roughness = 0.0f;
         return result;
     }
 
@@ -183,6 +184,7 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
     result.brdfResult = (diffBrdf + specBrdf) * nDotL;
     result.samplingPdf = 0.0f;
     result.emission = ggxData->emissiveColor;
+    result.roughness = roughness;
     return result;
 }
 
@@ -208,7 +210,7 @@ static constexpr __device__ glm::mat3 ComputeLocalFrame(const glm::vec3& localZ)
     return frame;
 }
 
-extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const SurfaceInteraction& interaction, const glm::vec3& rand)
+extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const SurfaceInteraction& interaction, PCG32& rng)
 {
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
@@ -226,6 +228,8 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
 
     // Check if valid
     BrdfSampleResult result{};
+    result.roughness = roughness;
+
     const float nDotV = glm::dot(normal, viewDir);
     if (nDotV <= 0)
     {
@@ -242,32 +246,36 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
     const float diffProb = glm::dot(diffColor, glm::vec3(1)) / (glm::dot(diffColor, glm::vec3(1)) + glm::dot(specF0, glm::vec3(1)));
 
     //
-    if (rand[0] < diffProb)
+    if (rng.NextFloat() < diffProb)
     {
         // Diffuse
         // Malleys method
-        const float phi = rand[1] * 2.0f * PI;
-        const float r = glm::sqrt(rand[2]);
+        const float phi = rng.NextFloat() * 2.0f * PI;
+        const float r = glm::sqrt(rng.NextFloat());
 
         const float x = r * glm::cos(phi);
         const float y = r * glm::sin(phi);
         const float z = glm::sqrt(glm::clamp<float>(1.0f - P2(x) - P2(y), 0.0f, 1.0f));
 
         result.outDir = localFrame * glm::vec3(x, y, z);
+        result.diffuse = true;
     }
     else
     {
         // Specular
         //
-        const float u = rand[1];
+        const float u = rng.NextFloat();
 
         // Sample z using iCDF
         const float microNormalZ = glm::sqrt(glm::clamp<float>((1 - u) / (1 + (P2(roughness) - 1) * u), 0, 1));
         const float microNormalR = glm::sqrt(glm::clamp<float>(1 - P2(microNormalZ), 0, 1));
 
         // Pick phi uniformly
-        const float phi = rand[2] * 2.0f * PI;
+        const float phi = rng.NextFloat() * 2.0f * PI;
         glm::vec3 microNormal(microNormalR * glm::cos(phi), microNormalR * glm::sin(phi), microNormalZ);
+
+        // Out dir
+        result.outDir = glm::reflect(interaction.inRayDir, localFrame * microNormal);
 
         //
         if (glm::dot(result.outDir, normal) < 0.0f)
@@ -277,6 +285,8 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
             result.samplingPdf = 0.0f;
             return result;
         }
+
+        result.diffuse = false;
     }
 
     // Compute brdf
