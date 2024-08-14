@@ -22,14 +22,14 @@ struct TraceParameters
 #include <optix_device.h>
 #include <util/glm_cuda.h>
 
-static constexpr __host__ __device__ void PackPointer(void* ptr, uint32_t& i0, uint32_t& i1)
+static __forceinline__ __host__ __device__ void PackPointer(void* ptr, uint32_t& i0, uint32_t& i1)
 {
     const uint64_t uptr = reinterpret_cast<uint64_t>(ptr);
     i0 = uptr >> 32;
     i1 = uptr & 0x00000000ffffffff;
 }
 
-static constexpr __host__ __device__ void* UnpackPointer(uint32_t i0, uint32_t i1)
+static __forceinline__ __host__ __device__ void* UnpackPointer(uint32_t i0, uint32_t i1)
 {
     const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
     void* ptr = reinterpret_cast<void*>(uptr);
@@ -37,7 +37,7 @@ static constexpr __host__ __device__ void* UnpackPointer(uint32_t i0, uint32_t i
 }
 
 template <typename T>
-static constexpr __device__ void TraceWithDataPointer(
+static __forceinline__ __device__ void TraceWithDataPointer(
     OptixTraversableHandle handle,
     glm::vec3              ray_origin,
     glm::vec3              ray_direction,
@@ -67,7 +67,7 @@ static constexpr __device__ void TraceWithDataPointer(
 }
 
 template <typename T>
-static constexpr __device__ T* GetPayloadDataPointer()
+static __forceinline__ __device__ T* GetPayloadDataPointer()
 {
     // Get the pointer to the payload data
     const uint32_t u0 = optixGetPayload_0();
@@ -75,7 +75,7 @@ static constexpr __device__ T* GetPayloadDataPointer()
     return reinterpret_cast<T*>(UnpackPointer(u0, u1));
 }
 
-static constexpr __device__ bool TraceOcclusion(
+static __forceinline__ __device__ bool TraceOcclusion(
     OptixTraversableHandle handle,
     glm::vec3              ray_origin,
     glm::vec3              ray_direction,
@@ -101,7 +101,7 @@ static constexpr __device__ bool TraceOcclusion(
     return occluded != 0;
 }
 
-static constexpr __device__ void SetOcclusionPayload(bool occluded)
+static __forceinline__ __device__ void SetOcclusionPayload(bool occluded)
 {
     // Set the payload that _this_ ray will yield
     optixSetPayload_0(static_cast<uint32_t>(occluded));

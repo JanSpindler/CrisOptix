@@ -11,22 +11,22 @@
 #include <util/random.h>
 #include <model/Emitter.h>
 #include <graph/path_functions.h>
-#include <graph/restir/conditional_restir.h>
+//#include <graph/restir/conditional_restir.h>
 
 __constant__ LaunchParams params;
 
-static constexpr __device__ glm::vec3 PointObjectToWorld(const glm::vec3& point)
+static __forceinline__ __device__ glm::vec3 PointObjectToWorld(const glm::vec3& point)
 {
 	return cuda2glm(optixTransformPointFromObjectToWorldSpace(glm2cuda(point)));
 }
 
-static constexpr __device__ glm::vec3 NormalObjectToWorld(const glm::vec3& normal)
+static __forceinline__ __device__ glm::vec3 NormalObjectToWorld(const glm::vec3& normal)
 {
 	return glm::normalize(cuda2glm(optixTransformNormalFromObjectToWorldSpace(glm2cuda(normal))));
 }
 
 template <typename T>
-static constexpr __device__ T InterpolateBary(const glm::vec2& baryCoord, const T& v0, const T& v1, const T& v2)
+static __forceinline__ __device__ T InterpolateBary(const glm::vec2& baryCoord, const T& v0, const T& v1, const T& v2)
 {
 	return 
 		(1.0f - baryCoord.x - baryCoord.y) * v0 
@@ -125,9 +125,7 @@ extern "C" __global__ void __raygen__main()
 	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
-	const Path path = params.enableRestir ? 
-		ConditionalRestir(launchIdx, origin, dir, rng, params) : 
-		SamplePath(origin, dir, MAX_PATH_LEN, rng, params);
+	const Path path = SamplePath(origin, dir, MAX_PATH_LEN, rng, params);
 	outputRadiance = path.outputRadiance;
 
 	// Store radiance output

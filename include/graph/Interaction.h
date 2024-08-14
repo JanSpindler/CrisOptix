@@ -16,7 +16,7 @@ struct SurfaceInteraction
 	uint32_t primitiveIdx;
 	const MeshSbtData* meshSbtData;
 
-	constexpr __device__ __host__ SurfaceInteraction() :
+	__forceinline__ __host__ __device__ SurfaceInteraction() :
 		valid(false),
 		inRayDir(0.0f),
 		inRayDist(0.0f),

@@ -13,7 +13,7 @@
 static constexpr size_t MAX_TRACE_OPS = 16;
 static constexpr float NEE_PROB = 0.5f;
 
-static constexpr __device__ Path SamplePrefix(const glm::vec3& origin, const glm::vec3& dir, PCG32& rng, const LaunchParams& params, glm::vec3& outDir)
+static __forceinline__ __device__ Path SamplePrefix(const glm::vec3& origin, const glm::vec3& dir, PCG32& rng, const LaunchParams& params, glm::vec3& outDir)
 {
 	glm::vec3 currentPos = origin;
 	glm::vec3 currentDir = dir;
@@ -70,7 +70,7 @@ static constexpr __device__ Path SamplePrefix(const glm::vec3& origin, const glm
 	return path;
 }
 
-static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::vec3& dir, const size_t maxLen, PCG32& rng, const LaunchParams& params)
+static __forceinline__ __device__ Path SamplePath(const glm::vec3& origin, const glm::vec3& dir, const size_t maxLen, PCG32& rng, const LaunchParams& params)
 {
 	glm::vec3 currentPos = origin;
 	glm::vec3 currentDir = dir;
@@ -150,7 +150,7 @@ static constexpr __device__ Path SamplePath(const glm::vec3& origin, const glm::
 	return path;
 }
 
-static constexpr __device__ glm::vec3 EvalPath(const Path& path)
+static __forceinline__ __device__ glm::vec3 EvalPath(const Path& path)
 {
 
 }

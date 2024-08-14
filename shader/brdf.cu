@@ -11,49 +11,49 @@
 
 static constexpr float PI = 3.14159265358979323846264f;
 
-static constexpr __device__ float P2(const float x)
+static __forceinline__ __device__ float P2(const float x)
 {
     return x * x;
 }
 
-static constexpr __device__ float P4(const float x)
+static __forceinline__ __device__ float P4(const float x)
 {
     return P2(P2(x));
 }
 
-static constexpr __device__ float CDot(const glm::vec3& a, const glm::vec3& b)
+static __forceinline__ __device__ float CDot(const glm::vec3& a, const glm::vec3& b)
 {
     return glm::clamp(glm::dot(a, b), 0.0f, 1.0f);
 }
 
-static constexpr __device__ float FresnelSchlick(const float F0, const float VdotH)
+static __forceinline__ __device__ float FresnelSchlick(const float F0, const float VdotH)
 {
     return F0 + (1.0f - F0) * glm::pow(glm::max(0.0f, 1.0f - VdotH), 5.0f);
 }
 
-static constexpr __device__ glm::vec3 FresnelSchlick(const glm::vec3& F0, const float VdotH)
+static __forceinline__ __device__ glm::vec3 FresnelSchlick(const glm::vec3& F0, const float VdotH)
 {
     return F0 + (glm::vec3(1.0f) - F0) * glm::pow(glm::max(0.0f, 1.0f - VdotH), 5.0f);
 }
 
-static constexpr __device__ float D(const glm::vec3& h, const float ax, const float ay)
+static __forceinline__ __device__ float D(const glm::vec3& h, const float ax, const float ay)
 {
     if (h.z < 0) { return 0.0f; }
     return 1 / (PI * ax * ay) * 1 / P2((P2(h.x / ax) + P2(h.y / ay) + P2(h.z)));
 }
 
-static constexpr __device__ float Lambda(const glm::vec3& v, float ax, float ay)
+static __forceinline__ __device__ float Lambda(const glm::vec3& v, float ax, float ay)
 {
     return (-1 + sqrt(1 + (P2(v.x * ax) + P2(v.y * ay)) / P2(v.z))) / 2;
 }
 
-static constexpr __device__ float G2(const glm::vec3& to_v, const glm::vec3& to_l, const glm::vec3& h, float ax, float ay)
+static __forceinline__ __device__ float G2(const glm::vec3& to_v, const glm::vec3& to_l, const glm::vec3& h, float ax, float ay)
 {
     if (dot(to_v, h) <= 0 || dot(to_l, h) <= 0) { return 0.0f; }
     return 1 / (1 + Lambda(to_v, ax, ay) + Lambda(to_l, ax, ay));
 }
 
-static constexpr __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::vec3& tan, const glm::vec3& bitan)
+static __forceinline__ __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::vec3& tan, const glm::vec3& bitan)
 {
     // tan-to-worldspace is matrix with columns tan, bitan, n (s.t. x is mapped
     // to the tangent, y to the bitangent, z to the normal), we want the
@@ -62,7 +62,7 @@ static constexpr __device__ glm::mat3 World2Tan(const glm::vec3& n, const glm::v
     return glm::transpose(glm::mat3(tan, bitan, n));
 }
 
-static constexpr __device__ glm::vec3 GetFromTexIfPossible(
+static __forceinline__ __device__ glm::vec3 GetFromTexIfPossible(
     const bool hasTex, 
     const glm::vec3& defaultVal,
     const glm::vec2 uv,
@@ -79,7 +79,7 @@ static constexpr __device__ glm::vec3 GetFromTexIfPossible(
     }
 }
 
-static constexpr __device__ float GetFromTexIfPossible(
+static __forceinline__ __device__ float GetFromTexIfPossible(
     const bool hasTex,
     const float defaultVal,
     const glm::vec2 uv,
@@ -96,14 +96,14 @@ static constexpr __device__ float GetFromTexIfPossible(
     }
 }
 
-static constexpr __device__ float D_GGX(const float NdotH, const float roughness)
+static __forceinline__ __device__ float D_GGX(const float NdotH, const float roughness)
 {
     float a2 = roughness * roughness;
     float d = (NdotH * a2 - NdotH) * NdotH + 1.0f;
     return a2 / (PI * d * d);
 }
 
-static constexpr __device__ float V_SmithJointGGX(float NdotL, float NdotV, float roughness)
+static __forceinline__ __device__ float V_SmithJointGGX(float NdotL, float NdotV, float roughness)
 {
     float a2 = roughness * roughness;
     float lambdaV = NdotL * glm::sqrt(NdotV * NdotV * (1 - a2) + a2);
@@ -188,7 +188,7 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
     return result;
 }
 
-static constexpr __device__ glm::mat3 ComputeLocalFrame(const glm::vec3& localZ)
+static __forceinline__ __device__ glm::mat3 ComputeLocalFrame(const glm::vec3& localZ)
 {
     float x = localZ.x;
     float y = localZ.y;

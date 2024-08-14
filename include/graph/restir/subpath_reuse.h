@@ -16,7 +16,7 @@ struct ReconnectionData
 	glm::vec3 reconPrevOutDir;
 };
 
-static constexpr __device__ float CompCanonPairwiseMisWeight(
+static __forceinline__ float CompCanonPairwiseMisWeight(
 	const glm::vec3& basisPathContribAtBasis,
 	const glm::vec3& basisPathContribAtNeigh,
 	const float basisToNeighJacobian,
@@ -31,7 +31,7 @@ static constexpr __device__ float CompCanonPairwiseMisWeight(
 	return misWeightBasisPath;
 }
 
-static constexpr __device__ float CompNeighPairwiseMisWeight(
+static __forceinline__ float CompNeighPairwiseMisWeight(
 	const glm::vec3& neighPathContribAtBasis,
 	const glm::vec3& neighPathContribAtNeigh,
 	const float neighToBasisJacobian,
@@ -46,7 +46,7 @@ static constexpr __device__ float CompNeighPairwiseMisWeight(
 	return misWeightNeighPath;
 }
 
-static constexpr __device__ float CalcGeomTerm(const glm::vec3& x0, const glm::vec3& x1, const glm::vec3& x1FaceN)
+static __forceinline__ float CalcGeomTerm(const glm::vec3& x0, const glm::vec3& x1, const glm::vec3& x1FaceN)
 {
 	const glm::vec3 diff = x1 - x0;
 	const float d2 = glm::dot(diff, diff);
@@ -54,7 +54,7 @@ static constexpr __device__ float CalcGeomTerm(const glm::vec3& x0, const glm::v
 	return glm::abs(glm::dot(dir, x1FaceN)) / d2;
 }
 
-static constexpr __device__ glm::vec3 ShiftPath(
+static __forceinline__ glm::vec3 ShiftPath(
 	float& jacobian,
 	const PathReservoir& srcRes,
 	const ReconnectionData& reconData,
@@ -67,7 +67,7 @@ static constexpr __device__ glm::vec3 ShiftPath(
 	return glm::vec3(0.0f);
 }
 
-static constexpr __device__ float CompTalbotMisWeightTerm(
+static __forceinline__ float CompTalbotMisWeightTerm(
 	const PathReservoir& neighRes,
 	const PathReservoir& dstRes,
 	const ReconnectionData& reconData,
@@ -85,7 +85,7 @@ static constexpr __device__ float CompTalbotMisWeightTerm(
 	return GetLuminance(integrand) * jacobian * dstRes.M;
 }
 
-static constexpr __device__ glm::vec3 IntegrateWithNeighResSampleTalbotMis(
+static __forceinline__ glm::vec3 IntegrateWithNeighResSampleTalbotMis(
 	const PathReservoir& centralRes,
 	const PathReservoir& neighRes,
 	const ReconnectionData& reconData,
@@ -131,7 +131,7 @@ static constexpr bool StreamNeighPathIntoPathResTalbotMis(
 	return selected;
 }
 
-static constexpr __device__ glm::vec3 IntegrateWithNeighResSample(
+static __forceinline__ glm::vec3 IntegrateWithNeighResSample(
 	const PathReservoir& centralRes,
 	const PathReservoir& neighRes,
 	const ReconnectionData& reconDataShift,
@@ -171,7 +171,7 @@ static constexpr __device__ glm::vec3 IntegrateWithNeighResSample(
 	return contrib;
 }
 
-static constexpr __device__ bool StreamNeighPathIntoPathRes(
+static __forceinline__ bool StreamNeighPathIntoPathRes(
 	PathReservoir& res,
 	const PathReservoir& centralRes,
 	const PathReservoir& neighRes,
@@ -214,7 +214,7 @@ static constexpr __device__ bool StreamNeighPathIntoPathRes(
 	return selected;
 }
 
-static constexpr __device__ glm::vec3 ShiftPrefixRecon(
+static __forceinline__ glm::vec3 ShiftPrefixRecon(
 	const SurfaceInteraction& interaction,
 	const Vertex& prefixVert,
 	LastVertexState& lastVertState, 
@@ -281,7 +281,7 @@ static constexpr __device__ glm::vec3 ShiftPrefixRecon(
 	return occluded ? glm::vec3(0.0f) : fCurrent;
 }
 
-static constexpr __device__ glm::vec3 ShiftPrefixReplay(
+static __forceinline__ glm::vec3 ShiftPrefixReplay(
 	const SurfaceInteraction& interaction,
 	LastVertexState& lastVertState,
 	PCG32& rng,
@@ -332,7 +332,7 @@ static constexpr __device__ glm::vec3 ShiftPrefixReplay(
 	return brdfSampleResult.weight;
 }
 
-static constexpr __device__ glm::vec3 ShiftPrefix(
+static __forceinline__ glm::vec3 ShiftPrefix(
 	const SurfaceInteraction& interaction,
 	const Vertex& currentPrefixVert,
 	PCG32& neighInitRng,
@@ -408,7 +408,7 @@ static constexpr __device__ glm::vec3 ShiftPrefix(
 	return ret;
 }
 
-static constexpr __device__ bool ResamplePrefix(
+static __forceinline__ bool ResamplePrefix(
 	const bool isNeighborValid,
 	PathReservoir& res,
 	const PathReservoir& neighRes,
@@ -445,10 +445,11 @@ static constexpr __device__ bool ResamplePrefix(
 	float neighJacobian = neighPrefixRes.reconJacobian;
 
 	// Shift prefix
+	PCG32 neighInitRngCopy = neighRes.initRng;
 	glm::vec3 fShift = ShiftPrefix(
 		currentInteraction,
 		{},
-		neighRes.initRng,
+		neighInitRngCopy,
 		neighRes.pathFlags.PrefixLength(),
 		neighPrefix.interaction,
 		shiftedLastVertState,

@@ -1,6 +1,6 @@
 #pragma once
 
-static constexpr __device__ EmitterSample SampleEmitter(PCG32& rng, const CuBufferView<EmitterData>& emitterTable)
+static __forceinline__ __device__ EmitterSample SampleEmitter(PCG32& rng, const CuBufferView<EmitterData>& emitterTable)
 {
 	// Sample emitter
 	const size_t emitterCount = emitterTable.count;
