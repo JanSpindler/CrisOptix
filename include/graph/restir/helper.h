@@ -461,4 +461,97 @@ static constexpr __device__ bool ResamplePrefix(
 		pathFootprint,
 		false,
 		params);
+	fShift *= currentReplayThroughput;
+
+	//
+	const uint32_t backShiftedComponentType = currentPrefixRes.componentType();
+	LastVertexState backShiftedLastVertState{};
+	backShiftedLastVertState.Init(false, backShiftedComponentType, false, false, false, false);
+
+	float pdfBackShift = 0.0f;
+	glm::vec3 outDirBackShift(0.0f);
+	float jacobianBackShift = 1.0f;
+	float pathFootprintDummy = 0.0f;
+	float currentJacobian = currentPrefixRes.reconJacobian;
+
+	SurfaceInteraction backShiftedPrefixHit{};
+
+	// Back shift
+	glm::vec3 fBackShift = ShiftPrefix(
+		neighInteraction,
+		{},
+		res.initRng,
+		res.pathFlags.PrefixLength(),
+		currentPrefix.interaction,
+		backShiftedLastVertState,
+		currentPrefixRes.needRandomReplay(),
+		jacobianBackShift,
+		currentJacobian,
+		outDirBackShift,
+		backShiftedPrefixHit,
+		pdfBackShift,
+		pathFootprintDummy,
+		true,
+		params);
+	fBackShift *= neighReplayThroughput;
+
+	// MIS weights
+	const float pairwiseK = 1.0f;
+	float neighMisWeight = CompNeighPairwiseMisWeight(
+		fShift, 
+		glm::vec3(neighPrefixRes.pHat), 
+		jacobianShift, 
+		pairwiseK, 
+		currentPrefixRes.M(), 
+		neighPrefixRes.M());
+	float canonMisWeight = CompCanonPairwiseMisWeight(
+		glm::vec3(currentPrefixRes.pHat),
+		fBackShift,
+		jacobianBackShift,
+		pairwiseK,
+		currentPrefixRes.M(),
+		neighPrefixRes.M());
+
+	if (!isNeighborValid)
+	{
+		neighMisWeight = 0.0f;
+		canonMisWeight = 1.0f;
+	}
+
+	// Weight
+	float weight = currentPrefixRes.pHat * currentPrefixRes.W * canonMisWeight;
+	if (glm::isnan(weight) || glm::isinf(weight)) { weight = 0.0f; }
+	currentPrefixRes.W = weight;
+
+	// Stream neighbor
+	weight = GetLuminance(fShift) * neighPrefixRes.W * neighMisWeight * jacobianShift;
+	if (glm::isnan(weight) || glm::isinf(weight)) { weight = 0.0f; }
+	currentPrefixRes.W += weight;
+	currentPrefixRes.increaseM(neighPrefixRes.M());
+
+	// Check if accepted
+	const bool selectPrev = rng.NextFloat() * currentPrefixRes.W < weight;
+	if (selectPrev)
+	{
+		currentPrefix.interaction = shiftedPrefixHit;
+		currentPrefixRes.setComponentType(shiftedComponentType);
+		currentPrefixRes.setNeedRandomReplay(neighPrefixRes.needRandomReplay());
+		currentPrefixRes.reconJacobian = neighJacobian;
+		currentPrefixRes.pHat = GetLuminance(fShift);
+		currentPrefixRes.pathFootprint = pathFootprint;
+		currentPrefix.outDir = outDirShifted;
+		res = neighRes;
+	}
+	else
+	{
+		pathFootprint = currentPrefixRes.pathFootprint;
+	}
+
+	currentPrefixRes.W /= currentPrefixRes.pHat;
+	currentPrefixRes.W = glm::isnan(currentPrefixRes.W) || glm::isinf(currentPrefixRes.W) ?
+		0.0f :
+		glm::max(0.0f, currentPrefixRes.W);
+
+	res.pathFlags.InsertUserFlag(selectPrev);
+	return selectPrev;
 }
