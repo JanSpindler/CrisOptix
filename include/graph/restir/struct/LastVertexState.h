@@ -13,6 +13,11 @@ struct LastVertexState
 
     /// WARNING: change mask in two getLastVertexState()s when adding a new field!!! 
 
+    __forceinline__ __device__ __host__ LastVertexState() :
+        data(0)
+    {
+    }
+
     __forceinline__ __device__ __host__ LastVertexState(
         bool isCurrentVertexFarFromPrev,
         uint32_t lastBSDFComponent,

@@ -25,10 +25,10 @@ SimpleRenderer::SimpleRenderer(
 	m_Sbt(optixDeviceContext)
 {
 	//
-	m_LaunchParams.restirParams.enableTemporal = true;
-	m_LaunchParams.restirParams.canonicalCount = 1;
-	m_LaunchParams.restirParams.spatialCount = 1;
-	m_LaunchParams.restirParams.spatialKernelSize = 1;
+	m_LaunchParams.restir.enableTemporal = true;
+	m_LaunchParams.restir.canonicalCount = 1;
+	m_LaunchParams.restir.spatialCount = 1;
+	m_LaunchParams.restir.spatialKernelSize = 1;
 
 	//
 	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
@@ -72,11 +72,11 @@ void SimpleRenderer::RunImGui()
 {
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
 	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
-	ImGui::InputInt("Canonical Count", &m_LaunchParams.restirParams.canonicalCount, 1, 4);
-	ImGui::Checkbox("Enable Temporal", &m_LaunchParams.restirParams.enableTemporal);
-	ImGui::Checkbox("Enable Spatial", &m_LaunchParams.restirParams.enableSpatial);
-	ImGui::InputInt("Spatial Count", &m_LaunchParams.restirParams.spatialCount, 1, 4);
-	ImGui::InputInt("Spatial Kernel Size", &m_LaunchParams.restirParams.spatialKernelSize, 1, 4);
+	ImGui::InputInt("Canonical Count", &m_LaunchParams.restir.canonicalCount, 1, 4);
+	ImGui::Checkbox("Enable Temporal", &m_LaunchParams.restir.enableTemporal);
+	ImGui::Checkbox("Enable Spatial", &m_LaunchParams.restir.enableSpatial);
+	ImGui::InputInt("Spatial Count", &m_LaunchParams.restir.spatialCount, 1, 4);
+	ImGui::InputInt("Spatial Kernel Size", &m_LaunchParams.restir.spatialKernelSize, 1, 4);
 }
 
 void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -92,9 +92,6 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.cameraData = m_Cam.GetData();
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
-	m_LaunchParams.diReservoirs = CuBufferView<Reservoir<EmitterSample>>(m_DiReservoirs.GetCuPtr(), m_DiReservoirs.GetCount());
-	m_LaunchParams.prefixReservoirs = CuBufferView<Reservoir<Path>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
-	m_LaunchParams.suffixReservoirs = CuBufferView<Reservoir<Path>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;

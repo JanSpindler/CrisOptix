@@ -2,19 +2,14 @@
 
 #include <glm/glm.hpp>
 #include <cuda_runtime.h>
-#include <graph/restir/PathReservoir.h>
+#include <graph/restir/struct/PathReservoir.h>
 #include <graph/LaunchParams.h>
 #include <graph/Interaction.h>
 #include <optix_device.h>
 #include <graph/trace.h>
-#include <graph/restir/PrefixGBuffer.h>
-#include <graph/restir/PrefixReservoir.h>
-
-struct ReconnectionData
-{
-	glm::vec3 pathThroughput;
-	glm::vec3 reconPrevOutDir;
-};
+#include <graph/restir/struct/PrefixGBuffer.h>
+#include <graph/restir/struct/PrefixReservoir.h>
+#include <graph/restir/struct/ReconnectionData.h>
 
 static __forceinline__ float CompCanonPairwiseMisWeight(
 	const glm::vec3& basisPathContribAtBasis,

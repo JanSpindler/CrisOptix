@@ -5,7 +5,7 @@
 #include <model/Scene.h>
 #include <graph/DeviceBuffer.h>
 #include <graph/LaunchParams.h>
-#include <graph/Reservoir.h>
+#include <graph/restir/struct/Reservoir.h>
 
 class SimpleRenderer
 {

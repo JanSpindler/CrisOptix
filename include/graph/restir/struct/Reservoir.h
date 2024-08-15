@@ -2,28 +2,23 @@
 
 #include <util/random.h>
 
-struct RestirParams
-{
-	int canonicalCount;
-
-	bool enableTemporal;
-
-	bool enableSpatial;
-	int spatialCount;
-	int spatialKernelSize;
-
-	uint32_t prefixLength;
-};
-
 template <typename T>
 struct Reservoir
 {
 	T currentSample;
 	float wSum;
 	size_t M;
-	float currentIntegrand;
+	glm::vec3 currentIntegrand;
 
-	constexpr __host__ __device__ void Update(const T& sample, const float weight, const float integrand, PCG32& rng)
+	__forceinline__ __host__ __device__ Reservoir() :
+		T({}),
+		wSum(0.0f),
+		M(0),
+		currentIntegrand(0.0f)
+	{
+	}
+
+	__forceinline__ __host__ __device__ void Update(const T& sample, const float weight, const glm::vec3& integrand, PCG32& rng)
 	{
 		wSum += weight;
 		++M;
@@ -34,7 +29,7 @@ struct Reservoir
 		}
 	}
 
-	constexpr __host__ __device__ bool MergeSameDomain(const Reservoir<T>& inRes, const float misWeight, PCG32& rng)
+	__forceinline__ __host__ __device__ bool MergeSameDomain(const Reservoir<T>& inRes, const float misWeight, PCG32& rng)
 	{
 		float weight = inRes.integrand * inRes.wSum * misWeight;
 		if (std::isnan(weight) || std::isinf(weight)) { weight = 0.0f; }
@@ -52,7 +47,7 @@ struct Reservoir
 		return false;
 	}
 
-	constexpr __host__ __device__ bool Merge(const Reservoir<T>& inRes, const float integrand, const float jacobian, const float misWeight, PCG32& rng)
+	__forceinline__ __host__ __device__ bool Merge(const Reservoir<T>& inRes, const glm::vec3& integrand, const float jacobian, const float misWeight, PCG32& rng)
 	{
 		float weight = integrand * jacobian * inRes.wSum * misWeight;
 		if (std::isnan(weight) || std::isinf(weight)) { weight = 0.0f; }

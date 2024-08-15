@@ -13,63 +13,6 @@
 static constexpr size_t MAX_TRACE_OPS = 16;
 static constexpr float NEE_PROB = 0.5f;
 
-static __forceinline__ __device__ Path SamplePrefix(const glm::vec3& origin, const glm::vec3& dir, PCG32& rng, const LaunchParams& params, glm::vec3& outDir)
-{
-	glm::vec3 currentPos = origin;
-	glm::vec3 currentDir = dir;
-	size_t currentDepth = 0;
-	
-	Path path{};
-	path.vertices[0] = currentPos;
-	path.throughput = glm::vec3(1.0f);
-	path.outputRadiance = glm::vec3(0.0f);
-
-	// Trace
-	for (uint32_t traceIdx = 0; traceIdx < params.restirParams.prefixLength; ++traceIdx)
-	{
-		// Sample surface interaction
-		SurfaceInteraction interaction{};
-		TraceWithDataPointer<SurfaceInteraction>(
-			params.traversableHandle,
-			currentPos,
-			currentDir,
-			1e-3f,
-			1e16f,
-			params.surfaceTraceParams,
-			&interaction);
-
-		// Exit if no surface found
-		if (!interaction.valid) { break; }
-
-		//
-		++currentDepth;
-		path.vertices[currentDepth] = interaction.pos;
-
-		// Indirect illumination, generate next ray
-		const glm::vec3 brdfRand = rng.Next3d();
-		path.randomVars[currentDepth][0].randFloat = brdfRand[0];
-		path.randomVars[currentDepth][1].randFloat = brdfRand[1];
-		path.randomVars[currentDepth][2].randFloat = brdfRand[2];
-
-		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, const glm::vec3&>(
-			interaction.meshSbtData->sampleMaterialSbtIdx,
-			interaction,
-			brdfRand);
-		if (brdfSampleResult.samplingPdf <= 0.0f) { break; }
-
-		currentPos = interaction.pos;
-		currentDir = brdfSampleResult.outDir;
-		path.throughput *= brdfSampleResult.weight;
-	}
-
-	outDir = currentDir;
-
-	path.prefixLength = currentDepth;
-	path.length = currentDepth;
-	path.emitterSample.p = cuda::std::numeric_limits<float>::infinity();
-	return path;
-}
-
 static __forceinline__ __device__ Path SamplePath(const glm::vec3& origin, const glm::vec3& dir, const size_t maxLen, PCG32& rng, const LaunchParams& params)
 {
 	glm::vec3 currentPos = origin;

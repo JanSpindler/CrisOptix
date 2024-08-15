@@ -218,9 +218,22 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
     // Get values if possible from texture
     const glm::vec2 uv = interaction.uv;
 
+    // Diffuse
     const glm::vec3 diffColor = GetFromTexIfPossible(ggxData->hasDiffTex, ggxData->diffColor, uv, ggxData->diffTex);
-    const glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
-    const float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
+
+    // Get specular info
+    glm::vec3 specF0 = GetFromTexIfPossible(ggxData->hasSpecTex, ggxData->specF0, uv, ggxData->specTex);
+    float roughness = GetFromTexIfPossible(ggxData->hasRoughTex, ggxData->roughness, uv, ggxData->roughTex);
+    float metal = 0.0;
+    if (ggxData->specTexUsage == SpecTexUsage::OccRoughMetal)
+    {
+        roughness = specF0.g;
+        metal = specF0.b;
+        specF0 = glm::vec3(1.0f);
+    }
+
+    // Apply metal
+    specF0 = glm::mix(diffColor, specF0, metal);
 
     // Get info from interaction
     const glm::vec3 normal = interaction.normal;

@@ -4,9 +4,9 @@
 #include <graph/Camera.h>
 #include <optix.h>
 #include <graph/trace.h>
-#include <graph/Reservoir.h>
 #include <model/Emitter.h>
 #include <graph/Path.h>
+#include <graph/restir/struct/RestirParams.h>
 
 struct LaunchParams
 {
@@ -18,11 +18,9 @@ struct LaunchParams
 	CameraData cameraData;
 	bool enableAccum;
 	bool enableRestir;
-	RestirParams restirParams;
+	RestirParams restir;
+	CuBufferView<glm::vec2> motionVectors;
 	CuBufferView<EmitterData> emitterTable;
-	CuBufferView<Reservoir<EmitterSample>> diReservoirs;
-	CuBufferView<Reservoir<Path>> prefixReservoirs;
-	CuBufferView<Reservoir<Path>> suffixReservoirs;
 	OptixTraversableHandle traversableHandle;
 	TraceParameters surfaceTraceParams;
 	TraceParameters occlusionTraceParams;

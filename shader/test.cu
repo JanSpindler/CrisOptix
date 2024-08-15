@@ -11,7 +11,7 @@
 #include <util/random.h>
 #include <model/Emitter.h>
 #include <graph/path_functions.h>
-//#include <graph/restir/conditional_restir.h>
+#include <graph/restir/conditional_restir.h>
 
 __constant__ LaunchParams params;
 
