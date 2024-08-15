@@ -25,8 +25,7 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 
 	// Exit if prev suffix is invalid
 	if (!prevSuffix.valid) { return; }
-	printf("Temp suffix reuse\n");
-
+	
 	//
 	Reconnection prevRecon{};
 	if (!CalcReconnection(prevRecon, prefix, prevSuffix, params)) { return; };
@@ -36,7 +35,7 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 	// TODO: Check if mis weight is correct
 	if (suffixRes.Merge(prevSuffixRes, prevSuffix.throughput, 1.0f, prevRecon.GetP(), rng))
 	{
-		//printf("Temp suffix reuse\n");
+		printf("Temp suffix reuse\n");
 		recon = prevRecon;
 	}
 }

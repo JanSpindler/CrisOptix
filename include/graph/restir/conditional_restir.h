@@ -36,12 +36,12 @@ static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 
 	// Prev pixel coord
 	const glm::vec2 motionVector = glm::vec2(0.0f);// params.motionVectors[pixelIdx];
-	const glm::uvec2 prevPixelCoord = glm::uvec2(
+	const glm::uvec2 prevPixelCoord = pixelCoord;/*glm::uvec2(
 		glm::vec2(pixelCoord) +
 		motionVector * glm::vec2(params.width, params.height) +
-		glm::vec2(0.5f));
+		glm::vec2(0.5f));*/
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
-
+	
 	// Gen canonical prefix
 	Reservoir<PrefixPath> prefixRes{};
 	PrefixPath canonPrefix{};

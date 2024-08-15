@@ -25,6 +25,6 @@ struct Reconnection
 
 	__forceinline__ __device__ float GetWeight() const
 	{
-		return GetLuminance(GetThroughput()) / GetP();
+		return GetLuminance(GetWeight3f());
 	}
 };

@@ -32,6 +32,7 @@ struct SuffixPath
 
 	__forceinline__ __device__ float GetWeight() const
 	{
-		return GetLuminance(throughput) / p;
+		if (p <= 0.0f) { return 0.0f; }
+		return GetLuminance(throughput);
 	}
 };
