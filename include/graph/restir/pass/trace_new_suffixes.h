@@ -58,8 +58,8 @@ static __forceinline__ __device__ void TraceNewSuffixes(
     }
 
     // Gen path
-    GenSuffix(suffix, interaction.pos, recon.pos1Brdf.outDir, 8 - prefix.len, 0.5f, 8, rng, params);
+    GenSuffix(suffix, interaction.pos, recon.pos1Brdf.outDir, 8 - prefix.len, 8, rng, params);
 
     // Stream canonical suffix into res
-    suffixRes.Update(suffix, suffix.GetWeight() * recon.GetWeight(), suffix.radiance, rng);
+    suffixRes.Update(suffix, suffix.GetWeight() * recon.GetWeight(), suffix.throughput, rng);
 }

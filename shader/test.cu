@@ -127,7 +127,7 @@ extern "C" __global__ void __raygen__main()
 	outputRadiance =
 		params.enableRestir ?
 		ConditionalRestir(glm::uvec2(launchIdx), origin, dir, rng, params) :
-		TraceCompletePath(origin, dir, 8, 0.5f, 8, rng, params);
+		TraceCompletePath(origin, dir, 8, 8, rng, params);
 
 	// Store radiance output
 	if (params.enableAccum)

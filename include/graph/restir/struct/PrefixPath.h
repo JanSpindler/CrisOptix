@@ -7,6 +7,7 @@
 struct PrefixPath
 {
 	bool valid;
+	bool nee;
 
 	SurfaceInteraction lastInteraction;
 	
@@ -17,6 +18,7 @@ struct PrefixPath
 
 	__forceinline__ __device__ __host__ PrefixPath() :
 		valid(false),
+		nee(false),
 		lastInteraction({}),
 		throughput(0.0f),
 		p(0.0f),

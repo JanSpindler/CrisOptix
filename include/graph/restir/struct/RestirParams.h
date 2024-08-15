@@ -7,17 +7,21 @@
 
 struct RestirParams
 {
-	int canonicalCount;
+	// Restir DI
+	int diCanonicalCount;
+	bool diEnableTemporal;
+	bool diEnableSpatial;
+	int diSpatialCount;
+	int diSpatialKernelSize;
 
-	bool enableTemporal;
-
-	bool enableSpatial;
-	int spatialCount;
-	int spatialKernelSize;
-
+	// Prefix
 	bool adaptivePrefixLength;
-	uint32_t minPrefixLen;
+	int minPrefixLen;
 	uint32_t maxReconLength;
+
+	// Suffix
+	bool suffixEnableTemporal;
+	bool suffixEnableSpatial;
 
 	//CuBufferView<PathReservoir> pathReservoirs;
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;

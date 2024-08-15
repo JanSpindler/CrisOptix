@@ -86,6 +86,7 @@ static __forceinline__ __device__ void GenPrefix(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
+	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -95,6 +96,7 @@ static __forceinline__ __device__ void GenPrefix(
 
 	prefix = {};
 	prefix.valid = true;
+	prefix.nee = false;
 	prefix.len = 0;
 	prefix.p = 1.0f;
 	prefix.throughput = glm::vec3(1.0f);
@@ -121,6 +123,61 @@ static __forceinline__ __device__ void GenPrefix(
 
 		//
 		++currentDepth;
+
+		// Decide if NEE or continue PT
+		if (rng.NextFloat() < params.neeProb)
+		{
+			// NEE
+			bool validEmitterFound = false;
+			size_t neeCounter = 0;
+			while (!validEmitterFound && neeCounter < maxNeeTries)
+			{
+				//
+				++neeCounter;
+
+				// Sample light source
+				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastInteraction.pos);
+				const float distance = glm::length(emitterSample.pos - prefix.lastInteraction.pos);
+
+				// Cast shadow ray
+				const bool occluded = TraceOcclusion(
+					params.traversableHandle,
+					prefix.lastInteraction.pos,
+					lightDir,
+					1e-3f,
+					distance,
+					params.occlusionTraceParams);
+
+				// If emitter is occluded -> skip
+				if (occluded)
+				{
+					prefix.nee = false;
+					validEmitterFound = false;
+				}
+				// If emitter is not occluded -> end NEE
+				else
+				{
+					// Calc brdf
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+						prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
+						prefix.lastInteraction,
+						lightDir);
+					prefix.throughput *= brdfEvalResult.brdfResult * emitterSample.color;
+					if (currentDepth == 1) { prefix.throughput += brdfEvalResult.emission; }
+
+					prefix.nee = true;
+					validEmitterFound = true;
+				}
+			}
+
+			if (!validEmitterFound)
+			{
+				prefix.nee = false;
+			}
+
+			break;
+		}
 
 		// Do not sample brdf if last vertex
 		if (traceIdx == maxLen - 1) { break; }
@@ -150,7 +207,6 @@ static __forceinline__ __device__ void GenSuffix(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
-	const float neeProb,
 	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
@@ -164,10 +220,10 @@ static __forceinline__ __device__ void GenSuffix(
 	suffix.firstDir = dir;
 	suffix.len = 0;
 	suffix.p = 1.0f;
-	suffix.radiance = glm::vec3(0.0f);
+	suffix.throughput = glm::vec3(0.0f);
 	suffix.rng = rng;
 
-	glm::vec3 throughput(1.0f);
+	glm::vec3 pathThroughput(1.0f);
 
 	// Trace
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
@@ -194,7 +250,7 @@ static __forceinline__ __device__ void GenSuffix(
 		++currentDepth;
 
 		// Decide if NEE or continue PT
-		if (rng.NextFloat() < neeProb)
+		if (rng.NextFloat() < params.neeProb)
 		{
 			// NEE
 			bool validEmitterFound = false;
@@ -231,11 +287,12 @@ static __forceinline__ __device__ void GenSuffix(
 						interaction.meshSbtData->evalMaterialSbtIdx,
 						interaction,
 						lightDir);
-					suffix.radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
-					if (currentDepth == 1) { suffix.radiance += brdfEvalResult.emission; }
+					suffix.throughput = pathThroughput* brdfEvalResult.brdfResult * emitterSample.color;
+					if (currentDepth == 1) { suffix.throughput += brdfEvalResult.emission; }
 
 					suffix.p *= emitterSample.p;
-					//path.emitter = emitterSample;
+					
+					validEmitterFound = true;
 				}
 			}
 
@@ -260,7 +317,7 @@ static __forceinline__ __device__ void GenSuffix(
 
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
-		throughput *= brdfSampleResult.weight;
+		pathThroughput *= brdfSampleResult.weight;
 		suffix.p *= brdfSampleResult.samplingPdf;
 	}
 
@@ -271,7 +328,6 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
-	const float neeProb,
 	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
@@ -307,7 +363,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 		++currentDepth;
 
 		// Decide if NEE or continue PT
-		if (rng.NextFloat() < neeProb)
+		if (rng.NextFloat() < params.neeProb)
 		{
 			// NEE
 			bool validEmitterFound = false;
@@ -346,6 +402,8 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 						lightDir);
 					radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
 					if (currentDepth == 1) { radiance += brdfEvalResult.emission; }
+
+					validEmitterFound = true;
 				}
 			}
 

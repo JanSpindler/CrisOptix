@@ -24,12 +24,18 @@ SimpleRenderer::SimpleRenderer(
 	m_Sbt(optixDeviceContext)
 {
 	//
-	m_LaunchParams.restir.enableTemporal = true;
-	m_LaunchParams.restir.canonicalCount = 1;
-	m_LaunchParams.restir.spatialCount = 1;
-	m_LaunchParams.restir.spatialKernelSize = 1;
+	m_LaunchParams.neeProb = 0.5f;
+
+	//
+	m_LaunchParams.restir.diEnableTemporal = false;
+	m_LaunchParams.restir.diCanonicalCount = 1;
+	m_LaunchParams.restir.diSpatialCount = 1;
+	m_LaunchParams.restir.diSpatialKernelSize = 1;
 
 	m_LaunchParams.restir.minPrefixLen = 2;
+
+	m_LaunchParams.restir.suffixEnableTemporal = false;
+	m_LaunchParams.restir.suffixEnableSpatial = false;
 
 	//
 	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
@@ -66,13 +72,29 @@ SimpleRenderer::SimpleRenderer(
 
 void SimpleRenderer::RunImGui()
 {
+	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
+
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
+
+	// Restir
 	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
-	ImGui::InputInt("Canonical Count", &m_LaunchParams.restir.canonicalCount, 1, 4);
-	ImGui::Checkbox("Enable Temporal", &m_LaunchParams.restir.enableTemporal);
-	ImGui::Checkbox("Enable Spatial", &m_LaunchParams.restir.enableSpatial);
-	ImGui::InputInt("Spatial Count", &m_LaunchParams.restir.spatialCount, 1, 4);
-	ImGui::InputInt("Spatial Kernel Size", &m_LaunchParams.restir.spatialKernelSize, 1, 4);
+
+	// Restir DI
+	ImGui::Text("Restir DI");
+	ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
+	ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
+	ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
+	ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
+	ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
+
+	// Restir Prefix
+	ImGui::Text("Restir Prefix");
+	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.minPrefixLen, 1, 1);
+
+	// Restir Suffix
+	ImGui::Text("Restir Suffix");
+	ImGui::Checkbox("Suffix Enable Temportal", &m_LaunchParams.restir.suffixEnableTemporal);
+	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
 }
 
 void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)

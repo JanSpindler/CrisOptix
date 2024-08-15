@@ -45,7 +45,7 @@ static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 	// Gen canonical prefix
 	Reservoir<PrefixPath> prefixRes{};
 	PrefixPath canonPrefix{};
-	GenPrefix(canonPrefix, origin, dir, params.restir.minPrefixLen, rng, params);
+	GenPrefix(canonPrefix, origin, dir, params.restir.minPrefixLen, 8, rng, params);
 
 	// Stream canonical prefix into prefix reservoir
 	prefixRes.Update(canonPrefix, GetLuminance(canonPrefix.throughput) / canonPrefix.p, canonPrefix.throughput, rng);
@@ -58,6 +58,9 @@ static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 	//}
 	//PrefixResampling();
 
+	// End if prefix has performed nee
+	if (prefixRes.currentSample.nee) { return glm::vec3(prefixRes.currentIntegrand); }
+
 	// Check if prefix is valid
 	if (!prefixRes.currentSample.valid || !prefixRes.currentSample.lastInteraction.valid) { return glm::vec3(0.0f); }
 
@@ -67,7 +70,10 @@ static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 	TraceNewSuffixes(pixelIdx, prefixRes.currentSample, suffixRes, recon, rng, params);
 
 	// Temporal suffix reuse
-	//TemporalSuffixReuse(pixelIdx, prevPixelCoord, prefixRes.currentSample, suffixRes, recon, rng, params);
+	if (params.restir.suffixEnableTemporal)
+	{
+		TemporalSuffixReuse(pixelIdx, prevPixelCoord, prefixRes.currentSample, suffixRes, recon, rng, params);
+	}
 
 	// Spatial suffix reuse
 	// TODO: in own raygen

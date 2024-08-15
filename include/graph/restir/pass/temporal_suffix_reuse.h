@@ -16,7 +16,7 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 	const LaunchParams& params)
 {
 	// Exit if prev pixel is invalid
-	if (IsPixelValid(prevPixelCoord, params)) { return; }
+	if (!IsPixelValid(prevPixelCoord, params)) { return; }
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
 
 	// Get prev suffix reservoir
@@ -24,7 +24,8 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 	const SuffixPath& prevSuffix = prevSuffixRes.currentSample;
 
 	// Exit if prev suffix is invalid
-	if (!prevSuffixRes.currentSample.valid) { return; }
+	if (!prevSuffix.valid) { return; }
+	printf("Temp suffix reuse\n");
 
 	//
 	Reconnection prevRecon{};
@@ -33,8 +34,9 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 	// Stream temportal reuse suffix into res
 	const float jacobian = 1.0f; // TODO: Calc jacobian in CalcReconnection()
 	// TODO: Check if mis weight is correct
-	if (suffixRes.Merge(prevSuffixRes, prevSuffix.radiance, 1.0f, prevRecon.GetP(), rng))
+	if (suffixRes.Merge(prevSuffixRes, prevSuffix.throughput, 1.0f, prevRecon.GetP(), rng))
 	{
+		//printf("Temp suffix reuse\n");
 		recon = prevRecon;
 	}
 }

@@ -12,7 +12,7 @@ struct SuffixPath
 	glm::vec3 firstPos;
 	glm::vec3 firstDir;
 
-	glm::vec3 radiance;
+	glm::vec3 throughput; // Includes radiance from emitter
 	float p;
 
 	uint32_t len;
@@ -23,7 +23,7 @@ struct SuffixPath
 		valid(false),
 		firstPos(0.0f),
 		firstDir(0.0f),
-		radiance(0.0f),
+		throughput(0.0f),
 		p(0.0f),
 		len(0),
 		rng({})
@@ -32,6 +32,6 @@ struct SuffixPath
 
 	__forceinline__ __device__ float GetWeight() const
 	{
-		return GetLuminance(radiance) / p;
+		return GetLuminance(throughput) / p;
 	}
 };
