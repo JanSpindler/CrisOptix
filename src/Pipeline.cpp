@@ -4,7 +4,6 @@
 #include <util/custom_assert.h>
 #include <util/read_file.h>
 #include <graph/Interaction.h>
-#include <graph/Path.h>
 
 Pipeline::Pipeline(OptixDeviceContext context) :
     m_Context { context }

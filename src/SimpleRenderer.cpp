@@ -20,7 +20,6 @@ SimpleRenderer::SimpleRenderer(
 	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
-	m_DiReservoirs(width * height),
 	m_Pipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
@@ -30,6 +29,8 @@ SimpleRenderer::SimpleRenderer(
 	m_LaunchParams.restir.spatialCount = 1;
 	m_LaunchParams.restir.spatialKernelSize = 1;
 
+	m_LaunchParams.restir.minPrefixLen = 2;
+
 	//
 	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
 	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__main" });
@@ -37,19 +38,14 @@ SimpleRenderer::SimpleRenderer(
 	
 	//
 	const size_t pixelCount = width * height;
-	std::vector<Reservoir<EmitterSample>> diReservoirs(pixelCount);
-	std::vector<Reservoir<Path>> prefixReservoirs(pixelCount);
-	std::vector<Reservoir<Path>> suffixReservoirs(pixelCount);
+	std::vector<Reservoir<PrefixPath>> prefixReservoirs(pixelCount);
+	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount);
 
 	for (size_t idx = 0; idx < pixelCount; ++idx)
 	{
-		diReservoirs[idx] = { {}, 0.0f, 0 };
-		prefixReservoirs[idx] = { { {}, {}, glm::vec3(0.0f) }, 0.0f, 0, 0.0f };
-		suffixReservoirs[idx] = { { {}, {}, glm::vec3(0.0f) }, 0.0f, 0, 0.0f };
+		prefixReservoirs[idx] = Reservoir<PrefixPath>();
+		suffixReservoirs[idx] = Reservoir<SuffixPath>();
 	}
-
-	m_DiReservoirs.Alloc(pixelCount);
-	m_DiReservoirs.Upload(diReservoirs.data());
 
 	m_PrefixReservoirs.Alloc(pixelCount);
 	m_PrefixReservoirs.Upload(prefixReservoirs.data());
@@ -92,6 +88,9 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.cameraData = m_Cam.GetData();
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
+
+	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
+	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;

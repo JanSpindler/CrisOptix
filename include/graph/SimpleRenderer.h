@@ -6,6 +6,8 @@
 #include <graph/DeviceBuffer.h>
 #include <graph/LaunchParams.h>
 #include <graph/restir/struct/Reservoir.h>
+#include <graph/restir/struct/PrefixPath.h>
+#include <graph/restir/struct/SuffixPath.h>
 
 class SimpleRenderer
 {
@@ -34,9 +36,8 @@ private:
 	LaunchParams m_LaunchParams{};
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 
-	DeviceBuffer<Reservoir<EmitterSample>> m_DiReservoirs{};
-	DeviceBuffer<Reservoir<Path>> m_PrefixReservoirs{};
-	DeviceBuffer<Reservoir<Path>> m_SuffixReservoirs{};
+	DeviceBuffer<Reservoir<PrefixPath>> m_PrefixReservoirs{};
+	DeviceBuffer<Reservoir<SuffixPath>> m_SuffixReservoirs{};
 
 	Pipeline m_Pipeline;
 	ShaderBindingTable m_Sbt;

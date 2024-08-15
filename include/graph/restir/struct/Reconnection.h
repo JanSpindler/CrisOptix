@@ -8,6 +8,11 @@ struct Reconnection
 	BrdfSampleResult pos0Brdf;
 	BrdfSampleResult pos1Brdf;
 
+	__forceinline__ __device__ glm::vec3 GetWeight3f() const
+	{
+		return pos0Brdf.weight * pos1Brdf.weight;
+	}
+
 	__forceinline__ __device__ glm::vec3 GetThroughput() const
 	{
 		return pos0Brdf.weight * pos1Brdf.weight / GetP();

@@ -161,13 +161,14 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
 
     // Compute specular brdf
     glm::vec3 specBrdf = glm::vec3(0.0f);
+
+    const float diffProb = glm::dot(diffColor, glm::vec3(1)) / (glm::dot(diffColor, glm::vec3(1)) + glm::dot(specF0, glm::vec3(1)));
+    const glm::vec3 halfway = glm::normalize(lightDir + viewDir);
+    const float nDotH = glm::dot(halfway, normal);
+    const float lDotH = glm::dot(halfway, lightDir);
     // Only compute specular component if specular_f0 is not zero!
     if (glm::dot(specF0, specF0) > 1e-6)
     {
-        const glm::vec3 halfway = glm::normalize(lightDir + viewDir);
-        const float nDotH = glm::dot(halfway, normal);
-        const float lDotH = glm::dot(halfway, lightDir);
-
         // Normal distribution
         const float d = D_GGX(nDotH, roughness);
 
@@ -182,7 +183,7 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceIn
 
     // Result
     result.brdfResult = (diffBrdf + specBrdf) * nDotL;
-    result.samplingPdf = 0.0f;
+    result.samplingPdf = diffProb * nDotL / PI + (1.0f - diffProb) * D_GGX(nDotH, roughness) * nDotH / (4.0f * lDotH);
     result.emission = ggxData->emissiveColor;
     result.roughness = roughness;
     return result;

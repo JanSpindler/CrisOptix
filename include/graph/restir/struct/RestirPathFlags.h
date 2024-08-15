@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <graph/restir/struct/LastVertexState.h>
 
 struct RestirPathFlags
 {

@@ -8,7 +8,7 @@
 static __forceinline__ __device__ void TraceNewSuffixes(
     const size_t pixelIdx,
     const PrefixPath& prefix,
-    SuffixPath& suffix,
+    Reservoir<SuffixPath>& suffixRes,
     Reconnection& recon,
     PCG32& rng,
     const LaunchParams& params)
@@ -17,6 +17,8 @@ static __forceinline__ __device__ void TraceNewSuffixes(
     if (!prefix.valid) { return; }
 
     // Generate reconnection
+    SuffixPath suffix{};
+
     // Sample brdf at last prefix vertex
     recon.pos0Brdf = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
         prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
@@ -57,4 +59,7 @@ static __forceinline__ __device__ void TraceNewSuffixes(
 
     // Gen path
     GenSuffix(suffix, interaction.pos, recon.pos1Brdf.outDir, 8 - prefix.len, 0.5f, 8, rng, params);
+
+    // Stream canonical suffix into res
+    suffixRes.Update(suffix, suffix.GetWeight() * recon.GetWeight(), suffix.radiance, rng);
 }

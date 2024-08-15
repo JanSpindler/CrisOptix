@@ -1,21 +1,24 @@
 #pragma once
 
-#include <graph/path_functions.h>
 #include <graph/luminance.h>
-#include <graph/restir/pass/prefix_produce_retrace.h>
-#include <graph/restir/pass/prefix_retrace.h>
-#include <graph/restir/pass/prefix_resampling.h>
+//#include <graph/restir/pass/prefix_produce_retrace.h>
+//#include <graph/restir/pass/prefix_retrace.h>
+//#include <graph/restir/pass/prefix_resampling.h>
 #include <graph/restir/pass/trace_new_suffixes.h>
 #include <graph/restir/pass/temporal_suffix_reuse.h>
 #include <graph/restir/pass/spatial_suffix_reuse.h>
 
-static __forceinline__ __device__ void ConditionalRestir(
+static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 	const glm::uvec2& pixelCoord,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	PCG32& rng,
 	LaunchParams& params)
 {
+	//SuffixPath testPath{};
+	//GenSuffix(testPath, origin, dir, 8, 0.5f, 8, rng, params);
+	//return testPath.radiance;
+
 	// Sample surface interaction
 	SurfaceInteraction primaryInteraction{};
 	TraceWithDataPointer<SurfaceInteraction>(
@@ -26,14 +29,13 @@ static __forceinline__ __device__ void ConditionalRestir(
 		1e16f,
 		params.surfaceTraceParams,
 		&primaryInteraction);
-
-	// Current path res
+	if (!primaryInteraction.valid) { return glm::vec3(0.0f); }
 
 	// Pixel idx
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Prev pixel coord
-	const glm::vec2 motionVector = params.motionVectors[pixelIdx];
+	const glm::vec2 motionVector = glm::vec2(0.0f);// params.motionVectors[pixelIdx];
 	const glm::uvec2 prevPixelCoord = glm::uvec2(
 		glm::vec2(pixelCoord) +
 		motionVector * glm::vec2(params.width, params.height) +
@@ -44,7 +46,7 @@ static __forceinline__ __device__ void ConditionalRestir(
 	Reservoir<PrefixPath> prefixRes{};
 	PrefixPath canonPrefix{};
 	GenPrefix(canonPrefix, origin, dir, params.restir.minPrefixLen, rng, params);
-	
+
 	// Stream canonical prefix into prefix reservoir
 	prefixRes.Update(canonPrefix, GetLuminance(canonPrefix.throughput) / canonPrefix.p, canonPrefix.throughput, rng);
 
@@ -56,21 +58,29 @@ static __forceinline__ __device__ void ConditionalRestir(
 	//}
 	//PrefixResampling();
 
+	// Check if prefix is valid
+	if (!prefixRes.currentSample.valid || !prefixRes.currentSample.lastInteraction.valid) { return glm::vec3(0.0f); }
+
 	// Trace New Suffixes
 	Reservoir<SuffixPath> suffixRes{};
-	SuffixPath canonSuffix{};
-	Reconnection canonRecon{};
-	TraceNewSuffixes(pixelIdx, canonPrefix, canonSuffix, canonRecon, rng, params);
-	suffixRes.Update(canonSuffix, canonSuffix.GetWeight() * canonRecon.GetWeight(), canonSuffix.radiance, rng);
+	Reconnection recon{};
+	TraceNewSuffixes(pixelIdx, prefixRes.currentSample, suffixRes, recon, rng, params);
 
 	// Temporal suffix reuse
-	TemporalSuffixReuse(pixelIdx, prevPixelCoord, params);
+	//TemporalSuffixReuse(pixelIdx, prevPixelCoord, prefixRes.currentSample, suffixRes, recon, rng, params);
 
 	// Spatial suffix reuse
 	// TODO: in own raygen
-	SpatialSuffixReuse();
+	//SpatialSuffixReuse();
 
-	// Final gather
+	// Store prefix and suffix reservoirs
+	params.restir.prefixReservoirs[pixelIdx] = prefixRes;
+	params.restir.suffixReservoirs[pixelIdx] = suffixRes;
+
+	// Shade
+	return prefixRes.currentIntegrand * suffixRes.currentIntegrand * recon.GetWeight3f();
+
+	// TODO: Final gather
 	//for (integrationPrefixCount)
 	//{
 	//	// Trace New Prefixes

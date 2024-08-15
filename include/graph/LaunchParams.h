@@ -5,7 +5,6 @@
 #include <optix.h>
 #include <graph/trace.h>
 #include <model/Emitter.h>
-#include <graph/Path.h>
 #include <graph/restir/struct/RestirParams.h>
 
 struct LaunchParams

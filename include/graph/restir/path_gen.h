@@ -6,6 +6,80 @@
 #include <graph/restir/struct/PrefixPath.h>
 #include <graph/restir/struct/SuffixPath.h>
 #include <graph/restir/struct/Reconnection.h>
+#include <graph/sample_emitter.h>
+#include <optix_device.h>
+
+// Returns true if reconnection is valid (no occlusion / valid brdf pdf)
+static __forceinline__ __device__ bool CalcReconnection(
+	Reconnection& recon,
+	const PrefixPath& prefix,
+	const SuffixPath& suffix,
+	const LaunchParams& params)
+{
+	// TODO: Hybrid shift / right now only pure reconnection
+	
+	//
+	const glm::vec3 lastPrefixPos = prefix.lastInteraction.pos;
+	const glm::vec3 reconVector = suffix.firstPos - lastPrefixPos;
+	const glm::vec3 reconDir = glm::normalize(reconVector);
+
+	// Check occlusion between last prefix vert and first suffix vert
+	// Cast shadow ray
+	const bool occluded = TraceOcclusion(
+		params.traversableHandle,
+		lastPrefixPos,
+		reconDir,
+		1e-3f,
+		glm::length(reconVector),
+		params.occlusionTraceParams);
+	if (occluded) { return false; }
+
+	// First brdf sample at last prefix vert
+	const BrdfEvalResult pos0Eval = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+		prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
+		prefix.lastInteraction,
+		reconDir);
+	if (pos0Eval.samplingPdf <= 0.0f) { return false; }
+
+	// Construct pos0Brdf from pos0Eval
+	recon.pos0Brdf.diffuse = true; // ?
+	recon.pos0Brdf.outDir = reconDir;
+	recon.pos0Brdf.roughness = pos0Eval.roughness;
+	recon.pos0Brdf.samplingPdf = pos0Eval.samplingPdf; // TODO: samplingPdf is currently always 1
+	recon.pos0Brdf.weight = pos0Eval.brdfResult * pos0Eval.samplingPdf;
+
+	// Retrace ray to first suffix vert
+	// Sample surface interaction
+	SurfaceInteraction interaction{};
+	TraceWithDataPointer<SurfaceInteraction>(
+		params.traversableHandle,
+		lastPrefixPos,
+		reconDir,
+		1e-3f,
+		1e16f,
+		params.surfaceTraceParams,
+		&interaction);
+	if (!interaction.valid) { return false; }
+	
+	// Check if retrace found the same first suffix vert
+	if (glm::distance(interaction.pos, suffix.firstPos) > 0.01f) { return false; }
+
+	// Second brdf sample at first suffix vert
+	const BrdfEvalResult pos1Eval = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+		interaction.meshSbtData->evalMaterialSbtIdx,
+		interaction,
+		suffix.firstDir);
+
+	// Construct pos1Brdf from pos1Eval
+	recon.pos1Brdf.diffuse = true; // ?
+	recon.pos1Brdf.outDir = reconDir;
+	recon.pos1Brdf.roughness = pos1Eval.roughness;
+	recon.pos1Brdf.samplingPdf = pos1Eval.samplingPdf; // TODO: samplingPdf is currently always 1
+	recon.pos1Brdf.weight = pos1Eval.brdfResult * pos1Eval.samplingPdf;
+
+	//
+	return true;
+}
 
 static __forceinline__ __device__ void GenPrefix(
 	PrefixPath& prefix,
@@ -85,9 +159,9 @@ static __forceinline__ __device__ void GenSuffix(
 	glm::vec3 currentDir = dir;
 	size_t currentDepth = 0;
 
-	suffix = {};
 	suffix.valid = true;
 	suffix.firstPos = origin;
+	suffix.firstDir = dir;
 	suffix.len = 0;
 	suffix.p = 1.0f;
 	suffix.radiance = glm::vec3(0.0f);
@@ -127,6 +201,9 @@ static __forceinline__ __device__ void GenSuffix(
 			size_t neeCounter = 0;
 			while (!validEmitterFound && neeCounter < maxNeeTries)
 			{
+				//
+				++neeCounter;
+
 				// Sample light source
 				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
 				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
@@ -188,4 +265,107 @@ static __forceinline__ __device__ void GenSuffix(
 	}
 
 	suffix.len = currentDepth;
+}
+
+static __forceinline__ __device__ glm::vec3 TraceCompletePath(
+	const glm::vec3& origin,
+	const glm::vec3& dir,
+	const size_t maxLen,
+	const float neeProb,
+	const size_t maxNeeTries,
+	PCG32& rng,
+	const LaunchParams& params)
+{
+	glm::vec3 currentPos = origin;
+	glm::vec3 currentDir = dir;
+	size_t currentDepth = 0;
+
+	glm::vec3 radiance(0.0f);
+	glm::vec3 throughput(1.0f);
+
+	// Trace
+	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
+	{
+		// Sample surface interaction
+		SurfaceInteraction interaction{};
+		TraceWithDataPointer<SurfaceInteraction>(
+			params.traversableHandle,
+			currentPos,
+			currentDir,
+			1e-3f,
+			1e16f,
+			params.surfaceTraceParams,
+			&interaction);
+
+		// Exit if no surface found
+		if (!interaction.valid)
+		{
+			break;
+		}
+
+		//
+		++currentDepth;
+
+		// Decide if NEE or continue PT
+		if (rng.NextFloat() < neeProb)
+		{
+			// NEE
+			bool validEmitterFound = false;
+			size_t neeCounter = 0;
+			while (!validEmitterFound && neeCounter < maxNeeTries)
+			{
+				//
+				++neeCounter;
+
+				// Sample light source
+				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+				const float distance = glm::length(emitterSample.pos - interaction.pos);
+
+				// Cast shadow ray
+				const bool occluded = TraceOcclusion(
+					params.traversableHandle,
+					interaction.pos,
+					lightDir,
+					1e-3f,
+					distance,
+					params.occlusionTraceParams);
+
+				// If emitter is occluded -> skip
+				if (occluded)
+				{
+					validEmitterFound = false;
+				}
+				// If emitter is not occluded -> end NEE
+				else
+				{
+					// Calc brdf
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+						interaction.meshSbtData->evalMaterialSbtIdx,
+						interaction,
+						lightDir);
+					radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
+					if (currentDepth == 1) { radiance += brdfEvalResult.emission; }
+				}
+			}
+
+			break;
+		}
+
+		// Indirect illumination, generate next ray
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+			interaction.meshSbtData->sampleMaterialSbtIdx,
+			interaction,
+			rng);
+		if (brdfSampleResult.samplingPdf <= 0.0f)
+		{
+			break;
+		}
+
+		currentPos = interaction.pos;
+		currentDir = brdfSampleResult.outDir;
+		throughput *= brdfSampleResult.weight;
+	}
+
+	return radiance;
 }
