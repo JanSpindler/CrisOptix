@@ -30,12 +30,25 @@ static __forceinline__ __device__ void TemporalSuffixReuse(
 	Reconnection prevRecon{};
 	if (!CalcReconnection(prevRecon, prefix, prevSuffix, params)) { return; };
 
+	// Calc jacobian
+	const float jacobian = GetReconnectionJacobian(
+		suffixRes.currentSample.firstPos, 
+		prevSuffix.firstPos, 
+		prefix.lastInteraction.pos,
+		prefix.lastInteraction.normal);
+
 	// Stream temportal reuse suffix into res
-	const float jacobian = 1.0f; // TODO: Calc jacobian in CalcReconnection()
-	// TODO: Check if mis weight is correct
-	if (suffixRes.Merge(prevSuffixRes, prevSuffix.throughput, 1.0f, prevRecon.GetP(), rng))
+	// TODO: Store reconnection in SuffixPath because here we need the contribution in neigh domain
+	const float pairwiseK = 1.0f;
+	const float misWeight = CompNeighPairwiseMisWeight(
+		prevRecon.GetWeight3f() * prevSuffix.throughput, 
+		prevSuffix.throughput, 
+		jacobian, 
+		pairwiseK, 
+		suffixRes.M, 
+		prevSuffixRes.M);
+	if (suffixRes.Merge(prevSuffixRes, prevSuffix.throughput, 1.0f, misWeight, rng))
 	{
-		printf("Temp suffix reuse\n");
 		recon = prevRecon;
 	}
 }

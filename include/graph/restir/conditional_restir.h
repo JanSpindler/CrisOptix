@@ -76,8 +76,10 @@ static __forceinline__ __device__ glm::vec3 ConditionalRestir(
 	}
 
 	// Spatial suffix reuse
-	// TODO: in own raygen
-	//SpatialSuffixReuse();
+	if (params.restir.suffixEnableSpatial)
+	{
+		//SpatialSuffixReuse(pixelCoord, rng, params);
+	}
 
 	// Store prefix and suffix reservoirs
 	params.restir.prefixReservoirs[pixelIdx] = prefixRes;

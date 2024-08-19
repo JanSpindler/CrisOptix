@@ -9,6 +9,19 @@
 #include <graph/sample_emitter.h>
 #include <optix_device.h>
 
+static __forceinline__ __device__ float GetReconnectionJacobian(
+	const glm::vec3& oldXi, 
+	const glm::vec3& newXi, 
+	const glm::vec3& targetPos, 
+	const glm::vec3& targetNormal)
+{
+	// TODO: Implement for random replay
+	
+	const float term1 = glm::distance(targetPos, oldXi) / glm::distance(targetPos, newXi);
+	const float term2 = glm::dot(newXi - targetPos, targetNormal) / glm::dot(oldXi - targetPos, targetNormal);
+	return term1 * term2;
+}
+
 // Returns true if reconnection is valid (no occlusion / valid brdf pdf)
 static __forceinline__ __device__ bool CalcReconnection(
 	Reconnection& recon,

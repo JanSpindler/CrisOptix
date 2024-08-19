@@ -39,8 +39,8 @@ SimpleRenderer::SimpleRenderer(
 
 	//
 	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
-	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__main" });
-	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "test.ptx", "__miss__occlusion" });
+	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "miss.ptx", "__miss__main" });
+	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "miss.ptx", "__miss__occlusion" });
 	
 	//
 	const size_t pixelCount = width * height;
