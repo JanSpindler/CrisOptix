@@ -21,12 +21,13 @@ struct BrdfSampleResult
 {
     // The sampled outgoing ray direction.
     glm::vec3 outDir;
-    // BSDF value divided by sampling PDF for the sampled direction.
-    glm::vec3 weight;
+
+    // BSDF value.
+    glm::vec3 brdfVal;
+
     // The sampling PDF is useful for multiple importance sampling.
     float samplingPdf;
 
-    bool diffuse;
-
+    // Roughness at sampling point.
     float roughness;
 };

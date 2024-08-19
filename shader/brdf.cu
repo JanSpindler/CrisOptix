@@ -248,7 +248,7 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
     if (nDotV <= 0)
     {
         result.outDir = glm::vec3(0.0f);
-        result.weight = glm::vec3(0.0f);
+        result.brdfVal = glm::vec3(0.0f);
         result.samplingPdf = 0.0f;
         return result;
     }
@@ -272,7 +272,6 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
         const float z = glm::sqrt(glm::clamp<float>(1.0f - P2(x) - P2(y), 0.0f, 1.0f));
 
         result.outDir = localFrame * glm::vec3(x, y, z);
-        result.diffuse = true;
     }
     else
     {
@@ -295,12 +294,10 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
         if (glm::dot(result.outDir, normal) < 0.0f)
         {
             result.outDir = glm::vec3(0.0f);
-            result.weight = glm::vec3(0.0f);
+            result.brdfVal = glm::vec3(0.0f);
             result.samplingPdf = 0.0f;
             return result;
         }
-
-        result.diffuse = false;
     }
 
     // Compute brdf
@@ -336,6 +333,6 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Surfa
     // calculate pdf according to one-sample balance heuristic.
     result.outDir = lightDir;
     result.samplingPdf = diffProb * nDotL / PI + (1.0f - diffProb) * D_GGX(nDotH, roughness) * nDotH / (4.0f * lDotH);
-    result.weight = (diffBrdf + specBrdf) * nDotL / result.samplingPdf;
+    result.brdfVal = (diffBrdf + specBrdf) * nDotL;
     return result;
 }

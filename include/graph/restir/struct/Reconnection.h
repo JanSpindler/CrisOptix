@@ -10,12 +10,14 @@ struct Reconnection
 
 	__forceinline__ __device__ glm::vec3 GetWeight3f() const
 	{
-		return pos0Brdf.weight * pos1Brdf.weight;
+		return glm::vec3(1.0f);
+		//return pos0Brdf.weight * pos1Brdf.weight;
 	}
 
 	__forceinline__ __device__ glm::vec3 GetThroughput() const
 	{
-		return pos0Brdf.weight * pos1Brdf.weight / GetP();
+		return glm::vec3(1.0f);
+		//return pos0Brdf.weight * pos1Brdf.weight / GetP();
 	}
 
 	__forceinline__ __device__ float GetP() const

@@ -101,16 +101,14 @@ static __forceinline__ __device__ void TraceNewSuffixes(
             suffix.p = emitterSample.p;
 
             recon.pos0Brdf.outDir = lightDir;
-            recon.pos0Brdf.diffuse = true;
             recon.pos0Brdf.roughness = brdfEvalResult.roughness;
             recon.pos0Brdf.samplingPdf = emitterSample.p;
-            recon.pos0Brdf.weight = brdfEvalResult.brdfResult;
+            recon.pos0Brdf.brdfVal = brdfEvalResult.brdfResult;
 
             recon.pos1Brdf.outDir = glm::vec3(0.0f);
-            recon.pos1Brdf.diffuse = true;
             recon.pos1Brdf.roughness = 1.0f;
             recon.pos1Brdf.samplingPdf = 1.0f;
-            recon.pos1Brdf.weight = glm::vec3(1.0f);
+            recon.pos1Brdf.brdfVal = glm::vec3(1.0f);
         }
     }
 

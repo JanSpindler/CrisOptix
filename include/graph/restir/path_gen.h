@@ -55,11 +55,10 @@ static __forceinline__ __device__ bool CalcReconnection(
 	if (pos0Eval.samplingPdf <= 0.0f) { return false; }
 
 	// Construct pos0Brdf from pos0Eval
-	recon.pos0Brdf.diffuse = true; // ?
 	recon.pos0Brdf.outDir = reconDir;
 	recon.pos0Brdf.roughness = pos0Eval.roughness;
 	recon.pos0Brdf.samplingPdf = pos0Eval.samplingPdf; // TODO: samplingPdf is currently always 1
-	recon.pos0Brdf.weight = pos0Eval.brdfResult * pos0Eval.samplingPdf;
+	recon.pos0Brdf.brdfVal = pos0Eval.brdfResult;
 
 	// Retrace ray to first suffix vert
 	// Sample surface interaction
@@ -84,11 +83,10 @@ static __forceinline__ __device__ bool CalcReconnection(
 		suffix.firstDir);
 
 	// Construct pos1Brdf from pos1Eval
-	recon.pos1Brdf.diffuse = true; // ?
 	recon.pos1Brdf.outDir = reconDir;
 	recon.pos1Brdf.roughness = pos1Eval.roughness;
 	recon.pos1Brdf.samplingPdf = pos1Eval.samplingPdf; // TODO: samplingPdf is currently always 1
-	recon.pos1Brdf.weight = pos1Eval.brdfResult * pos1Eval.samplingPdf;
+	recon.pos1Brdf.brdfVal = pos1Eval.brdfResult;
 
 	//
 	return true;
@@ -208,7 +206,7 @@ static __forceinline__ __device__ void GenPrefix(
 
 		currentPos = prefix.lastInteraction.pos;
 		currentDir = brdfSampleResult.outDir;
-		prefix.throughput *= brdfSampleResult.weight;
+		prefix.throughput *= brdfSampleResult.brdfVal / brdfSampleResult.samplingPdf;
 		prefix.p *= brdfSampleResult.samplingPdf;
 	}
 
@@ -330,7 +328,7 @@ static __forceinline__ __device__ void GenSuffix(
 
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
-		pathThroughput *= brdfSampleResult.weight;
+		pathThroughput *= brdfSampleResult.brdfVal / brdfSampleResult.samplingPdf;
 		suffix.p *= brdfSampleResult.samplingPdf;
 	}
 
@@ -435,7 +433,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
-		throughput *= brdfSampleResult.weight;
+		throughput *= brdfSampleResult.brdfVal / brdfSampleResult.samplingPdf;
 	}
 
 	return radiance;
