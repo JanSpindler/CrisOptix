@@ -5,9 +5,9 @@
 #include <model/Scene.h>
 #include <graph/DeviceBuffer.h>
 #include <graph/LaunchParams.h>
-#include <graph/restir/struct/Reservoir.h>
-#include <graph/restir/struct/PrefixPath.h>
-#include <graph/restir/struct/SuffixPath.h>
+#include <graph/restir/Reservoir.h>
+#include <graph/restir/PrefixPath.h>
+#include <graph/restir/SuffixPath.h>
 
 class SimpleRenderer
 {

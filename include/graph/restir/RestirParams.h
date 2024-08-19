@@ -1,9 +1,9 @@
 #pragma once
 
 #include <graph/CuBufferView.h>
-#include <graph/restir/struct/Reservoir.h>
-#include <graph/restir/struct/PrefixPath.h>
-#include <graph/restir/struct/SuffixPath.h>
+#include <graph/restir/Reservoir.h>
+#include <graph/restir/PrefixPath.h>
+#include <graph/restir/SuffixPath.h>
 
 struct RestirParams
 {

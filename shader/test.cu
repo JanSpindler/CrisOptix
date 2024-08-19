@@ -10,7 +10,7 @@
 #include <graph/brdf.h>
 #include <util/random.h>
 #include <model/Emitter.h>
-#include <graph/restir/conditional_restir.h>
+#include <graph/restir/path_gen.h>
 
 __constant__ LaunchParams params;
 
@@ -42,8 +42,8 @@ extern "C" __global__ void __raygen__main()
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
 	outputRadiance =
-		params.enableRestir ?
-		ConditionalRestir(glm::uvec2(launchIdx), origin, dir, rng, params) :
+		//params.enableRestir ?
+		//ConditionalRestir(glm::uvec2(launchIdx), origin, dir, rng, params) :
 		TraceCompletePath(origin, dir, 8, 8, rng, params);
 
 	// Store radiance output

@@ -1,11 +1,10 @@
 #pragma once
 
 #include <graph/Interaction.h>
-#include <graph/restir/struct/PathState.h>
 #include <graph/LaunchParams.h>
-#include <graph/restir/struct/PrefixPath.h>
-#include <graph/restir/struct/SuffixPath.h>
-#include <graph/restir/struct/Reconnection.h>
+#include <graph/restir/PrefixPath.h>
+#include <graph/restir/SuffixPath.h>
+#include <graph/restir/Reconnection.h>
 #include <graph/sample_emitter.h>
 #include <optix_device.h>
 
