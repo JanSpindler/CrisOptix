@@ -58,12 +58,17 @@ Renderer::Renderer(
 	// Prefix gen and temp reuse
 	const OptixProgramGroup prefixGenTempReusePG = m_PrefixGenTempReusePipeline.AddRaygenShader({ "prefix_gen_temp_reuse.ptx", "__raygen__prefix_gen_temp_reuse" });
 	m_PrefixGenTempReuseSbtIdx = m_Sbt.AddRaygenEntry(prefixGenTempReusePG);
+
 	m_Scene.AddShader(m_PrefixGenTempReusePipeline, m_Sbt);
 	m_PrefixGenTempReusePipeline.CreatePipeline();
 
 	// Prefix spatial reuse
 	const OptixProgramGroup prefixSpatialReusePG = m_PrefixSpatialReusePipeline.AddRaygenShader({ "prefix_spatial_reuse.ptx", "__raygen__prefix_spatial_reuse" });
 	m_PrefixSpatialReuseSbtIdx = m_Sbt.AddRaygenEntry(prefixSpatialReusePG);
+
+	m_PrefixSpatialReusePipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
+	m_PrefixSpatialReusePipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
+	
 	m_Scene.AddShader(m_PrefixSpatialReusePipeline, m_Sbt);
 	m_PrefixSpatialReusePipeline.CreatePipeline();
 

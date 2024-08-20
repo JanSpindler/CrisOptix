@@ -108,6 +108,8 @@ static __forceinline__ __device__ void PrefixTempReuse(
 	// Merge reservoirs
 	if (prefixRes.Merge(shiftedPrefix, prevPrefixRes.confidence, risWeight, rng))
 	{
+		// Only for debug purposes
+		//printf("hi");
 	}
 }
 
