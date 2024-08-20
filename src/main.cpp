@@ -18,7 +18,7 @@
 #include <graph/Pipeline.h>
 #include <graph/ShaderBindingTable.h>
 #include <model/Scene.h>
-#include <graph/SimpleRenderer.h>
+#include <graph/Renderer.h>
 #include <chrono>
 #include <cmath>
 #include <imgui.h>
@@ -104,7 +104,7 @@ static void HandleCamMove(const float deltaTime, Camera& cam)
 
 static void RenderAndDispay(
     OutputBuffer<glm::u8vec3>& outputBuffer, 
-    SimpleRenderer& renderer, 
+    Renderer& renderer, 
     DeviceBuffer<glm::vec3>& hdrBuffer,
     const uint32_t width,
     const uint32_t height)
@@ -179,7 +179,7 @@ int main()
     Scene scene(optixDeviceContext, modelInstances, emitters);
 
     // Renderer
-    SimpleRenderer renderer(width, height, optixDeviceContext, cam, scene);
+    Renderer renderer(width, height, optixDeviceContext, cam, scene);
 
     // Main loop
     ASSERT_CUDA(cudaDeviceSynchronize());
@@ -232,6 +232,7 @@ int main()
     }
 
     // End
+    Pipeline::CleanUp();
     Window::Destroy();
 
     return 0;

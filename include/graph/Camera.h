@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <cuda_runtime.h>
 
 struct CameraData
 {
@@ -9,6 +10,16 @@ struct CameraData
 	glm::mat4 currW2V;
 	glm::mat4 prevW2V;
 };
+
+static __forceinline__ __host__ __device__ void SpawnCameraRay(
+	const CameraData& camData,
+	const glm::vec2& viewportCoord,
+	glm::vec3& rayOrigin,
+	glm::vec3& rayDir)
+{
+	rayOrigin = camData.pos;
+	rayDir = glm::normalize(camData.U * viewportCoord.x + camData.V * viewportCoord.y + camData.W);
+}
 
 class Camera
 {

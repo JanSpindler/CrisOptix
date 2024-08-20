@@ -5,6 +5,25 @@
 #include <util/read_file.h>
 #include <graph/Interaction.h>
 
+void Pipeline::CleanUp()
+{
+    for (const auto& [filename, module] : m_ModuleCache)
+    {
+        optixModuleDestroy(module);
+    }
+}
+
+OptixProgramGroupDesc Pipeline::GetPgDesc(const ShaderEntryPointDesc& entryPoint, const OptixProgramGroupKind kind, const OptixDeviceContext context)
+{
+    const OptixModule ptxModule = GetCachedModule(entryPoint.ptx_filename, context);
+
+    OptixProgramGroupDesc prog_group_desc = {};
+    prog_group_desc.kind = kind;
+    prog_group_desc.raygen.module = ptxModule;
+    prog_group_desc.raygen.entryFunctionName = entryPoint.entrypoint_name.c_str();
+    return prog_group_desc;
+}
+
 Pipeline::Pipeline(OptixDeviceContext context) :
     m_Context { context }
 {
@@ -33,11 +52,6 @@ Pipeline::~Pipeline()
     {
         optixProgramGroupDestroy(prog_group);
     }
-
-    for (const auto & [ filename, module ] : m_ModuleCache)
-    {
-        optixModuleDestroy(module);
-    }
 }
 
 OptixProgramGroup Pipeline::CreateNewProgramGroup(const OptixProgramGroupDesc &prog_group_desc)
@@ -65,7 +79,7 @@ OptixProgramGroup Pipeline::GetCachedProgramGroup(const OptixProgramGroupDesc &p
 
 OptixProgramGroup Pipeline::AddRaygenShader(const ShaderEntryPointDesc &raygen_shader_desc)
 {
-    OptixModule ptx_module = GetCachedModule(raygen_shader_desc.ptx_filename);
+    OptixModule ptx_module = GetCachedModule(raygen_shader_desc.ptx_filename, m_Context);
 
     OptixProgramGroupDesc prog_group_desc    = {};
     prog_group_desc.kind                     = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
@@ -77,7 +91,7 @@ OptixProgramGroup Pipeline::AddRaygenShader(const ShaderEntryPointDesc &raygen_s
 
 OptixProgramGroup Pipeline::AddCallableShader(const ShaderEntryPointDesc &callable_shader_desc)
 {
-    OptixModule ptx_module = GetCachedModule(callable_shader_desc.ptx_filename);
+    OptixModule ptx_module = GetCachedModule(callable_shader_desc.ptx_filename, m_Context);
 
     // TODO directs VS continuation callable!!!
 
@@ -106,7 +120,7 @@ OptixProgramGroup Pipeline::AddCallableShader(const ShaderEntryPointDesc &callab
 
 OptixProgramGroup Pipeline::AddMissShader(const ShaderEntryPointDesc &miss_shader_desc)
 {
-    OptixModule ptx_module = GetCachedModule(miss_shader_desc.ptx_filename);
+    OptixModule ptx_module = GetCachedModule(miss_shader_desc.ptx_filename, m_Context);
 
     OptixProgramGroupDesc prog_group_desc  = {};
     prog_group_desc.kind                   = OPTIX_PROGRAM_GROUP_KIND_MISS;
@@ -118,8 +132,8 @@ OptixProgramGroup Pipeline::AddMissShader(const ShaderEntryPointDesc &miss_shade
 
 OptixProgramGroup Pipeline::AddTrianglesHitGroupShader(const ShaderEntryPointDesc &closestHit_shader_desc, const ShaderEntryPointDesc &anyHit_shader_desc)
 {
-    OptixModule ptx_module_ch = GetCachedModule(closestHit_shader_desc.ptx_filename);
-    OptixModule ptx_module_ah = GetCachedModule(anyHit_shader_desc.ptx_filename);
+    OptixModule ptx_module_ch = GetCachedModule(closestHit_shader_desc.ptx_filename, m_Context);
+    OptixModule ptx_module_ah = GetCachedModule(anyHit_shader_desc.ptx_filename, m_Context);
 
     OptixProgramGroupDesc prog_group_desc        = {};
     prog_group_desc.kind                         = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
@@ -133,9 +147,9 @@ OptixProgramGroup Pipeline::AddTrianglesHitGroupShader(const ShaderEntryPointDes
 
 OptixProgramGroup Pipeline::AddProceduralHitGroupShader(const ShaderEntryPointDesc &intersection_shader_desc, const ShaderEntryPointDesc &closestHit_shader_desc, const ShaderEntryPointDesc &anyHit_shader_desc)
 {
-    OptixModule ptx_module_ch = GetCachedModule(closestHit_shader_desc.ptx_filename);
-    OptixModule ptx_module_ah = GetCachedModule(anyHit_shader_desc.ptx_filename);
-    OptixModule ptx_module_is = GetCachedModule(intersection_shader_desc.ptx_filename);
+    OptixModule ptx_module_ch = GetCachedModule(closestHit_shader_desc.ptx_filename, m_Context);
+    OptixModule ptx_module_ah = GetCachedModule(anyHit_shader_desc.ptx_filename, m_Context);
+    OptixModule ptx_module_is = GetCachedModule(intersection_shader_desc.ptx_filename, m_Context);
 
     OptixProgramGroupDesc prog_group_desc        = {};
     prog_group_desc.kind                         = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
@@ -149,7 +163,12 @@ OptixProgramGroup Pipeline::AddProceduralHitGroupShader(const ShaderEntryPointDe
     return GetCachedProgramGroup(prog_group_desc);
 }
 
-OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
+void Pipeline::AddProgramGroup(const OptixProgramGroupDesc& prog_group_desc, const OptixProgramGroup pg)
+{
+    m_ProgramGroups[prog_group_desc] = pg;
+}
+
+OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename, const OptixDeviceContext context)
 {
     char   log[2048];  // For error reporting from OptiX creation functions
     size_t sizeof_log = sizeof(log);
@@ -163,7 +182,7 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
 
     std::vector<char> ptxSource = ReadFile("./CrisOptixShader.dir/Debug/" + ptx_filename);
     OptixResult result = optixModuleCreate(
-        m_Context,
+        context,
         &m_ModuleCompileOptions,
         &m_PipelineCompileOptions,
         ptxSource.data(),
@@ -179,10 +198,10 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename)
     return ptx_module;
 }
 
-OptixModule Pipeline::GetCachedModule(const std::string &ptx_filename)
+OptixModule Pipeline::GetCachedModule(const std::string &ptx_filename, const OptixDeviceContext context)
 {
     OptixModule &ptx_module = m_ModuleCache[ptx_filename];
-    if (ptx_module == nullptr) { ptx_module = CreateNewModule(ptx_filename); }
+    if (ptx_module == nullptr) { ptx_module = CreateNewModule(ptx_filename, context); }
     return ptx_module;
 }
 

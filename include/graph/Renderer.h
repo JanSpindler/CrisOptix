@@ -9,10 +9,10 @@
 #include <graph/restir/PrefixPath.h>
 #include <graph/restir/SuffixPath.h>
 
-class SimpleRenderer
+class Renderer
 {
 public:
-	SimpleRenderer(
+	Renderer(
 		const uint32_t width,
 		const uint32_t height,
 		const OptixDeviceContext optixDeviceContext, 
@@ -39,6 +39,11 @@ private:
 	DeviceBuffer<Reservoir<PrefixPath>> m_PrefixReservoirs{};
 	DeviceBuffer<Reservoir<SuffixPath>> m_SuffixReservoirs{};
 
-	Pipeline m_Pipeline;
+	Pipeline m_PrefixGenTempReusePipeline;
+	uint32_t m_PrefixGenTempReuseSbtIdx = 0;
+
+	Pipeline m_PrefixSpatialReusePipeline;
+	uint32_t m_PrefixSpatialReuseSbtIdx = 0;
+
 	ShaderBindingTable m_Sbt;
 };

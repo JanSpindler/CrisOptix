@@ -116,6 +116,9 @@ struct ShaderEntryPointDesc
 class Pipeline
 {
 public:
+    static void CleanUp();
+    static OptixProgramGroupDesc GetPgDesc(const ShaderEntryPointDesc& entryPoint, const OptixProgramGroupKind kind, const OptixDeviceContext context);
+
     Pipeline(OptixDeviceContext context);
     ~Pipeline();
 
@@ -125,27 +128,29 @@ public:
     OptixProgramGroup AddTrianglesHitGroupShader(const ShaderEntryPointDesc &closestHit_shader_desc, const ShaderEntryPointDesc &anyHit_shader_desc);
     OptixProgramGroup AddProceduralHitGroupShader(const ShaderEntryPointDesc &intersection_shader_desc, const ShaderEntryPointDesc &closestHit_shader_desc, const ShaderEntryPointDesc &anyHit_shader_desc);
 
+    void AddProgramGroup(const OptixProgramGroupDesc& prog_group_desc, const OptixProgramGroup pg);
+
     void CreatePipeline();
 
     constexpr OptixPipeline GetHandle() const { return m_Handle; }
 
 private:
-    OptixModule CreateNewModule(const std::string &ptx_filename);
-    OptixModule GetCachedModule(const std::string &ptx_filename);
+    static OptixModule CreateNewModule(const std::string &ptx_filename, const OptixDeviceContext context);
+    static OptixModule GetCachedModule(const std::string &ptx_filename, const OptixDeviceContext context);
 
     OptixProgramGroup CreateNewProgramGroup(const OptixProgramGroupDesc &prog_group_desc);
     OptixProgramGroup GetCachedProgramGroup(const OptixProgramGroupDesc &prog_group_desc);
 
 private:
-    OptixDeviceContext m_Context = nullptr;
+    static inline std::unordered_map<std::string, OptixModule> m_ModuleCache{};
 
-    std::unordered_map<std::string, OptixModule> m_ModuleCache{};
+    OptixDeviceContext m_Context = nullptr;
     std::unordered_map<OptixProgramGroupDescKey, OptixProgramGroup> m_ProgramGroups{};
 
-    OptixPipelineCompileOptions m_PipelineCompileOptions{};
-    OptixModuleCompileOptions   m_ModuleCompileOptions{};
-    OptixProgramGroupOptions    m_ProgramGroupOptions{};
-    OptixPipelineLinkOptions    m_PipelineLinkOptions{};
+    static inline OptixPipelineCompileOptions m_PipelineCompileOptions{};
+    static inline OptixModuleCompileOptions   m_ModuleCompileOptions{};
+    static inline OptixProgramGroupOptions    m_ProgramGroupOptions{};
+    static inline OptixPipelineLinkOptions    m_PipelineLinkOptions{};
 
     OptixPipeline m_Handle = nullptr;
 };

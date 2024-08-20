@@ -63,8 +63,8 @@ Model::~Model()
 
 void Model::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 {
-	if (m_ShaderAdded) { return; }
-	m_ShaderAdded = true;
+	//if (m_ShaderAdded) { return; }
+	//m_ShaderAdded = true;
 
 	// Call material before mesh
 	for (Material* material : m_Materials)

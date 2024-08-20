@@ -1,4 +1,4 @@
-#include <graph/SimpleRenderer.h>
+#include <graph/Renderer.h>
 #include <optix_stubs.h>
 #include <imgui.h>
 #include <glm/gtc/random.hpp>
@@ -9,7 +9,7 @@ static std::random_device r;
 static std::default_random_engine e1(r());
 static std::uniform_int_distribution<uint32_t> uniformDist(0, 0xFFFFFFFF);
 
-SimpleRenderer::SimpleRenderer(
+Renderer::Renderer(
 	const uint32_t width,
 	const uint32_t height,
 	const OptixDeviceContext optixDeviceContext, 
@@ -20,7 +20,8 @@ SimpleRenderer::SimpleRenderer(
 	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
-	m_Pipeline(optixDeviceContext),
+	m_PrefixGenTempReusePipeline(optixDeviceContext),
+	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
 	//
@@ -37,12 +38,38 @@ SimpleRenderer::SimpleRenderer(
 	m_LaunchParams.restir.suffixEnableTemporal = false;
 	m_LaunchParams.restir.suffixEnableSpatial = false;
 
-	//
-	const OptixProgramGroup raygenPG = m_Pipeline.AddRaygenShader({ "test.ptx", "__raygen__main" });
-	const OptixProgramGroup surfaceMissPG = m_Pipeline.AddMissShader({ "miss.ptx", "__miss__main" });
-	const OptixProgramGroup occlusionMissPG = m_Pipeline.AddMissShader({ "miss.ptx", "__miss__occlusion" });
-	
-	//
+	// Pipelines
+	// Miss
+	const ShaderEntryPointDesc surfaceMissEntryPointDesc = { "miss.ptx", "__miss__main" };
+	const ShaderEntryPointDesc occlusionMissEntryPointDesc = { "miss.ptx", "__miss__occlusion" };
+
+	const OptixProgramGroupDesc surfaceMissPgDesc = Pipeline::GetPgDesc(surfaceMissEntryPointDesc, OPTIX_PROGRAM_GROUP_KIND_MISS, optixDeviceContext);
+	const OptixProgramGroupDesc occlusionMissPgDesc = Pipeline::GetPgDesc(occlusionMissEntryPointDesc, OPTIX_PROGRAM_GROUP_KIND_MISS, optixDeviceContext);
+
+	const OptixProgramGroup surfaceMissPG = m_PrefixGenTempReusePipeline.AddMissShader(surfaceMissEntryPointDesc);
+	const OptixProgramGroup occlusionMissPG = m_PrefixGenTempReusePipeline.AddMissShader(occlusionMissEntryPointDesc);
+
+	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
+	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
+
+	// Prefix gen and temp reuse
+	const OptixProgramGroup prefixGenTempReusePG = m_PrefixGenTempReusePipeline.AddRaygenShader({ "prefix_gen_temp_reuse.ptx", "__raygen__prefix_gen_temp_reuse" });
+	m_PrefixGenTempReuseSbtIdx = m_Sbt.AddRaygenEntry(prefixGenTempReusePG);
+	m_Scene.AddShader(m_PrefixGenTempReusePipeline, m_Sbt);
+	m_PrefixGenTempReusePipeline.CreatePipeline();
+
+	// Prefix spatial reuse
+	const OptixProgramGroup prefixSpatialReusePG = m_PrefixSpatialReusePipeline.AddRaygenShader({ "prefix_spatial_reuse.ptx", "__raygen__prefix_spatial_reuse" });
+	m_PrefixSpatialReuseSbtIdx = m_Sbt.AddRaygenEntry(prefixSpatialReusePG);
+	m_Scene.AddShader(m_PrefixSpatialReusePipeline, m_Sbt);
+	m_PrefixSpatialReusePipeline.CreatePipeline();
+
+	// TODO: Make m_Scene.AddShader() more efficient (duplicates sbt entries for every pipeline)
+
+	// Sbt
+	m_Sbt.CreateSBT();
+
+	// LaunchParams buffers
 	const size_t pixelCount = width * height;
 	std::vector<Reservoir<PrefixPath>> prefixReservoirs(pixelCount);
 	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount);
@@ -58,19 +85,9 @@ SimpleRenderer::SimpleRenderer(
 
 	m_SuffixReservoirs.Alloc(pixelCount);
 	m_SuffixReservoirs.Upload(suffixReservoirs.data());
-
-	//
-	m_Sbt.AddRaygenEntry(raygenPG);
-	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
-	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
-
-	m_Scene.AddShader(m_Pipeline, m_Sbt);
-
-	m_Pipeline.CreatePipeline();
-	m_Sbt.CreateSBT();
 }
 
-void SimpleRenderer::RunImGui()
+void Renderer::RunImGui()
 {
 	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
 
@@ -97,8 +114,9 @@ void SimpleRenderer::RunImGui()
 	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
 }
 
-void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
+void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 {
+	// Launch params
 	++m_LaunchParams.frameIdx;
 	if (m_Cam.HasChanged() || !m_LaunchParams.enableAccum) { m_LaunchParams.frameIdx = 0; }
 
@@ -125,20 +143,40 @@ void SimpleRenderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
 	m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
+	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
+
+	// Prefix gen and temporal reuse
 	ASSERT_OPTIX(optixLaunch(
-		m_Pipeline.GetHandle(), 
+		m_PrefixGenTempReusePipeline.GetHandle(), 
 		0, 
 		m_LaunchParamsBuf.GetCuPtr(), 
 		m_LaunchParamsBuf.GetByteSize(),
-		m_Sbt.GetSBT(0),
+		m_Sbt.GetSBT(m_PrefixGenTempReuseSbtIdx),
 		m_Width, 
 		m_Height, 
 		1));
+
+	// Restir
+	if (m_LaunchParams.enableRestir)
+	{
+		// Prefix spatial reuse
+		ASSERT_OPTIX(optixLaunch(
+			m_PrefixSpatialReusePipeline.GetHandle(),
+			0,
+			m_LaunchParamsBuf.GetCuPtr(),
+			m_LaunchParamsBuf.GetByteSize(),
+			m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
+			m_Width,
+			m_Height,
+			1));
+	}
+
+	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }
 
-size_t SimpleRenderer::GetFrameIdx() const
+size_t Renderer::GetFrameIdx() const
 {
 	return m_LaunchParams.frameIdx;
 }
