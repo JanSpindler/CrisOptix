@@ -4,33 +4,45 @@
 #include <graph/LaunchParams.h>
 #include <graph/restir/path_gen.h>
 #include <util/pixel_index.h>
+#include <graph/restir/ris_helper.h>
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ void PrefixGen(
+static __forceinline__ __device__ SurfaceInteraction PrefixGen(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	PCG32& rng)
 {
 	// Trace new canonical prefix
-	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, rng, params);
+	SurfaceInteraction primaryInteraction{};
+	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, primaryInteraction, rng, params);
 
 	// Do not store if not valid
-	if (!prefix.valid) { return; }
+	if (!prefix.valid) { return {}; }
 
 	// Stream into res
 	const float pHat = GetLuminance(prefix.f);
 	const float risWeight = pHat / prefix.p;
-	const glm::vec3 fOverP = prefix.f / prefix.p;
-	prefixRes.Update(prefix, risWeight, fOverP, rng);
+	prefixRes.Update(prefix, risWeight, rng);
+
+	//
+	return primaryInteraction;
 }
 
 static __forceinline__ __device__ void PrefixTempReuse(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::uvec2& pixelCoord,
+	const SurfaceInteraction& primaryInteraction,
 	PCG32& rng)
 {
+	// Exit if current prefix is invalid
+	const PrefixPath& currPrefix = prefixRes.sample;
+	if (!currPrefix.valid) { return; }
+
+	// Exit if primary interaction is invalid
+	if (!primaryInteraction.valid) { return; }
+
 	// Get motion vector
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 	const glm::vec2 motionVector = params.motionVectors[pixelIdx];
@@ -50,6 +62,51 @@ static __forceinline__ __device__ void PrefixTempReuse(
 	if (!prevPrefix.valid || prevPrefix.len < params.restir.minPrefixLen) { return; }
 
 	// Reconnect after primary hit
+	// TODO: Support hybrid shift
+	if (prevPrefix.reconIdx != 2) { return; }
+
+	// Exit if occluded
+	const glm::vec3 reconDir = glm::normalize(prevPrefix.reconInteraction.pos - primaryInteraction.pos);
+	const float reconDist = glm::distance(prevPrefix.reconInteraction.pos, primaryInteraction.pos);
+	const bool occluded = TraceOcclusion(
+		params.traversableHandle,
+		primaryInteraction.pos,
+		reconDir,
+		1e-3f,
+		reconDist,
+		params.occlusionTraceParams);
+	if (occluded) { return; }
+
+	// Calc mis weights
+	const float jacobian = CalcReconnectionJacobian(
+		prevPrefix.primaryHitPos, 
+		primaryInteraction.pos, 
+		prevPrefix.reconInteraction.pos, 
+		prevPrefix.reconInteraction.normal);
+	const float pFromCurr = GetLuminance(currPrefix.f);
+	const float pFromPrev = CalcPFromI(GetLuminance(prevPrefix.f), 1.0f / jacobian);
+	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, prefixRes.confidence, pFromPrev, prevPrefixRes.confidence);
+
+	// Shift prefix path to target domain
+	// TODO: Add hybrid shift
+	// Evaluate brdf at primary interaction towards reconnection vertex
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+			primaryInteraction.meshSbtData->evalMaterialSbtIdx,
+			primaryInteraction,
+			reconDir);
+	
+	// Calc shifted f and p
+	const glm::vec3 shiftedF = brdfEvalResult.brdfResult * prevPrefix.postReconF;
+	const float shiftedP = brdfEvalResult.samplingPdf * glm::pow(1.0f - params.neeProb, static_cast<float>(prevPrefix.len - 1));
+
+	// Construct shifted PrefixPath
+	const PrefixPath shiftedPrefix = PrefixPath(prevPrefix, shiftedF, shiftedP, primaryInteraction.pos, primaryInteraction.inRayDir);
+
+	// Calc ris weight
+	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), prevPrefixRes.wSum, jacobian);
+
+	// Merge reservoirs
+	prefixRes.Merge(shiftedPrefix, prevPrefixRes.confidence, risWeight, rng);
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
@@ -83,11 +140,18 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	if (params.enableRestir)
 	{
 		Reservoir<PrefixPath> prefixRes{};
-		PrefixGen(prefixRes, origin, dir, rng);
-		PrefixTempReuse(prefixRes, pixelCoord, rng);
-		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
+		const SurfaceInteraction primaryInteraction = PrefixGen(prefixRes, origin, dir, rng);
 
-		outputRadiance = prefixRes.fOverP;
+		if (params.restir.prefixEnableTemporal)
+		{
+			PrefixTempReuse(prefixRes, pixelCoord, primaryInteraction, rng);
+		}
+
+		if (prefixRes.sample.valid)
+		{
+			params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
+			outputRadiance = prefixRes.sample.f / prefixRes.sample.p;
+		}
 	}
 	else
 	{

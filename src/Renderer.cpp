@@ -5,7 +5,7 @@
 #include <limits>
 #include <random>
 
-static std::random_device r;
+static std::random_device r{};
 static std::default_random_engine e1(r());
 static std::uniform_int_distribution<uint32_t> uniformDist(0, 0xFFFFFFFF);
 
@@ -29,11 +29,14 @@ Renderer::Renderer(
 
 	//
 	m_LaunchParams.restir.diEnableTemporal = false;
+	m_LaunchParams.restir.diEnableSpatial = false;
 	m_LaunchParams.restir.diCanonicalCount = 1;
-	m_LaunchParams.restir.diSpatialCount = 1;
+	m_LaunchParams.restir.diSpatialCount = 0;
 	m_LaunchParams.restir.diSpatialKernelSize = 1;
 
 	m_LaunchParams.restir.minPrefixLen = 2;
+	m_LaunchParams.restir.prefixEnableTemporal = false;
+	m_LaunchParams.restir.prefixEnableSpatial = false;
 
 	m_LaunchParams.restir.suffixEnableTemporal = false;
 	m_LaunchParams.restir.suffixEnableSpatial = false;
@@ -103,15 +106,17 @@ void Renderer::RunImGui()
 
 	// Restir DI
 	ImGui::Text("Restir DI");
-	ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
-	ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
-	ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
-	ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
-	ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
+	//ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
+	//ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
+	//ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
+	//ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
+	//ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
 
 	// Restir Prefix
 	ImGui::Text("Restir Prefix");
 	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.minPrefixLen, 1, 1);
+	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
+	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
 
 	// Restir Suffix
 	ImGui::Text("Restir Suffix");
@@ -167,15 +172,18 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	if (m_LaunchParams.enableRestir)
 	{
 		// Prefix spatial reuse
-		ASSERT_OPTIX(optixLaunch(
-			m_PrefixSpatialReusePipeline.GetHandle(),
-			0,
-			m_LaunchParamsBuf.GetCuPtr(),
-			m_LaunchParamsBuf.GetByteSize(),
-			m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
-			m_Width,
-			m_Height,
-			1));
+		if (m_LaunchParams.restir.prefixEnableSpatial)
+		{
+			ASSERT_OPTIX(optixLaunch(
+				m_PrefixSpatialReusePipeline.GetHandle(),
+				0,
+				m_LaunchParamsBuf.GetCuPtr(),
+				m_LaunchParamsBuf.GetByteSize(),
+				m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
+				m_Width,
+				m_Height,
+				1));
+		}
 	}
 
 	// Sync

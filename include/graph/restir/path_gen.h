@@ -25,17 +25,18 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	const glm::vec3& dir,
 	const size_t maxLen,
 	const size_t maxNeeTries,
+	SurfaceInteraction& primaryInteraction,
 	PCG32& rng,
 	const LaunchParams& params)
 {
 	glm::vec3 currentPos = origin;
 	glm::vec3 currentDir = dir;
-	//size_t currentDepth = 0;
 
 	PrefixPath prefix{};
 	prefix.rng = rng;
 	prefix.p = 1.0f;
 	prefix.f = glm::vec3(1.0f);
+	prefix.postReconF = glm::vec3(1.0f);
 	prefix.valid = true;
 	prefix.nee = false;
 	prefix.len = 0;
@@ -63,6 +64,17 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 		//
 		++prefix.len;
+		
+		//
+		if (prefix.len == 1)
+		{
+			prefix.primaryHitPos = interaction.pos; 
+			prefix.primaryHitInDir = dir;
+			primaryInteraction = interaction;
+		}
+
+		// TODO: Also include roughness
+		const bool postRecon = prefix.len > 1;
 
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < params.neeProb)
@@ -105,8 +117,12 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 						interaction.meshSbtData->evalMaterialSbtIdx,
 						interaction,
 						lightDir);
+					
 					prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+					if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+
 					if (prefix.len == 1) { prefix.f += brdfEvalResult.emission; }
+
 					prefix.nee = true;
 					prefix.valid = true;
 
@@ -123,6 +139,16 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
+		// Store as reconnection vertex if fit
+		if (postRecon)
+		{
+			prefix.reconInteraction = interaction;
+			prefix.reconIdx = prefix.len;
+		}
+
+		// Do not sample brdf when at last position
+		if (prefix.len == maxLen) { break; }
+
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
@@ -136,7 +162,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
 
-		prefix.f = brdfSampleResult.brdfVal / brdfSampleResult.samplingPdf;
+		prefix.f *= brdfSampleResult.brdfVal;
+		if (postRecon) { prefix.postReconF *= brdfSampleResult.brdfVal; }
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 	}
 

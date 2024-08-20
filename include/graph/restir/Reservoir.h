@@ -11,17 +11,15 @@ struct Reservoir
 	T sample;
 	float wSum;
 	float confidence;
-	glm::vec3 fOverP;
 
 	__forceinline__ __host__ __device__ Reservoir() :
 		sample(),
 		wSum(0.0f),
-		confidence(0.0f),
-		fOverP(0.0f)
+		confidence(0.0f)
 	{
 	}
 
-	__forceinline__ __host__ __device__ bool Update(const T& _sample, const float risWeight, const glm::vec3& _fOverP, PCG32& rng)
+	__forceinline__ __host__ __device__ bool Update(const T& _sample, const float risWeight, PCG32& rng)
 	{
 		wSum += risWeight;
 		
@@ -31,7 +29,6 @@ struct Reservoir
 		if (rng.NextFloat() < risWeight / wSum)
 		{
 			sample = _sample;
-			fOverP = _fOverP;
 			return true;
 		}
 		return false;
@@ -50,32 +47,24 @@ struct Reservoir
 		if (rng.NextFloat() < weight / wSum)
 		{
 			sample = inRes.sample;
-			fOverP = inRes.fOverP;
 			return true;
 		}
 
 		return false;
 	}
 
-	__forceinline__ __host__ __device__ bool Merge(
-		const Reservoir<T>& inRes, 
-		const glm::vec3& integrand, 
-		const float jacobian, 
-		const float misWeight, 
-		PCG32& rng)
+	__forceinline__ __host__ __device__ bool Merge(const T& sampleTgtDom, const float inConfidence, float risWeight, PCG32& rng)
 	{
-		float weight = GetLuminance(integrand) * jacobian * inRes.wSum * misWeight;
-		if (glm::isnan(weight) || glm::isinf(weight)) { weight = 0.0f; }
+		if (glm::isnan(risWeight) || glm::isinf(risWeight)) { risWeight = 0.0f; }
 
-		wSum = weight;
+		wSum += risWeight;
 
-		confidence += inRes.confidence;
+		confidence += inConfidence;
 		confidence = glm::min(confidence, CONFIDENCE_MAX);
 
-		if (rng.NextFloat() < weight / wSum)
+		if (rng.NextFloat() < risWeight / wSum)
 		{
-			sample = inRes.sample;
-			fOverP = inRes.fOverP;
+			sample = sampleTgtDom;
 			return true;
 		}
 

@@ -19,6 +19,9 @@ struct RestirParams
 	int minPrefixLen;
 	uint32_t maxReconLength;
 
+	bool prefixEnableTemporal;
+	bool prefixEnableSpatial;
+
 	// Suffix
 	bool suffixEnableTemporal;
 	bool suffixEnableSpatial;
