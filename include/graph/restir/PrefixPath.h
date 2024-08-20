@@ -6,10 +6,19 @@
 
 struct PrefixPath
 {
+	// True if prefix is a valid path
 	bool valid;
+
+	// True if prefix was terminated early by NEE
 	bool nee;
 
-	SurfaceInteraction lastInteraction;
+	// Interaction at first vertex fit for prefix reconnection
+	SurfaceInteraction reconInteraction;
+
+	// Index of first vertex fit for prefix reconnection
+	uint32_t reconIdx;
+
+	// Random number generator state before prefix was generated
 	PCG32 rng;
 
 	// Throughput or radiance if nee hit.
@@ -24,7 +33,8 @@ struct PrefixPath
 	__forceinline__ __device__ __host__ PrefixPath() :
 		valid(false),
 		nee(false),
-		lastInteraction({}),
+		reconInteraction({}),
+		reconIdx(0),
 		rng({}),
 		f(0.0f),
 		p(0.0f),
