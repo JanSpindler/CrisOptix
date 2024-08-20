@@ -140,7 +140,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		}
 
 		// Store as reconnection vertex if fit
-		if (postRecon)
+		if (postRecon && prefix.reconIdx == 0)
 		{
 			prefix.reconInteraction = interaction;
 			prefix.reconIdx = prefix.len;

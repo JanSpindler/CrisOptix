@@ -106,7 +106,9 @@ static __forceinline__ __device__ void PrefixTempReuse(
 	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), prevPrefixRes.wSum, jacobian);
 
 	// Merge reservoirs
-	prefixRes.Merge(shiftedPrefix, prevPrefixRes.confidence, risWeight, rng);
+	if (prefixRes.Merge(shiftedPrefix, prevPrefixRes.confidence, risWeight, rng))
+	{
+	}
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
