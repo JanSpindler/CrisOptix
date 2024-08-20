@@ -38,6 +38,7 @@ private:
 
 	DeviceBuffer<Reservoir<PrefixPath>> m_PrefixReservoirs{};
 	DeviceBuffer<Reservoir<SuffixPath>> m_SuffixReservoirs{};
+	DeviceBuffer<glm::vec2> m_MotionVectors{};
 
 	Pipeline m_PrefixGenTempReusePipeline;
 	uint32_t m_PrefixGenTempReuseSbtIdx = 0;

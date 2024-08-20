@@ -73,11 +73,13 @@ Renderer::Renderer(
 	const size_t pixelCount = width * height;
 	std::vector<Reservoir<PrefixPath>> prefixReservoirs(pixelCount);
 	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount);
+	std::vector<glm::vec2> motionVectors(pixelCount);
 
 	for (size_t idx = 0; idx < pixelCount; ++idx)
 	{
 		prefixReservoirs[idx] = Reservoir<PrefixPath>();
 		suffixReservoirs[idx] = Reservoir<SuffixPath>();
+		motionVectors[idx] = glm::vec2(0.0f);
 	}
 
 	m_PrefixReservoirs.Alloc(pixelCount);
@@ -85,6 +87,9 @@ Renderer::Renderer(
 
 	m_SuffixReservoirs.Alloc(pixelCount);
 	m_SuffixReservoirs.Upload(suffixReservoirs.data());
+
+	m_MotionVectors.Alloc(pixelCount);
+	m_MotionVectors.Upload(motionVectors.data());
 }
 
 void Renderer::RunImGui()
@@ -131,6 +136,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
+	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
 
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;

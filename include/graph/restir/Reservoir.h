@@ -8,27 +8,20 @@ static constexpr float CONFIDENCE_MAX = 20.0f;
 template <typename T>
 struct Reservoir
 {
-	T currentSample;
+	T sample;
 	float wSum;
 	float confidence;
-	glm::vec3 currentIntegrand; // f / p
+	glm::vec3 fOverP;
 
 	__forceinline__ __host__ __device__ Reservoir() :
+		sample(),
 		wSum(0.0f),
 		confidence(0.0f),
-		currentIntegrand(0.0f)
+		fOverP(0.0f)
 	{
 	}
 
-	__forceinline__ __host__ __device__ Reservoir(const T& sample) :
-		T(sample),
-		wSum(0.0f),
-		confidence(0.0f),
-		currentIntegrand(0.0f)
-	{
-	}
-
-	__forceinline__ __host__ __device__ bool Update(const T& sample, const float risWeight, const glm::vec3& integrand, PCG32& rng)
+	__forceinline__ __host__ __device__ bool Update(const T& _sample, const float risWeight, const glm::vec3& _fOverP, PCG32& rng)
 	{
 		wSum += risWeight;
 		
@@ -37,8 +30,8 @@ struct Reservoir
 
 		if (rng.NextFloat() < risWeight / wSum)
 		{
-			currentSample = sample;
-			currentIntegrand = integrand;
+			sample = _sample;
+			fOverP = _fOverP;
 			return true;
 		}
 		return false;
@@ -56,8 +49,8 @@ struct Reservoir
 
 		if (rng.NextFloat() < weight / wSum)
 		{
-			currentSample = inRes.currentSample;
-			currentIntegrand = inRes.currentIntegrand;
+			sample = inRes.sample;
+			fOverP = inRes.fOverP;
 			return true;
 		}
 
@@ -81,8 +74,8 @@ struct Reservoir
 
 		if (rng.NextFloat() < weight / wSum)
 		{
-			currentSample = inRes.currentSample;
-			currentIntegrand = integrand;
+			sample = inRes.sample;
+			fOverP = inRes.fOverP;
 			return true;
 		}
 

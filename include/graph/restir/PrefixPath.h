@@ -10,17 +10,23 @@ struct PrefixPath
 	bool nee;
 
 	SurfaceInteraction lastInteraction;
-	
-	glm::vec3 throughput;
+	PCG32 rng;
+
+	// Throughput or radiance if nee hit.
+	glm::vec3 f;
+
+	// Sampling pdf
 	float p;
 
+	// Vertex count starting at primary hit. Does not include NEE hit.
 	uint32_t len;
 
 	__forceinline__ __device__ __host__ PrefixPath() :
 		valid(false),
 		nee(false),
 		lastInteraction({}),
-		throughput(0.0f),
+		rng({}),
+		f(0.0f),
 		p(0.0f),
 		len(0)
 	{
