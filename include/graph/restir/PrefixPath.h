@@ -39,6 +39,9 @@ struct PrefixPath
 	// Vertex count starting at primary hit. Does not include NEE hit.
 	uint32_t len;
 
+	// Interaction at last vertex (used for generating and reconnection with suffix)
+	SurfaceInteraction lastInteraction;
+
 	__forceinline__ __device__ __host__ PrefixPath() :
 		valid(false),
 		nee(false),
@@ -49,7 +52,8 @@ struct PrefixPath
 		rng({}),
 		f(0.0f),
 		p(0.0f),
-		len(0)
+		len(0),
+		lastInteraction({})
 	{
 	}
 
@@ -70,7 +74,8 @@ struct PrefixPath
 		f(_f),
 		postReconF(other.postReconF),
 		p(_p),
-		len(other.len)
+		len(other.len),
+		lastInteraction(other.lastInteraction)
 	{
 	}
 };

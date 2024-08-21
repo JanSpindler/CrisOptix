@@ -4,16 +4,6 @@
 #include <model/Mesh.h>
 #include <cuda_runtime.h>
 
-// TODO: Use + Check if normal is needed
-struct RestirInteraction
-{
-	bool valid;
-	glm::vec3 inRayDir;
-	glm::vec3 pos;
-	glm::vec3 normal;
-	const MeshSbtData* meshSbtData;
-};
-
 struct SurfaceInteraction
 {
 	bool valid;

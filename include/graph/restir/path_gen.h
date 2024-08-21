@@ -19,7 +19,6 @@ static __forceinline__ __device__ float CalcReconnectionJacobian(
 	return term1 * term2;
 }
 
-
 static __forceinline__ __device__ PrefixPath TracePrefix(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
@@ -168,6 +167,202 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	}
 
 	return prefix;
+}
+
+static __forceinline__ __device__ SuffixPath TraceSuffix(
+	const PrefixPath& prefix,
+	const size_t maxLen,
+	const size_t maxNeeTries,
+	PCG32& rng,
+	const LaunchParams& params)
+{
+	SuffixPath suffix{};
+	suffix.f = glm::vec3(1.0f);
+	suffix.p = 1.0f;
+	suffix.postReconF = glm::vec3(1.0f);
+	suffix.len = 0;
+	suffix.rng = rng;
+	suffix.valid = true;
+
+	// Suffix may directly terminate by NEE
+	if (rng.NextFloat() < params.neeProb)
+	{
+		//
+		suffix.p *= params.neeProb;
+
+		// NEE
+		bool validEmitterFound = false;
+		size_t neeCounter = 0;
+		while (!validEmitterFound && neeCounter < maxNeeTries)
+		{
+			//
+			++neeCounter;
+
+			// Sample light source
+			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastInteraction.pos);
+			const float distance = glm::length(emitterSample.pos - prefix.lastInteraction.pos);
+
+			// Cast shadow ray
+			const bool occluded = TraceOcclusion(
+				params.traversableHandle,
+				prefix.lastInteraction.pos,
+				lightDir,
+				1e-3f,
+				distance,
+				params.occlusionTraceParams);
+
+			// If emitter is occluded -> skip
+			if (occluded)
+			{
+				validEmitterFound = false;
+			}
+			// If emitter is not occluded -> end NEE
+			else
+			{
+				// Calc brdf
+				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+					prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
+					prefix.lastInteraction,
+					lightDir);
+
+				suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+				suffix.postReconF = glm::vec3(0.0f);
+
+				suffix.valid = true;
+				validEmitterFound = true;
+			}
+		}
+
+		if (!validEmitterFound) { suffix.valid = false; }
+
+		return suffix;
+	}
+
+	// If not directly terminated by NEE -> Sample direction from brdf at last vertex of prefix
+	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+		prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
+		prefix.lastInteraction,
+		rng);
+	if (brdfSampleResult.samplingPdf <= 0.0f)
+	{
+		suffix.valid = false;
+		return suffix;
+	}
+
+	glm::vec3 currentPos = prefix.lastInteraction.pos;
+	glm::vec3 currentDir = brdfSampleResult.outDir;
+	suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+
+	// Trace
+	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
+	{
+		// Sample surface interaction
+		SurfaceInteraction interaction{};
+		TraceWithDataPointer<SurfaceInteraction>(
+			params.traversableHandle,
+			currentPos,
+			currentDir,
+			1e-3f,
+			1e16f,
+			params.surfaceTraceParams,
+			&interaction);
+
+		// Exit if no surface found
+		if (!interaction.valid)
+		{
+			suffix.valid = false;
+			return suffix;
+		}
+
+		//
+		++suffix.len;
+
+		// TODO: Also include roughness
+		const bool postRecon = suffix.len > 0;
+
+		// Decide if NEE or continue PT
+		if (rng.NextFloat() < params.neeProb)
+		{
+			//
+			suffix.p *= params.neeProb;
+
+			// NEE
+			bool validEmitterFound = false;
+			size_t neeCounter = 0;
+			while (!validEmitterFound && neeCounter < maxNeeTries)
+			{
+				//
+				++neeCounter;
+
+				// Sample light source
+				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+				const float distance = glm::length(emitterSample.pos - interaction.pos);
+
+				// Cast shadow ray
+				const bool occluded = TraceOcclusion(
+					params.traversableHandle,
+					interaction.pos,
+					lightDir,
+					1e-3f,
+					distance,
+					params.occlusionTraceParams);
+
+				// If emitter is occluded -> skip
+				if (occluded)
+				{
+					validEmitterFound = false;
+				}
+				// If emitter is not occluded -> end NEE
+				else
+				{
+					// Calc brdf
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+						interaction.meshSbtData->evalMaterialSbtIdx,
+						interaction,
+						lightDir);
+
+					suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+					if (postRecon) { suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+
+					suffix.valid = true;
+					validEmitterFound = true;
+				}
+			}
+
+			if (!validEmitterFound) { suffix.valid = false; }
+
+			return suffix;
+		}
+
+		// Store as reconnection vertex if fit
+		if (postRecon && suffix.reconIdx == 0)
+		{
+			suffix.reconInteraction = interaction;
+			suffix.reconIdx = prefix.len;
+		}
+
+		// Indirect illumination, generate next ray
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+			interaction.meshSbtData->sampleMaterialSbtIdx,
+			interaction,
+			rng);
+		if (brdfSampleResult.samplingPdf <= 0.0f)
+		{
+			suffix.valid = false;
+			return suffix;
+		}
+
+		currentPos = interaction.pos;
+		currentDir = brdfSampleResult.outDir;
+
+		suffix.f *= brdfSampleResult.brdfVal;
+		if (postRecon) { suffix.postReconF *= brdfSampleResult.brdfVal; }
+		suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+	}
+
+	return suffix;
 }
 
 static __forceinline__ __device__ glm::vec3 TraceCompletePath(
