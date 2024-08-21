@@ -8,6 +8,7 @@
 #include <graph/restir/Reservoir.h>
 #include <graph/restir/PrefixPath.h>
 #include <graph/restir/SuffixPath.h>
+#include <graph/restir/PrefixAccelStruct.h>
 
 class Renderer
 {
@@ -15,8 +16,8 @@ public:
 	Renderer(
 		const uint32_t width,
 		const uint32_t height,
-		const OptixDeviceContext optixDeviceContext, 
-		Camera& cam, 
+		const OptixDeviceContext optixDeviceContext,
+		Camera& cam,
 		const Scene& scene);
 
 	void RunImGui();
@@ -41,6 +42,8 @@ private:
 	DeviceBuffer<RestirGBuffer> m_RestirGBuffers{};
 	DeviceBuffer<glm::vec2> m_MotionVectors{};
 
+	PrefixAccelStruct m_PrefixAccelStruct;
+
 	Pipeline m_PrefixGenTempReusePipeline;
 	uint32_t m_PrefixGenTempReuseSbtIdx = 0;
 
@@ -52,6 +55,9 @@ private:
 
 	Pipeline m_SuffixSpatialReusePipeline;
 	uint32_t m_SuffixSpatialReuseSbtIdx = 0;
+
+	Pipeline m_FinalGatherPipeline;
+	uint32_t m_FinalGatherSbtIdx = 0;
 
 	ShaderBindingTable m_Sbt;
 };

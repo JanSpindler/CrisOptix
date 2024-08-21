@@ -58,10 +58,8 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 	}
 
 	// Init RNG
-	// TODO: Other seed for each raygen
 	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
-	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
-	PCG32 rng(seed);
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
 	// Spatial prefix reuse
 	PrefixSpatialReuse(pixelCoord, rng);

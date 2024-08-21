@@ -94,17 +94,20 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		// Calc prev pixel coord
 		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
 
-		// Store restir g buffer
-		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord);
-
 		// Perform temporal prefix reuse if requested and if previous pixel is valid
 		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
 		{
 			PrefixTempReuse(prefixRes, prevPixelCoord, primaryInteraction, rng);
 		}
 
+		// Store restir g buffer
+		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord, rng);
+
 		// Store prefix reservoir
 		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
+
+		// Clear screen
+		params.outputBuffer[pixelIdx] = glm::vec3(0.0f);
 	}
 	// If not restir
 	else

@@ -20,10 +20,12 @@ Renderer::Renderer(
 	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
+	m_PrefixAccelStruct(width * height, optixDeviceContext),
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_SuffixGenTempReusePipeline(optixDeviceContext),
 	m_SuffixSpatialReusePipeline(optixDeviceContext),
+	m_FinalGatherPipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
 	//
@@ -42,6 +44,9 @@ Renderer::Renderer(
 
 	m_LaunchParams.restir.suffixEnableTemporal = false;
 	m_LaunchParams.restir.suffixEnableSpatial = false;
+
+	m_LaunchParams.restir.gatherN = 1;
+	m_LaunchParams.restir.gatherK = 1;
 
 	// Pipelines
 	// Miss
@@ -93,6 +98,16 @@ Renderer::Renderer(
 
 	m_Scene.AddShader(m_SuffixSpatialReusePipeline, m_Sbt);
 	m_SuffixSpatialReusePipeline.CreatePipeline();
+
+	// Final gather
+	const OptixProgramGroup finalGatherPG = m_FinalGatherPipeline.AddRaygenShader({ "final_gather.ptx", "__raygen__final_gather" });
+	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
+
+	m_FinalGatherPipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
+	m_FinalGatherPipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
+
+	m_Scene.AddShader(m_FinalGatherPipeline, m_Sbt);
+	m_FinalGatherPipeline.CreatePipeline();
 
 	// TODO: Make m_Scene.AddShader() more efficient (duplicates sbt entries for every pipeline)
 
@@ -154,6 +169,11 @@ void Renderer::RunImGui()
 	ImGui::Text("Restir Suffix");
 	ImGui::Checkbox("Suffix Enable Temportal", &m_LaunchParams.restir.suffixEnableTemporal);
 	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
+
+	// Restir final gather
+	ImGui::Text("Restir Final Gather");
+	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
+	ImGui::InputInt("Final Gather K", &m_LaunchParams.restir.gatherK, 1, 4);
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -242,6 +262,17 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Height,
 				1));
 		}
+
+		// Final gather
+		ASSERT_OPTIX(optixLaunch(
+			m_FinalGatherPipeline.GetHandle(),
+			0,
+			m_LaunchParamsBuf.GetCuPtr(),
+			m_LaunchParamsBuf.GetByteSize(),
+			m_Sbt.GetSBT(m_FinalGatherSbtIdx),
+			m_Width,
+			m_Height,
+			1));
 	}
 
 	// Sync

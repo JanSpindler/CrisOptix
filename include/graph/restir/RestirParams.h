@@ -5,6 +5,7 @@
 #include <graph/restir/PrefixPath.h>
 #include <graph/restir/SuffixPath.h>
 #include <graph/restir/RestirGBuffer.h>
+#include <graph/restir/PrefixAccelStruct.h>
 
 struct RestirParams
 {
@@ -27,10 +28,13 @@ struct RestirParams
 	bool suffixEnableTemporal;
 	bool suffixEnableSpatial;
 
-	//CuBufferView<PathReservoir> pathReservoirs;
+	// Final gather
+	int gatherN;
+	int gatherK;
+
+	// Buffers
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;
 	CuBufferView<Reservoir<SuffixPath>> suffixReservoirs;
 	CuBufferView<RestirGBuffer> restirGBuffers;
-	//CuBufferView<SurfaceInteraction> primaryInteractions;
-	//CuBufferView<PrefixGBuffer> prefixGBuffers;
+	CuBufferView<PrefixEntry> prefixEntries;
 };

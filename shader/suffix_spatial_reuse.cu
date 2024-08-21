@@ -63,8 +63,7 @@ extern "C" __global__ void __raygen__suffix_spatial_reuse()
 	}
 
 	// Init RNG
-	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
-	PCG32 rng(seed);
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
 	// Spatial suffix reuse
 	SuffixSpatialReuse(pixelCoord, rng);
