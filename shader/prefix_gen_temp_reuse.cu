@@ -34,6 +34,7 @@ static __forceinline__ __device__ SurfaceInteraction PrefixGen(
 static __forceinline__ __device__ void PrefixTempReuse(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::uvec2& pixelCoord,
+	const glm::uvec2& prevPixelCoord,
 	const SurfaceInteraction& primaryInteraction,
 	PCG32& rng)
 {
@@ -43,16 +44,6 @@ static __forceinline__ __device__ void PrefixTempReuse(
 
 	// Exit if primary interaction is invalid
 	if (!primaryInteraction.valid) { return; }
-
-	// Get motion vector
-	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
-	const glm::vec2 motionVector = params.motionVectors[pixelIdx];
-
-	// Calc prev pixel coord
-	const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
-
-	// Exit if prev pixel coord is invalid
-	if (!IsPixelValid(prevPixelCoord, params)) { return; }
 
 	// Get previous prefix res
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
@@ -90,29 +81,44 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
+	// If restir
 	if (params.enableRestir)
 	{
+		// Generate canonical prefix and stream into new reservoir
 		Reservoir<PrefixPath> prefixRes{};
 		const SurfaceInteraction primaryInteraction = PrefixGen(prefixRes, origin, dir, rng);
 
-		if (params.restir.prefixEnableTemporal)
+		// Get motion vector
+		const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
+		const glm::vec2 motionVector = params.motionVectors[pixelIdx];
+
+		// Calc prev pixel coord
+		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
+
+		// Perform temporal prefix reuse if requested and if previous pixel is valid
+		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
 		{
-			PrefixTempReuse(prefixRes, pixelCoord, primaryInteraction, rng);
+			PrefixTempReuse(prefixRes, pixelCoord, prevPixelCoord, primaryInteraction, rng);
 		}
 
+		// If the resampled prefix is valid
 		if (prefixRes.sample.valid)
 		{
+			// Store prefix reservoir and restir g buffer
 			params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
-			params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction);
+			params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord);
 			outputRadiance = prefixRes.sample.f / prefixRes.sample.p;
 		}
 	}
+	// If not restir
 	else
 	{
+		// Perform normal path tracing
 		outputRadiance = TraceCompletePath(origin, dir, 8, 8, rng, params);
 	}
 
 	// Store radiance output
+	// TODO: Move accumulation is separate pass at the very end
 	if (params.enableAccum)
 	{
 		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
