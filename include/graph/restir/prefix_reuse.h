@@ -61,7 +61,9 @@ static __forceinline__ __device__ void PrefixReuse(
 
 	// Calc shifted f and p
 	const glm::vec3 shiftedF = brdfEvalResult.brdfResult * otherPrefix.postReconF;
-	const float shiftedP = brdfEvalResult.samplingPdf * glm::pow(1.0f - params.neeProb, static_cast<float>(otherPrefix.len - 1));
+	const float shiftedP = 
+		//brdfEvalResult.samplingPdf * 
+		glm::pow(1.0f - params.neeProb, static_cast<float>(otherPrefix.len - 1));
 
 	// Construct shifted PrefixPath
 	const PrefixPath shiftedPrefix = PrefixPath(otherPrefix, shiftedF, shiftedP, primaryInteraction.pos, primaryInteraction.inRayDir);

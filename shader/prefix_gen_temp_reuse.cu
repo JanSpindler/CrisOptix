@@ -116,7 +116,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		outputRadiance = TraceCompletePath(origin, dir, 8, 8, rng, params);
 
 		// Store radiance output
-		// TODO: Implement accum in seperate shader
 		if (params.enableAccum)
 		{
 			const glm::vec3 oldVal = params.outputBuffer[pixelIdx];

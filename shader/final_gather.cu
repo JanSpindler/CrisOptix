@@ -24,10 +24,12 @@ extern "C" __global__ void __raygen__final_gather()
 	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
 
-	//
+
+	// Get prefix and suffix from this pixels restir
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx].sample;
 
+	// Display complete path contribution
 	glm::vec3 outputRadiance(0.0f);
 	if (prefix.valid)
 	{
@@ -41,5 +43,15 @@ extern "C" __global__ void __raygen__final_gather()
 		}
 	}
 
-	params.outputBuffer[pixelIdx] = outputRadiance;
+	// Accum
+	if (params.enableAccum)
+	{
+		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+		const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+		params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+	}
+	else
+	{
+		params.outputBuffer[pixelIdx] = outputRadiance;
+	}
 }
