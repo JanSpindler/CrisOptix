@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <graph/LaunchParams.h>
 #include <graph/restir/ris_helper.h>
+#include <graph/restir/path_gen.h>
 
 static __forceinline__ __device__ void SuffixReuse(
 	Reservoir<SuffixPath>& currRes,
@@ -23,9 +24,14 @@ static __forceinline__ __device__ void SuffixReuse(
 	// TODO: Support hybrid shift
 	if (otherSuffix.reconIdx > 1) { return; }
 
-	// Exit if occluded
+	// Calc recon vector
 	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconInteraction.pos - prefix.lastInteraction.pos);
 	const float reconDist = glm::distance(otherSuffix.reconInteraction.pos, prefix.lastInteraction.pos);
+
+	// Exit if reconnection vector is invalid
+	if (glm::isinf(reconDist) || glm::isnan(reconDist) || reconDist < 1e-2f) { return; }
+
+	// Check occlusion
 	const bool occluded = TraceOcclusion(
 		params.traversableHandle,
 		prefix.lastInteraction.pos,

@@ -63,6 +63,6 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
 
-	//
+	// Spatial prefix reuse
 	PrefixSpatialReuse(pixelCoord, rng);
 }
