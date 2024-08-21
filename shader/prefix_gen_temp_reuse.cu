@@ -106,38 +106,24 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 
 		// Store prefix reservoir
 		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
-	
-		// If the resampled prefix is valid
-		const PrefixPath& prefix = prefixRes.sample;
-		if (prefix.valid)
-		{
-			const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.len, 8, rng, params);
-
-			// Display prefix contribution
-			//outputRadiance = prefix.f / prefix.p;
-			
-			if (suffix.valid)
-			{
-				outputRadiance = (prefix.f * suffix.f) / (prefix.p * suffix.p);
-			}
-		}
 	}
 	// If not restir
 	else
 	{
 		// Perform normal path tracing
 		outputRadiance = TraceCompletePath(origin, dir, 8, 8, rng, params);
-	}
 
-	// Store radiance output
-	if (params.enableAccum)
-	{
-		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
-		const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
-		params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
-	}
-	else
-	{
-		params.outputBuffer[pixelIdx] = outputRadiance;
+		// Store radiance output
+		// TODO: Implement accum in seperate shader
+		if (params.enableAccum)
+		{
+			const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+			const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+			params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+		}
+		else
+		{
+			params.outputBuffer[pixelIdx] = outputRadiance;
+		}
 	}
 }
