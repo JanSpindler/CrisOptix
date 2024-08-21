@@ -68,6 +68,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
 	const glm::uvec2 pixelCoord = glm::uvec2(launchIdx);
+	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Exit if invalid launch idx
 	if (launchIdx.x >= params.width || launchIdx.y >= params.height || launchIdx.z >= 1)
@@ -76,7 +77,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	}
 
 	// Init RNG
-	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
 	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
 
@@ -103,6 +103,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		if (prefixRes.sample.valid)
 		{
 			params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
+			params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction);
 			outputRadiance = prefixRes.sample.f / prefixRes.sample.p;
 		}
 	}

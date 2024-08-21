@@ -15,6 +15,9 @@ static __forceinline__ __device__ void PrefixReuse(
 {
 	// Assume: res and res.sample are valid
 
+	// Exit if primary interaction is invalid
+	if (!primaryInteraction.valid) { return; }
+
 	// Get prefixes from res
 	const PrefixPath& currPrefix = res.sample;
 	const PrefixPath& otherPrefix = otherRes.sample;
