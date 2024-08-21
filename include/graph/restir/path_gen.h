@@ -352,7 +352,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		if (postRecon && suffix.reconIdx == 0)
 		{
 			suffix.reconInteraction = interaction;
-			suffix.reconIdx = prefix.len;
+			suffix.reconIdx = suffix.len;
 		}
 
 		// Indirect illumination, generate next ray
