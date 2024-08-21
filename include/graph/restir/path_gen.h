@@ -44,7 +44,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
-		SurfaceInteraction interaction{};
 		TraceWithDataPointer<SurfaceInteraction>(
 			params.traversableHandle,
 			currentPos,
@@ -52,10 +51,10 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
-			&interaction);
+			&prefix.lastInteraction);
 
 		// Exit if no surface found
-		if (!interaction.valid)
+		if (!prefix.lastInteraction.valid)
 		{
 			prefix.valid = false;
 			break;
@@ -67,9 +66,9 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		//
 		if (prefix.len == 1)
 		{
-			prefix.primaryHitPos = interaction.pos; 
+			prefix.primaryHitPos = prefix.lastInteraction.pos; 
 			prefix.primaryHitInDir = dir;
-			primaryInteraction = interaction;
+			primaryInteraction = prefix.lastInteraction;
 		}
 
 		// TODO: Also include roughness
@@ -91,13 +90,13 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 				// Sample light source
 				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
-				const float distance = glm::length(emitterSample.pos - interaction.pos);
+				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastInteraction.pos);
+				const float distance = glm::length(emitterSample.pos - prefix.lastInteraction.pos);
 
 				// Cast shadow ray
 				const bool occluded = TraceOcclusion(
 					params.traversableHandle,
-					interaction.pos,
+					prefix.lastInteraction.pos,
 					lightDir,
 					1e-3f,
 					distance,
@@ -113,8 +112,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 				{
 					// Calc brdf
 					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
-						interaction.meshSbtData->evalMaterialSbtIdx,
-						interaction,
+						prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
+						prefix.lastInteraction,
 						lightDir);
 					
 					prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
@@ -141,7 +140,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		// Store as reconnection vertex if fit
 		if (postRecon && prefix.reconIdx == 0)
 		{
-			prefix.reconInteraction = interaction;
+			prefix.reconInteraction = prefix.lastInteraction;
 			prefix.reconIdx = prefix.len;
 		}
 
@@ -150,15 +149,16 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
-			interaction.meshSbtData->sampleMaterialSbtIdx,
-			interaction,
+			prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
+			prefix.lastInteraction,
 			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f)
 		{
+			prefix.valid = false;
 			break;
 		}
 
-		currentPos = interaction.pos;
+		currentPos = prefix.lastInteraction.pos;
 		currentDir = brdfSampleResult.outDir;
 
 		prefix.f *= brdfSampleResult.brdfVal;
@@ -182,7 +182,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.postReconF = glm::vec3(1.0f);
 	suffix.len = 0;
 	suffix.rng = rng;
-	suffix.valid = true;
+	suffix.valid = false;
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -235,7 +235,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		}
 
 		if (!validEmitterFound) { suffix.valid = false; }
-
 		return suffix;
 	}
 
@@ -252,6 +251,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 	glm::vec3 currentPos = prefix.lastInteraction.pos;
 	glm::vec3 currentDir = brdfSampleResult.outDir;
+	suffix.f *= brdfSampleResult.brdfVal;
 	suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 
 	// Trace
@@ -332,7 +332,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			}
 
 			if (!validEmitterFound) { suffix.valid = false; }
-
 			return suffix;
 		}
 

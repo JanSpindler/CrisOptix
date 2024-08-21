@@ -13,14 +13,24 @@ static __forceinline__ __device__ void SuffixGen(
 	const PrefixPath& prefix,
 	PCG32& rng)
 {
-	// Return invalid suffix if prefix already terminated into NEE before
-	if (prefix.nee) { return; }
+	// Assume: Prefix is valid and can be used to generate a suffix
 
+	// Trace canonical suffix
 	const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.len, 8, rng, params);
+
+	// Do not store if not valid
+	if (!suffix.valid) { return; }
+
+	// Stream into reservoir
+	const float pHat = GetLuminance(suffix.f);
+	const float risWeight = pHat / suffix.p;
+	suffixRes.Update(suffix, risWeight, rng);
 }
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 {
+	return;
+
 	// Sanity check
 	if (!params.enableRestir) { return; }
 
@@ -36,6 +46,9 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 		return;
 	}
 
+	// Exit if there is no primary hit
+	if (!params.restir.restirGBuffers[pixelIdx].primaryInteraction.valid) { return; }
+
 	// Init RNG
 	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
@@ -44,9 +57,20 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 
 	// Exit if prefix is invalid
-	if (!prefix.valid) { return; }
+	if (!prefix.valid || prefix.nee || !prefix.lastInteraction.valid) { return; }
 
 	// Gen canonical suffix
 	Reservoir<SuffixPath> suffixRes{};
 	SuffixGen(suffixRes, prefix, rng);
+
+	// Exit if suffix is invalid (Dont because we might find valid through resampling)
+	const SuffixPath& suffix = suffixRes.sample;
+	if (!suffix.valid)
+	{
+		//params.outputBuffer[pixelIdx] = prefix.f / prefix.p;
+		return;
+	}
+
+	// Illuminate using suffix and prefix
+	//params.outputBuffer[pixelIdx] = prefix.f * suffix.f / (prefix.p * suffix.p);
 }

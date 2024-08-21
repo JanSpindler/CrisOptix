@@ -95,19 +95,31 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		// Calc prev pixel coord
 		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
 
+		// Store restir g buffer
+		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord);
+
 		// Perform temporal prefix reuse if requested and if previous pixel is valid
 		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
 		{
 			PrefixTempReuse(prefixRes, pixelCoord, prevPixelCoord, primaryInteraction, rng);
 		}
 
+		// Store prefix reservoir
+		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
+	
 		// If the resampled prefix is valid
-		if (prefixRes.sample.valid)
+		const PrefixPath& prefix = prefixRes.sample;
+		if (prefix.valid)
 		{
-			// Store prefix reservoir and restir g buffer
-			params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
-			params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord);
-			outputRadiance = prefixRes.sample.f / prefixRes.sample.p;
+			const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.len, 8, rng, params);
+
+			// Display prefix contribution
+			//outputRadiance = prefix.f / prefix.p;
+			
+			if (suffix.valid)
+			{
+				outputRadiance = (prefix.f * suffix.f) / (prefix.p * suffix.p);
+			}
 		}
 	}
 	// If not restir
@@ -118,7 +130,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	}
 
 	// Store radiance output
-	// TODO: Move accumulation is separate pass at the very end
 	if (params.enableAccum)
 	{
 		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
