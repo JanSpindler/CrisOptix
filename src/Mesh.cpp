@@ -27,7 +27,7 @@ Mesh::Mesh(
 void Mesh::AddShader(Pipeline& pipeline, ShaderBindingTable& sbt) const
 {
 	UploadSbtData();
-	const OptixProgramGroup pg = pipeline.AddTrianglesHitGroupShader({ "hit.ptx", "__closesthit__mesh" }, {});
+	const OptixProgramGroup pg = pipeline.AddTrianglesHitGroupShader({ "mesh_hit.ptx", "__closesthit__mesh" }, {});
 	sbt.AddHitEntry(pg, ToVecByte(m_SbtDataBuf.GetCuPtr()));
 }
 

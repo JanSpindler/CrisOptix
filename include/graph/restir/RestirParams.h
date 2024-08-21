@@ -30,7 +30,7 @@ struct RestirParams
 
 	// Final gather
 	int gatherN;
-	int gatherK;
+	int gatherM;
 
 	// Buffers
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;

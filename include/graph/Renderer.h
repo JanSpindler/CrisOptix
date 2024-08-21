@@ -31,9 +31,7 @@ private:
 
 	Camera& m_Cam;
 	const Scene& m_Scene;
-	uint32_t m_SurfaceMissIdx = 0;
-	uint32_t m_OcclusionMissIdx = 0;
-
+	
 	LaunchParams m_LaunchParams{};
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 

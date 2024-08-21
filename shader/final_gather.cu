@@ -6,6 +6,11 @@
 
 __constant__ LaunchParams params;
 
+extern "C" __global__ void __intersection__prefix_entry()
+{
+	printf("Prefix Entry Intersection\n");
+}
+
 extern "C" __global__ void __raygen__final_gather()
 {
 	//
@@ -21,9 +26,7 @@ extern "C" __global__ void __raygen__final_gather()
 	}
 
 	// Init RNG
-	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
-	PCG32 rng(seed);
-
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
 	// Get prefix and suffix from this pixels restir
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;

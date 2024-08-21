@@ -20,7 +20,7 @@ Renderer::Renderer(
 	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
-	m_PrefixAccelStruct(width * height, optixDeviceContext),
+	m_PrefixAccelStruct(width* height, optixDeviceContext),
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_SuffixGenTempReusePipeline(optixDeviceContext),
@@ -46,7 +46,7 @@ Renderer::Renderer(
 	m_LaunchParams.restir.suffixEnableSpatial = false;
 
 	m_LaunchParams.restir.gatherN = 1;
-	m_LaunchParams.restir.gatherK = 1;
+	m_LaunchParams.restir.gatherM = 1;
 
 	// Pipelines
 	// Miss
@@ -59,8 +59,8 @@ Renderer::Renderer(
 	const OptixProgramGroup surfaceMissPG = m_PrefixGenTempReusePipeline.AddMissShader(surfaceMissEntryPointDesc);
 	const OptixProgramGroup occlusionMissPG = m_PrefixGenTempReusePipeline.AddMissShader(occlusionMissEntryPointDesc);
 
-	m_SurfaceMissIdx = m_Sbt.AddMissEntry(surfaceMissPG);
-	m_OcclusionMissIdx = m_Sbt.AddMissEntry(occlusionMissPG);
+	m_LaunchParams.surfaceTraceParams.missSbtIdx = m_Sbt.AddMissEntry(surfaceMissPG);
+	m_LaunchParams.occlusionTraceParams.missSbtIdx = m_Sbt.AddMissEntry(occlusionMissPG);
 
 	// Prefix gen and temp reuse
 	const OptixProgramGroup prefixGenTempReusePG = m_PrefixGenTempReusePipeline.AddRaygenShader({ "prefix_gen_temp_reuse.ptx", "__raygen__prefix_gen_temp_reuse" });
@@ -102,6 +102,9 @@ Renderer::Renderer(
 	// Final gather
 	const OptixProgramGroup finalGatherPG = m_FinalGatherPipeline.AddRaygenShader({ "final_gather.ptx", "__raygen__final_gather" });
 	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
+
+	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
+	m_Sbt.AddHitEntry(prefixEntryPG);
 
 	m_FinalGatherPipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
 	m_FinalGatherPipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
@@ -173,7 +176,7 @@ void Renderer::RunImGui()
 	// Restir final gather
 	ImGui::Text("Restir Final Gather");
 	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
-	ImGui::InputInt("Final Gather K", &m_LaunchParams.restir.gatherK, 1, 4);
+	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -199,12 +202,12 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;
 	m_LaunchParams.surfaceTraceParams.sbtStride = 1;
-	m_LaunchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
+	//m_LaunchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
 	
 	m_LaunchParams.occlusionTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
 	m_LaunchParams.occlusionTraceParams.sbtOffset = 0;
 	m_LaunchParams.occlusionTraceParams.sbtStride = 1;
-	m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
+	//m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
 	m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
 	// Sync
