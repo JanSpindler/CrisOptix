@@ -5,6 +5,7 @@
 #include <graph/restir/path_gen.h>
 #include <util/pixel_index.h>
 #include <graph/restir/ris_helper.h>
+#include <graph/restir/prefix_reuse.h>
 
 __constant__ LaunchParams params;
 
@@ -56,61 +57,9 @@ static __forceinline__ __device__ void PrefixTempReuse(
 	// Get previous prefix res
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
 	const Reservoir<PrefixPath>& prevPrefixRes = params.restir.prefixReservoirs[prevPixelIdx];
-	const PrefixPath& prevPrefix = prevPrefixRes.sample;
 
-	// Exit if prev prefix res is invalid or unfit for reuse
-	if (!prevPrefix.valid || prevPrefix.len < params.restir.minPrefixLen) { return; }
-
-	// Reconnect after primary hit
-	// TODO: Support hybrid shift
-	if (prevPrefix.reconIdx != 2) { return; }
-
-	// Exit if occluded
-	const glm::vec3 reconDir = glm::normalize(prevPrefix.reconInteraction.pos - primaryInteraction.pos);
-	const float reconDist = glm::distance(prevPrefix.reconInteraction.pos, primaryInteraction.pos);
-	const bool occluded = TraceOcclusion(
-		params.traversableHandle,
-		primaryInteraction.pos,
-		reconDir,
-		1e-3f,
-		reconDist,
-		params.occlusionTraceParams);
-	if (occluded) { return; }
-
-	// Calc mis weights
-	const float jacobian = CalcReconnectionJacobian(
-		prevPrefix.primaryHitPos, 
-		primaryInteraction.pos, 
-		prevPrefix.reconInteraction.pos, 
-		prevPrefix.reconInteraction.normal);
-	const float pFromCurr = GetLuminance(currPrefix.f);
-	const float pFromPrev = CalcPFromI(GetLuminance(prevPrefix.f), 1.0f / jacobian);
-	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, prefixRes.confidence, pFromPrev, prevPrefixRes.confidence);
-
-	// Shift prefix path to target domain
-	// TODO: Add hybrid shift
-	// Evaluate brdf at primary interaction towards reconnection vertex
-	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
-			primaryInteraction.meshSbtData->evalMaterialSbtIdx,
-			primaryInteraction,
-			reconDir);
-	
-	// Calc shifted f and p
-	const glm::vec3 shiftedF = brdfEvalResult.brdfResult * prevPrefix.postReconF;
-	const float shiftedP = brdfEvalResult.samplingPdf * glm::pow(1.0f - params.neeProb, static_cast<float>(prevPrefix.len - 1));
-
-	// Construct shifted PrefixPath
-	const PrefixPath shiftedPrefix = PrefixPath(prevPrefix, shiftedF, shiftedP, primaryInteraction.pos, primaryInteraction.inRayDir);
-
-	// Calc ris weight
-	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), prevPrefixRes.wSum, jacobian);
-
-	// Merge reservoirs
-	if (prefixRes.Merge(shiftedPrefix, prevPrefixRes.confidence, risWeight, rng))
-	{
-		// Only for debug purposes
-		//printf("hi");
-	}
+	// Prefix reuse
+	PrefixReuse(prefixRes, prevPrefixRes, primaryInteraction, rng, params);
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
