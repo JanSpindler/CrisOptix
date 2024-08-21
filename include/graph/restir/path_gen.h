@@ -183,6 +183,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.len = 0;
 	suffix.rng = rng;
 	suffix.valid = false;
+	suffix.lastPrefixPos = prefix.lastInteraction.pos;
+	suffix.lastPrefixInDir = prefix.lastInteraction.inRayDir;
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)

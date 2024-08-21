@@ -30,6 +30,7 @@ static __forceinline__ __device__ void SuffixGen(
 
 static __forceinline__ __device__ void SuffixTempReuse(
 	Reservoir<SuffixPath>& suffixRes,
+	const PrefixPath& prefix,
 	const glm::uvec2& prevPixelCoord,
 	PCG32& rng)
 {
@@ -46,7 +47,7 @@ static __forceinline__ __device__ void SuffixTempReuse(
 	if (!prevSuffixRes.sample.valid) { return; }
 
 	// Reuse prev suffix
-	SuffixReuse(suffixRes, prevSuffixRes, rng, params);
+	SuffixReuse(suffixRes, prevSuffixRes, prefix, rng, params);
 }
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
@@ -81,7 +82,10 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	SuffixGen(suffixRes, prefix, rng);
 
 	// Temporal suffix reuse
-	SuffixTempReuse(suffixRes, params.restir.restirGBuffers[pixelIdx].prevPixelCoord, rng);
+	if (params.restir.suffixEnableTemporal)
+	{
+		SuffixTempReuse(suffixRes, prefix, params.restir.restirGBuffers[pixelIdx].prevPixelCoord, rng);
+	}
 
 	// Store suffix res
 	params.restir.suffixReservoirs[pixelIdx] = suffixRes;
