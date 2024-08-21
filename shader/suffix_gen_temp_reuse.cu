@@ -74,7 +74,11 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 
 	// Exit if prefix is invalid
-	if (!prefix.valid || prefix.nee || !prefix.lastInteraction.valid) { return; }
+	if (!prefix.valid || prefix.nee || !prefix.lastInteraction.valid) 
+	{
+		params.restir.suffixReservoirs[pixelIdx].sample.valid = false;
+		return;
+	}
 
 	// Gen canonical suffix
 	Reservoir<SuffixPath> suffixRes{};
