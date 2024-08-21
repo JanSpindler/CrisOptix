@@ -22,6 +22,7 @@ Renderer::Renderer(
 	m_Scene(scene),
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
+	m_SuffixGenTempReusePipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
 	//
@@ -71,6 +72,16 @@ Renderer::Renderer(
 	
 	m_Scene.AddShader(m_PrefixSpatialReusePipeline, m_Sbt);
 	m_PrefixSpatialReusePipeline.CreatePipeline();
+
+	// Suffix gen and temp reuse
+	const OptixProgramGroup suffixGenTempReusePG = m_SuffixGenTempReusePipeline.AddRaygenShader({ "suffix_gen_temp_reuse.ptx", "__raygen__suffix_gen_temp_reuse" });
+	m_SuffixGenTempReuseSbtIdx = m_Sbt.AddRaygenEntry(suffixGenTempReusePG);
+
+	m_SuffixGenTempReusePipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
+	m_SuffixGenTempReusePipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
+
+	m_Scene.AddShader(m_SuffixGenTempReusePipeline, m_Sbt);
+	m_SuffixGenTempReusePipeline.CreatePipeline();
 
 	// TODO: Make m_Scene.AddShader() more efficient (duplicates sbt entries for every pipeline)
 
@@ -195,6 +206,17 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Height,
 				1));
 		}
+
+		// Suffix gen and temp reuse
+		ASSERT_OPTIX(optixLaunch(
+			m_SuffixGenTempReusePipeline.GetHandle(),
+			0,
+			m_LaunchParamsBuf.GetCuPtr(),
+			m_LaunchParamsBuf.GetByteSize(),
+			m_Sbt.GetSBT(m_SuffixGenTempReuseSbtIdx),
+			m_Width,
+			m_Height,
+			1));
 	}
 
 	// Sync

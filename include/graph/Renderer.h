@@ -47,5 +47,8 @@ private:
 	Pipeline m_PrefixSpatialReusePipeline;
 	uint32_t m_PrefixSpatialReuseSbtIdx = 0;
 
+	Pipeline m_SuffixGenTempReusePipeline;
+	uint32_t m_SuffixGenTempReuseSbtIdx = 0;
+
 	ShaderBindingTable m_Sbt;
 };
