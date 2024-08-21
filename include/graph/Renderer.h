@@ -50,8 +50,5 @@ private:
 	Pipeline m_SuffixGenTempReusePipeline;
 	uint32_t m_SuffixGenTempReuseSbtIdx = 0;
 
-	Pipeline m_AccumPipeline;
-	uint32_t m_AccumSbtIdx = 0;
-
 	ShaderBindingTable m_Sbt;
 };

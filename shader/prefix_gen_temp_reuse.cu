@@ -33,7 +33,6 @@ static __forceinline__ __device__ SurfaceInteraction PrefixGen(
 
 static __forceinline__ __device__ void PrefixTempReuse(
 	Reservoir<PrefixPath>& prefixRes,
-	const glm::uvec2& pixelCoord,
 	const glm::uvec2& prevPixelCoord,
 	const SurfaceInteraction& primaryInteraction,
 	PCG32& rng)
@@ -101,7 +100,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		// Perform temporal prefix reuse if requested and if previous pixel is valid
 		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
 		{
-			PrefixTempReuse(prefixRes, pixelCoord, prevPixelCoord, primaryInteraction, rng);
+			PrefixTempReuse(prefixRes, prevPixelCoord, primaryInteraction, rng);
 		}
 
 		// Store prefix reservoir

@@ -227,7 +227,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					lightDir);
 
 				suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-				suffix.postReconF = glm::vec3(0.0f);
+				suffix.postReconF = suffix.f;
 
 				suffix.valid = true;
 				validEmitterFound = true;

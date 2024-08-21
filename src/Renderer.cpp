@@ -23,7 +23,6 @@ Renderer::Renderer(
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_SuffixGenTempReusePipeline(optixDeviceContext),
-	m_AccumPipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
 	//
@@ -83,11 +82,6 @@ Renderer::Renderer(
 
 	m_Scene.AddShader(m_SuffixGenTempReusePipeline, m_Sbt);
 	m_SuffixGenTempReusePipeline.CreatePipeline();
-
-	// Accum
-	const OptixProgramGroup accumPG = m_AccumPipeline.AddRaygenShader({ "accum.ptx", "__raygen__accum" });
-	m_AccumSbtIdx = m_Sbt.AddRaygenEntry(accumPG);
-	m_AccumPipeline.CreatePipeline();
 
 	// TODO: Make m_Scene.AddShader() more efficient (duplicates sbt entries for every pipeline)
 
@@ -224,17 +218,6 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			m_Height,
 			1));
 	}
-
-	// Accum
-	ASSERT_OPTIX(optixLaunch(
-		m_AccumPipeline.GetHandle(),
-		0,
-		m_LaunchParamsBuf.GetCuPtr(),
-		m_LaunchParamsBuf.GetByteSize(),
-		m_Sbt.GetSBT(m_AccumSbtIdx),
-		m_Width,
-		m_Height,
-		1));
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());

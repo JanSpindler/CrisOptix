@@ -5,6 +5,7 @@
 #include <graph/LaunchParams.h>
 #include <util/pixel_index.h>
 #include <graph/restir/path_gen.h>
+#include <graph/restir/suffix_reuse.h>
 
 __constant__ LaunchParams params;
 
@@ -27,6 +28,27 @@ static __forceinline__ __device__ void SuffixGen(
 	suffixRes.Update(suffix, risWeight, rng);
 }
 
+static __forceinline__ __device__ void SuffixTempReuse(
+	Reservoir<SuffixPath>& suffixRes,
+	const glm::uvec2& prevPixelCoord,
+	PCG32& rng)
+{
+	// Assume: Prefix is valid
+
+	// Exit if prev pixel is invalid
+	if (!IsPixelValid(prevPixelCoord, params)) { return; }
+
+	// Get prev pixel suffix reservoir
+	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
+	const Reservoir<SuffixPath>& prevSuffixRes = params.restir.suffixReservoirs[prevPixelIdx];
+
+	// Exit if prev suffix is invalid
+	if (!prevSuffixRes.sample.valid) { return; }
+
+	// Reuse prev suffix
+	SuffixReuse(suffixRes, prevSuffixRes, rng, params);
+}
+
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 {
 	// Sanity check
@@ -44,13 +66,6 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 		return;
 	}
 
-	// Exit if there is no primary hit
-	if (!params.restir.restirGBuffers[pixelIdx].primaryInteraction.valid)
-	{
-		params.outputBuffer[pixelIdx] = glm::vec3(0.0f);
-		return; 
-	}
-
 	// Init RNG
 	const uint64_t seed = SampleTEA64(pixelIdx, params.random);
 	PCG32 rng(seed);
@@ -59,27 +74,15 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 
 	// Exit if prefix is invalid
-	if (!prefix.valid)
-	{
-		params.outputBuffer[pixelIdx] = glm::vec3(0.0f);
-		return;
-	}
-
-	// Exit if prefix already terminated by NEE
-	if (prefix.nee)
-	{
-		params.outputBuffer[pixelIdx] = prefix.f / prefix.p;
-		return;
-	}
+	if (!prefix.valid || prefix.nee || !prefix.lastInteraction.valid) { return; }
 
 	// Gen canonical suffix
 	Reservoir<SuffixPath> suffixRes{};
 	SuffixGen(suffixRes, prefix, rng);
 
-	// Exit if suffix is invalid (Dont because we might find valid through resampling)
-	const SuffixPath& suffix = suffixRes.sample;
-	if (!suffix.valid) { return; }
+	// Temporal suffix reuse
+	SuffixTempReuse(suffixRes, params.restir.restirGBuffers[pixelIdx].prevPixelCoord, rng);
 
-	// Illuminate using suffix and prefix
-	params.outputBuffer[pixelIdx] = prefix.f * suffix.f / (prefix.p * suffix.p);
+	// Store suffix res
+	params.restir.suffixReservoirs[pixelIdx] = suffixRes;
 }
