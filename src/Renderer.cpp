@@ -23,6 +23,7 @@ Renderer::Renderer(
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_SuffixGenTempReusePipeline(optixDeviceContext),
+	m_SuffixSpatialReusePipeline(optixDeviceContext),
 	m_Sbt(optixDeviceContext)
 {
 	//
@@ -82,6 +83,16 @@ Renderer::Renderer(
 
 	m_Scene.AddShader(m_SuffixGenTempReusePipeline, m_Sbt);
 	m_SuffixGenTempReusePipeline.CreatePipeline();
+
+	// Suffix spatial reuse
+	const OptixProgramGroup suffixSpatialReusePG = m_SuffixSpatialReusePipeline.AddRaygenShader({ "suffix_spatial_reuse.ptx", "__raygen__suffix_spatial_reuse" });
+	m_SuffixSpatialReuseSbtIdx = m_Sbt.AddRaygenEntry(suffixSpatialReusePG);
+
+	m_SuffixSpatialReusePipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
+	m_SuffixSpatialReusePipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
+
+	m_Scene.AddShader(m_SuffixSpatialReusePipeline, m_Sbt);
+	m_SuffixSpatialReusePipeline.CreatePipeline();
 
 	// TODO: Make m_Scene.AddShader() more efficient (duplicates sbt entries for every pipeline)
 
@@ -217,6 +228,20 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			m_Width,
 			m_Height,
 			1));
+
+		// Suffix spatial reuse
+		if (m_LaunchParams.restir.suffixEnableSpatial)
+		{
+			ASSERT_OPTIX(optixLaunch(
+				m_SuffixSpatialReusePipeline.GetHandle(),
+				0,
+				m_LaunchParamsBuf.GetCuPtr(),
+				m_LaunchParamsBuf.GetByteSize(),
+				m_Sbt.GetSBT(m_SuffixSpatialReuseSbtIdx),
+				m_Width,
+				m_Height,
+				1));
+		}
 	}
 
 	// Sync
