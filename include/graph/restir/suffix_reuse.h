@@ -63,7 +63,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	const glm::vec3 shiftedF = brdfEvalResult.brdfResult * otherSuffix.postReconF;
 	const float shiftedP = 
 		params.neeProb * // Sampled NEE at some point
-		brdfEvalResult.samplingPdf * // BRDF sample at reconnection
+		//brdfEvalResult.samplingPdf * // BRDF sample at reconnection
 		glm::pow(1.0f - params.neeProb, static_cast<float>(otherSuffix.len)); // BRDF sample for path after reconnection
 	
 	// Construct shifted PrefixPath
