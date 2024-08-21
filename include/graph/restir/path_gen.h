@@ -185,6 +185,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.valid = false;
 	suffix.lastPrefixPos = prefix.lastInteraction.pos;
 	suffix.lastPrefixInDir = prefix.lastInteraction.inRayDir;
+	suffix.reconIdx = 0;
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -222,6 +223,16 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			// If emitter is not occluded -> end NEE
 			else
 			{
+				// Trace surface interaction at emitter to store as reconInteraction
+				TraceWithDataPointer<SurfaceInteraction>(
+					params.traversableHandle,
+					prefix.lastInteraction.pos,
+					lightDir,
+					1e-3f,
+					distance + 1.0f,
+					params.surfaceTraceParams,
+					&suffix.reconInteraction);
+
 				// Calc brdf
 				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
 					prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,

@@ -59,7 +59,7 @@ static __forceinline__ __device__ void SuffixReuse(
 		params.neeProb * // Sampled NEE at some point
 		brdfEvalResult.samplingPdf * // BRDF sample at reconnection
 		glm::pow(1.0f - params.neeProb, static_cast<float>(otherSuffix.len)); // BRDF sample for path after reconnection
-
+	
 	// Construct shifted PrefixPath
 	const SuffixPath shiftedSuffix = SuffixPath(otherSuffix, currSuffix.lastPrefixPos, currSuffix.lastPrefixInDir, shiftedF, shiftedP);
 	
@@ -70,6 +70,6 @@ static __forceinline__ __device__ void SuffixReuse(
 	if (currRes.Merge(shiftedSuffix, otherRes.confidence, risWeight, rng))
 	{
 		// Only for debug purposes
-		printf("hi");
+		//printf("hi");
 	}
 }
