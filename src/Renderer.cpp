@@ -130,7 +130,7 @@ Renderer::Renderer(
 
 	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
 	m_Sbt.AddHitEntry(prefixEntryPG);
-
+	
 	const OptixProgramGroup prefixEntryMissPG = m_FinalGatherPipeline.AddMissShader({ "miss.ptx", "__miss__prefix_entry" });
 	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = m_Sbt.AddMissEntry(prefixEntryMissPG);
 
@@ -265,31 +265,6 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				1));
 		}
 
-		// Prefix store entries
-		{
-			// Store entries in buffer
-			ASSERT_OPTIX(optixLaunch(
-				m_PrefixStoreEntriesPipeline.GetHandle(),
-				0,
-				m_LaunchParamsBuf.GetCuPtr(),
-				m_LaunchParamsBuf.GetByteSize(),
-				m_Sbt.GetSBT(m_PrefixStoreEntriesSbtIdx),
-				m_Width,
-				m_Height,
-				1));
-
-			// Rebuild acceleration structure
-			m_PrefixAccelStruct.Rebuild();
-
-			// Copy traversable handle into launch params and re-upload
-			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
-			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTraversableHandle();
-			m_LaunchParamsBuf.Upload(&m_LaunchParams);
-
-			// Sync after buffer upload
-			ASSERT_CUDA(cudaDeviceSynchronize());
-		}
-
 		// Suffix gen and temp reuse
 		ASSERT_OPTIX(optixLaunch(
 			m_SuffixGenTempReusePipeline.GetHandle(),
@@ -313,6 +288,34 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Width,
 				m_Height,
 				1));
+		}
+
+		// Prefix store entries
+		{
+			// Store entries in buffer
+			ASSERT_OPTIX(optixLaunch(
+				m_PrefixStoreEntriesPipeline.GetHandle(),
+				0,
+				m_LaunchParamsBuf.GetCuPtr(),
+				m_LaunchParamsBuf.GetByteSize(),
+				m_Sbt.GetSBT(m_PrefixStoreEntriesSbtIdx),
+				m_Width,
+				m_Height,
+				1));
+
+			// Sync
+			ASSERT_CUDA(cudaDeviceSynchronize());
+
+			// Rebuild acceleration structure
+			m_PrefixAccelStruct.Rebuild();
+
+			// Copy traversable handle into launch params and re-upload
+			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
+			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTraversableHandle();
+			m_LaunchParamsBuf.Upload(&m_LaunchParams);
+
+			// Sync after buffer upload
+			ASSERT_CUDA(cudaDeviceSynchronize());
 		}
 
 		// Final gather
