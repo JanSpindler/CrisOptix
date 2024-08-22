@@ -3,12 +3,25 @@
 #include <graph/LaunchParams.h>
 #include <util/glm_cuda.h>
 #include <util/pixel_index.h>
+#include <graph/trace.h>
 
 __constant__ LaunchParams params;
 
+extern "C" __global__ void __anyhit__prefix_entry()
+{
+	printf("__anyhit__prefix_entry\n");
+
+	// Filter invalid prefix entries
+	const uint32_t primitiveIdx = optixGetPrimitiveIndex();
+	if (!params.restir.prefixEntries[primitiveIdx].valid)
+	{
+		optixIgnoreIntersection();
+	}
+}
+
 extern "C" __global__ void __intersection__prefix_entry()
 {
-	printf("Prefix Entry Intersection\n");
+	printf("__intersection__prefix_entry\n");
 }
 
 static __forceinline__ __device__ glm::vec3 GetPathContribution(const PrefixPath& prefix, const SuffixPath& suffix)
@@ -59,9 +72,20 @@ extern "C" __global__ void __raygen__final_gather()
 	for (size_t prefixIdx = 1; prefixIdx < params.restir.gatherN; ++prefixIdx)
 	{
 		// Trace new prefix for pixel q
-		const PrefixPath currPrefix{};
+		const PrefixPath neighPrefix{};
 
 		// Find k neighboring prefixes in world space
+		static constexpr float EPSILON = 1e-16;
+		PrefixEntryResult prefixEntryResult{};
+		TraceWithDataPointer<PrefixEntryResult>(
+			params.restir.prefixEntriesTraversHandle,
+			prefix.lastInteraction.pos,
+			glm::vec3(EPSILON),
+			0.0f,
+			EPSILON,
+			params.restir.prefixEntriesTraceParams,
+			&prefixEntryResult);
+
 		// TODO: Store in array
 		const Reservoir<SuffixPath> neighSuffixRes[1] = { {} };
 
@@ -72,10 +96,10 @@ extern "C" __global__ void __raygen__final_gather()
 			const float misWeight = 1.0f;
 
 			// Calc path contribution
-			const glm::vec3 pathContrib = GetPathContribution(currPrefix, neighSuffixRes[0].sample);
+			const glm::vec3 pathContrib = GetPathContribution(neighPrefix, neighSuffixRes[0].sample);
 
 			// Calc ucw
-			const float ucwPrefix = 1.0f / currPrefix.p;
+			const float ucwPrefix = 1.0f / neighPrefix.p;
 			const float ucwSuffix = 1.0f; // TODO: Shift and use ucw after shift
 			const float ucw = ucwPrefix * ucwSuffix;
 

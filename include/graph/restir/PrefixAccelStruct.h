@@ -26,6 +26,11 @@ struct PrefixEntry
 	}
 };
 
+struct PrefixEntryResult
+{
+
+};
+
 class PrefixAccelStruct
 {
 public:

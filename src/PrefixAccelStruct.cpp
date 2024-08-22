@@ -14,6 +14,9 @@ void PrefixAccelStruct::Rebuild(const float radius)
 	// Upload radius to buffer
 	m_RadiusBuffer.Upload(&radius);
 
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
+
 	// Build accel
 	BuildAccel();
 }
@@ -39,10 +42,10 @@ void PrefixAccelStruct::BuildAccel()
 	sphereInput.sphereArray.numVertices = m_PrefixEntries.GetCount();
 
 	sphereInput.sphereArray.radiusBuffers = &m_RadiusDevPtr;
-	sphereInput.sphereArray.radiusStrideInBytes = 0;
+	sphereInput.sphereArray.radiusStrideInBytes = sizeof(float);
 	sphereInput.sphereArray.singleRadius = true;
 	
-	static constexpr std::array<uint32_t, 1> flags = { 0 };
+	static constexpr std::array<uint32_t, 1> flags = { OPTIX_GEOMETRY_FLAG_NONE };
 	sphereInput.sphereArray.flags = flags.data();
 	
 	sphereInput.sphereArray.numSbtRecords = 1;
@@ -55,7 +58,7 @@ void PrefixAccelStruct::BuildAccel()
 	// Accel
 	// Get memory requirements
 	OptixAccelBuildOptions buildOptions{};
-	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 	buildOptions.motionOptions.numKeys = 1;
 	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
 	buildOptions.motionOptions.timeBegin = 0.0f;

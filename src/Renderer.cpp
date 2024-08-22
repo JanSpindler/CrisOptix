@@ -48,6 +48,7 @@ Renderer::Renderer(
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
+	m_LaunchParams.restir.gatherRadius = 1e-16f;
 
 	//
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
@@ -59,8 +60,8 @@ Renderer::Renderer(
 	m_LaunchParams.occlusionTraceParams.sbtOffset = 0;
 	m_LaunchParams.occlusionTraceParams.sbtStride = 1;
 	//m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
-
-	m_LaunchParams.restir.prefixEntriesTraceParams.rayFlags = OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
+	
+	m_LaunchParams.restir.prefixEntriesTraceParams.rayFlags = OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
 	m_LaunchParams.restir.prefixEntriesTraceParams.sbtOffset = 0;
 	m_LaunchParams.restir.prefixEntriesTraceParams.sbtStride = 1;
 	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = 0;
@@ -127,7 +128,10 @@ Renderer::Renderer(
 	const OptixProgramGroup finalGatherPG = m_FinalGatherPipeline.AddRaygenShader({ "final_gather.ptx", "__raygen__final_gather" });
 	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
 
-	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
+	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader(
+		{ "final_gather.ptx", "__intersection__prefix_entry" }, 
+		{}, 
+		{ "final_gather.ptx", "__anyhit__prefix_entry" });
 	m_Sbt.AddHitEntry(prefixEntryPG);
 
 	m_FinalGatherPipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
