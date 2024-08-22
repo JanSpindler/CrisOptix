@@ -5,24 +5,6 @@
 #include <graph/DeviceBuffer.h>
 #include <graph/CuBufferView.h>
 
-struct PrefixEntry
-{
-	glm::vec3 pos;
-	uint32_t pixelIdx;
-
-	__forceinline__ __device__ __host__ PrefixEntry() :
-		pos(0.0f),
-		pixelIdx(0)
-	{
-	}
-
-	__forceinline__ __device__ __host__ PrefixEntry(const glm::vec3& _pos, const uint32_t _pixelIdx) :
-		pos(_pos),
-		pixelIdx(_pixelIdx)
-	{
-	}
-};
-
 struct PrefixEntryResult
 {
 	uint32_t neighCount;
@@ -41,7 +23,6 @@ public:
 	void Rebuild();
 
 	CuBufferView<OptixAabb> GetAabbBufferView() const;
-	CuBufferView<PrefixEntry> GetPrefixEntryBufferView() const;
 	OptixTraversableHandle GetTlas() const;
 
 	void SetSbtOffset(const uint32_t sbtOffset);
@@ -57,8 +38,6 @@ private:
 
 	DeviceBuffer<OptixAabb> m_Aabbs{};
 	CUdeviceptr m_AabbDevPtr = 0;
-
-	DeviceBuffer<PrefixEntry> m_PrefixEntries{};
 
 	uint32_t m_SbtOffset = 0;
 

@@ -42,5 +42,4 @@ struct RestirParams
 	OptixTraversableHandle prefixEntriesTraversHandle;
 	TraceParameters prefixEntriesTraceParams;
 	CuBufferView<OptixAabb> prefixEntryAabbs;
-	CuBufferView<PrefixEntry> prefixEntries;
 };

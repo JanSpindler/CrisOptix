@@ -4,8 +4,7 @@
 PrefixAccelStruct::PrefixAccelStruct(const size_t size, const OptixDeviceContext context) :
 	m_Context(context),
 	m_Aabbs(size),
-	m_AabbDevPtr(m_Aabbs.GetCuPtr()),
-	m_PrefixEntries(size)
+	m_AabbDevPtr(m_Aabbs.GetCuPtr())
 {
 }
 
@@ -18,11 +17,6 @@ void PrefixAccelStruct::Rebuild()
 CuBufferView<OptixAabb> PrefixAccelStruct::GetAabbBufferView() const
 {
 	return CuBufferView<OptixAabb>(m_Aabbs.GetCuPtr(), m_Aabbs.GetCount());
-}
-
-CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBufferView() const
-{
-	return CuBufferView<PrefixEntry>(m_PrefixEntries.GetCuPtr(), m_PrefixEntries.GetCount());
 }
 
 OptixTraversableHandle PrefixAccelStruct::GetTlas() const

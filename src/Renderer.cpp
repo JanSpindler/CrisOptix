@@ -225,7 +225,6 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
 
-	m_LaunchParams.restir.prefixEntries = m_PrefixAccelStruct.GetPrefixEntryBufferView();
 	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();
 
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());

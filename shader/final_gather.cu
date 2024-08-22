@@ -9,7 +9,10 @@ __constant__ LaunchParams params;
 
 extern "C" __global__ void __intersection__prefix_entry()
 {
-
+	const uint32_t primitiveIdx = optixGetPrimitiveIndex();
+	
+	const PrefixPath& prefix = params.restir.prefixReservoirs[primitiveIdx].sample;
+	const SuffixPath& suffix = params.restir.suffixReservoirs[primitiveIdx].sample;
 }
 
 static __forceinline__ __device__ glm::vec3 GetPathContribution(const PrefixPath& prefix, const SuffixPath& suffix)

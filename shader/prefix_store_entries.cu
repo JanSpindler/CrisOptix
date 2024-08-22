@@ -24,13 +24,10 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx].sample;
 
-	// Store prefix entry in array
-	// Prefix entry is only valid/usable if both prefix and suffix are valid
-	const glm::vec3& pos = prefix.lastInteraction.pos;
-	params.restir.prefixEntries[pixelIdx] = PrefixEntry(pos, pixelIdx);
-
-	// Store corresponding aabb
+	// Store prefix entry aabb
 	const float radius = params.restir.gatherRadius;
+	const glm::vec3& pos = prefix.lastInteraction.pos;
+
 	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
 	if (prefix.valid && suffix.valid)
 	{
