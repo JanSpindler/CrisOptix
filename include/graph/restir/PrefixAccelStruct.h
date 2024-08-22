@@ -7,8 +7,23 @@
 
 struct PrefixEntry
 {
+	bool valid;
 	glm::vec3 pos;
 	uint32_t pixelIdx;
+
+	__forceinline__ __device__ __host__ PrefixEntry() :
+		valid(false),
+		pos(0.0f),
+		pixelIdx(0)
+	{
+	}
+
+	__forceinline__ __device__ __host__ PrefixEntry(const bool _valid, const glm::vec3& _pos, const uint32_t _pixelIdx) :
+		valid(_valid),
+		pos(_pos),
+		pixelIdx(_pixelIdx)
+	{
+	}
 };
 
 class PrefixAccelStruct

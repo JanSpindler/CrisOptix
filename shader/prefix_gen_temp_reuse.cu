@@ -105,9 +105,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 
 		// Store prefix reservoir
 		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
-
-		// Clear screen
-		params.outputBuffer[pixelIdx] = glm::vec3(0.0f);
 	}
 	// If not restir
 	else

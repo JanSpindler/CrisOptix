@@ -36,13 +36,13 @@ extern "C" __global__ void __raygen__final_gather()
 	glm::vec3 outputRadiance(0.0f);
 	if (prefix.valid)
 	{
-		if (suffix.valid)
-		{
-			outputRadiance = (prefix.f * suffix.f) / (prefix.p * suffix.p);
-		}
-		else if (prefix.nee)
+		if (prefix.nee)
 		{
 			outputRadiance = prefix.f / prefix.p;
+		}
+		else if (suffix.valid)
+		{
+			outputRadiance = (prefix.f * suffix.f) / (prefix.p * suffix.p);
 		}
 	}
 
