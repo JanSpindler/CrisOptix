@@ -37,9 +37,10 @@ struct RestirParams
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;
 	CuBufferView<Reservoir<SuffixPath>> suffixReservoirs;
 	CuBufferView<RestirGBuffer> restirGBuffers;
-	CuBufferView<PrefixEntry> prefixEntries;
 
-	// Traversable handle
+	// Prefix entries
 	OptixTraversableHandle prefixEntriesTraversHandle;
 	TraceParameters prefixEntriesTraceParams;
+	CuBufferView<OptixAabb> prefixEntryAabbs;
+	CuBufferView<PrefixEntry> prefixEntries;
 };

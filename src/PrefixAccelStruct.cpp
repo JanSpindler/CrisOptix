@@ -3,22 +3,21 @@
 
 PrefixAccelStruct::PrefixAccelStruct(const size_t size, const OptixDeviceContext context) :
 	m_Context(context),
-	m_PrefixEntries(size),
-	m_VertexDevPtr(m_PrefixEntries.GetCuPtr()),
-	m_RadiusDevPtr(m_RadiusBuffer.GetCuPtr())
+	m_Aabbs(size),
+	m_AabbDevPtr(m_Aabbs.GetCuPtr()),
+	m_PrefixEntries(size)
 {
 }
 
-void PrefixAccelStruct::Rebuild(const float radius)
+void PrefixAccelStruct::Rebuild()
 {
-	// Upload radius to buffer
-	m_RadiusBuffer.Upload(&radius);
-
-	// Sync
-	ASSERT_CUDA(cudaDeviceSynchronize());
-
 	// Build accel
 	BuildAccel();
+}
+
+CuBufferView<OptixAabb> PrefixAccelStruct::GetAabbBufferView() const
+{
+	return CuBufferView<OptixAabb>(m_Aabbs.GetCuPtr(), m_Aabbs.GetCount());
 }
 
 CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBufferView() const
@@ -33,27 +32,16 @@ OptixTraversableHandle PrefixAccelStruct::GetTraversableHandle() const
 
 void PrefixAccelStruct::BuildAccel()
 {
-	// Sphere build
-	OptixBuildInput sphereInput{};
-	sphereInput.type = OPTIX_BUILD_INPUT_TYPE_SPHERES;
+	// AABB build
+	static constexpr std::array<uint32_t, 1> flags = { OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT };
 
-	sphereInput.sphereArray.vertexBuffers = &m_VertexDevPtr;
-	sphereInput.sphereArray.vertexStrideInBytes = sizeof(PrefixEntry);
-	sphereInput.sphereArray.numVertices = m_PrefixEntries.GetCount();
-
-	sphereInput.sphereArray.radiusBuffers = &m_RadiusDevPtr;
-	sphereInput.sphereArray.radiusStrideInBytes = sizeof(float);
-	sphereInput.sphereArray.singleRadius = true;
-	
-	static constexpr std::array<uint32_t, 1> flags = { OPTIX_GEOMETRY_FLAG_NONE };
-	sphereInput.sphereArray.flags = flags.data();
-	
-	sphereInput.sphereArray.numSbtRecords = 1;
-	sphereInput.sphereArray.sbtIndexOffsetBuffer = 0;
-	sphereInput.sphereArray.sbtIndexOffsetSizeInBytes = 0;
-	sphereInput.sphereArray.sbtIndexOffsetStrideInBytes = 0;
-
-	sphereInput.sphereArray.primitiveIndexOffset = 0;
+	OptixBuildInput aabbInput{};
+	aabbInput.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+	aabbInput.customPrimitiveArray.aabbBuffers = &m_AabbDevPtr;
+	aabbInput.customPrimitiveArray.numPrimitives = m_Aabbs.GetCount();
+	aabbInput.customPrimitiveArray.flags = flags.data();
+	aabbInput.customPrimitiveArray.numSbtRecords = 1;
+	aabbInput.customPrimitiveArray.sbtIndexOffsetBuffer = 0;
 
 	// Accel
 	// Get memory requirements
@@ -69,7 +57,7 @@ void PrefixAccelStruct::BuildAccel()
 	ASSERT_OPTIX(optixAccelComputeMemoryUsage(
 		m_Context,
 		&buildOptions,
-		&sphereInput,
+		&aabbInput,
 		1,
 		&blasBufferSizes));
 
@@ -86,7 +74,7 @@ void PrefixAccelStruct::BuildAccel()
 		m_Context,
 		0,
 		&buildOptions,
-		&sphereInput,
+		&aabbInput,
 		1,
 		tempBuf.GetCuPtr(),
 		tempBuf.GetByteSize(),

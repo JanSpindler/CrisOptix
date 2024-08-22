@@ -48,23 +48,23 @@ Renderer::Renderer(
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
-	m_LaunchParams.restir.gatherRadius = 1e-16f;
+	m_LaunchParams.restir.gatherRadius = 0.25f;
 
 	//
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;
 	m_LaunchParams.surfaceTraceParams.sbtStride = 1;
-	//m_LaunchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
+	//m_LaunchParams.surfaceTraceParams.missSbtIdx;
 
 	m_LaunchParams.occlusionTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
 	m_LaunchParams.occlusionTraceParams.sbtOffset = 0;
 	m_LaunchParams.occlusionTraceParams.sbtStride = 1;
-	//m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
+	//m_LaunchParams.occlusionTraceParams.missSbtIdx;
 	
-	m_LaunchParams.restir.prefixEntriesTraceParams.rayFlags = OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
+	m_LaunchParams.restir.prefixEntriesTraceParams.rayFlags = OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT | OPTIX_RAY_FLAG_DISABLE_ANYHIT;
 	m_LaunchParams.restir.prefixEntriesTraceParams.sbtOffset = 0;
 	m_LaunchParams.restir.prefixEntriesTraceParams.sbtStride = 1;
-	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = 0;
+	//m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx;
 
 	// Pipelines
 	// Miss
@@ -128,11 +128,11 @@ Renderer::Renderer(
 	const OptixProgramGroup finalGatherPG = m_FinalGatherPipeline.AddRaygenShader({ "final_gather.ptx", "__raygen__final_gather" });
 	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
 
-	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader(
-		{ "final_gather.ptx", "__intersection__prefix_entry" }, 
-		{}, 
-		{ "final_gather.ptx", "__anyhit__prefix_entry" });
+	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
 	m_Sbt.AddHitEntry(prefixEntryPG);
+
+	const OptixProgramGroup prefixEntryMissPG = m_FinalGatherPipeline.AddMissShader({ "miss.ptx", "__miss__prefix_entry" });
+	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = m_Sbt.AddMissEntry(prefixEntryMissPG);
 
 	m_FinalGatherPipeline.AddProgramGroup(surfaceMissPgDesc, surfaceMissPG);
 	m_FinalGatherPipeline.AddProgramGroup(occlusionMissPgDesc, occlusionMissPG);
@@ -224,7 +224,10 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
+
 	m_LaunchParams.restir.prefixEntries = m_PrefixAccelStruct.GetPrefixEntryBufferView();
+	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();
+
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
@@ -276,7 +279,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				1));
 
 			// Rebuild acceleration structure
-			m_PrefixAccelStruct.Rebuild(m_LaunchParams.restir.gatherRadius);
+			m_PrefixAccelStruct.Rebuild();
 
 			// Copy traversable handle into launch params and re-upload
 			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?

@@ -8,9 +8,6 @@ __constant__ LaunchParams params;
 
 extern "C" __global__ void __raygen__prefix_store_entries()
 {
-	// Sanity check
-	if (params.restir.gatherM <= 1) { return; }
-
 	//
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
@@ -29,5 +26,23 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 
 	// Store prefix entry in array
 	// Prefix entry is only valid/usable if both prefix and suffix are valid
-	params.restir.prefixEntries[pixelIdx] = PrefixEntry(prefix.valid && suffix.valid, prefix.lastInteraction.pos, pixelIdx);
+	const glm::vec3& pos = prefix.lastInteraction.pos;
+	params.restir.prefixEntries[pixelIdx] = PrefixEntry(pos, pixelIdx);
+
+	// Store corresponding aabb
+	const float radius = params.restir.gatherRadius;
+	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
+	if (prefix.valid && suffix.valid)
+	{
+		aabb.minX = pos.x - radius;
+		aabb.minY = pos.y - radius;
+		aabb.minZ = pos.z - radius;
+		aabb.maxX = pos.x + radius;
+		aabb.maxY = pos.y + radius;
+		aabb.maxZ = pos.z + radius;
+	}
+	else
+	{
+		aabb = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+	}
 }

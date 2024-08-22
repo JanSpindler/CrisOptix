@@ -7,18 +7,6 @@
 
 __constant__ LaunchParams params;
 
-extern "C" __global__ void __anyhit__prefix_entry()
-{
-	printf("__anyhit__prefix_entry\n");
-
-	// Filter invalid prefix entries
-	const uint32_t primitiveIdx = optixGetPrimitiveIndex();
-	if (!params.restir.prefixEntries[primitiveIdx].valid)
-	{
-		optixIgnoreIntersection();
-	}
-}
-
 extern "C" __global__ void __intersection__prefix_entry()
 {
 	printf("__intersection__prefix_entry\n");
@@ -104,7 +92,7 @@ extern "C" __global__ void __raygen__final_gather()
 			const float ucw = ucwPrefix * ucwSuffix;
 
 			// Gather
-			outputRadiance += misWeight * pathContrib * ucw;
+			//outputRadiance += misWeight * pathContrib * ucw;
 		}
 	}
 
