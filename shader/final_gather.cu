@@ -4,6 +4,7 @@
 #include <util/glm_cuda.h>
 #include <util/pixel_index.h>
 #include <graph/trace.h>
+#include <graph/restir/PrefixEntryResult.h>
 
 __constant__ LaunchParams params;
 

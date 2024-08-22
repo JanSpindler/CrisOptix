@@ -5,7 +5,6 @@
 #include <graph/restir/PrefixPath.h>
 #include <graph/restir/SuffixPath.h>
 #include <graph/restir/RestirGBuffer.h>
-#include <graph/restir/PrefixAccelStruct.h>
 
 struct RestirParams
 {
