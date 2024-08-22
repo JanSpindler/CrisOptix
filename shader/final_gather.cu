@@ -11,6 +11,23 @@ extern "C" __global__ void __intersection__prefix_entry()
 	printf("Prefix Entry Intersection\n");
 }
 
+static __forceinline__ __device__ glm::vec3 GetPathContribution(const PrefixPath& prefix, const SuffixPath& suffix)
+{
+	if (prefix.valid)
+	{
+		if (prefix.nee)
+		{
+			return prefix.f / prefix.p;
+		}
+		else if (suffix.valid)
+		{
+			return (prefix.f * suffix.f) / (prefix.p * suffix.p);
+		}
+	}
+
+	return glm::vec3(0.0f);
+}
+
 extern "C" __global__ void __raygen__final_gather()
 {
 	//
@@ -32,17 +49,38 @@ extern "C" __global__ void __raygen__final_gather()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx].sample;
 
-	// Display complete path contribution
-	glm::vec3 outputRadiance(0.0f);
-	if (prefix.valid)
+	// Init empty output radiance
+	//glm::vec3 outputRadiance(0.0f);
+	glm::vec3 outputRadiance = GetPathContribution(prefix, suffix);
+
+	// Final gather
+	// K = M - 1
+	const size_t prefixNeighCount = params.restir.gatherM - 1;
+	for (size_t prefixIdx = 1; prefixIdx < params.restir.gatherN; ++prefixIdx)
 	{
-		if (prefix.nee)
+		// Trace new prefix for pixel q
+		const PrefixPath currPrefix{};
+
+		// Find k neighboring prefixes in world space
+		// TODO: Store in array
+		const Reservoir<SuffixPath> neighSuffixRes[1] = { {} };
+
+		// Borrow their suffixes and gather path contributions
+		for (size_t suffixIdx = 0; suffixIdx < prefixNeighCount; ++suffixIdx)
 		{
-			outputRadiance = prefix.f / prefix.p;
-		}
-		else if (suffix.valid)
-		{
-			outputRadiance = (prefix.f * suffix.f) / (prefix.p * suffix.p);
+			// Calc mis weight m_i(Y_ij^S, X_i^P)
+			const float misWeight = 1.0f;
+
+			// Calc path contribution
+			const glm::vec3 pathContrib = GetPathContribution(currPrefix, neighSuffixRes[0].sample);
+
+			// Calc ucw
+			const float ucwPrefix = 1.0f / currPrefix.p;
+			const float ucwSuffix = 1.0f; // TODO: Shift and use ucw after shift
+			const float ucw = ucwPrefix * ucwSuffix;
+
+			// Gather
+			outputRadiance += misWeight * pathContrib * ucw;
 		}
 	}
 

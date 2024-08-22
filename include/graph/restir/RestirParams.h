@@ -31,10 +31,15 @@ struct RestirParams
 	// Final gather
 	int gatherN;
 	int gatherM;
+	float gatherRadius;
 
 	// Buffers
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;
 	CuBufferView<Reservoir<SuffixPath>> suffixReservoirs;
 	CuBufferView<RestirGBuffer> restirGBuffers;
 	CuBufferView<PrefixEntry> prefixEntries;
+
+	// Traversable handle
+	OptixTraversableHandle prefixEntriesTraversHandle;
+	TraceParameters prefixEntriesTraceParams;
 };

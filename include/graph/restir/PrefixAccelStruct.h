@@ -34,6 +34,7 @@ public:
 	void Rebuild(const float radius);
 
 	CuBufferView<PrefixEntry> GetPrefixEntryBufferView() const;
+	OptixTraversableHandle GetTraversableHandle() const;
 
 private:
 	OptixDeviceContext m_Context = nullptr;

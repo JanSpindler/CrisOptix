@@ -49,6 +49,22 @@ Renderer::Renderer(
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
 
+	//
+	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
+	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;
+	m_LaunchParams.surfaceTraceParams.sbtStride = 1;
+	//m_LaunchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
+
+	m_LaunchParams.occlusionTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
+	m_LaunchParams.occlusionTraceParams.sbtOffset = 0;
+	m_LaunchParams.occlusionTraceParams.sbtStride = 1;
+	//m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
+
+	m_LaunchParams.restir.prefixEntriesTraceParams.rayFlags = OPTIX_RAY_FLAG_DISABLE_ANYHIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
+	m_LaunchParams.restir.prefixEntriesTraceParams.sbtOffset = 0;
+	m_LaunchParams.restir.prefixEntriesTraceParams.sbtStride = 1;
+	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = 0;
+
 	// Pipelines
 	// Miss
 	const ShaderEntryPointDesc surfaceMissEntryPointDesc = { "miss.ptx", "__miss__main" };
@@ -185,6 +201,7 @@ void Renderer::RunImGui()
 	ImGui::Text("Restir Final Gather");
 	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
 	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
+	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.01f, 0.0f, 1.0f);
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -208,15 +225,6 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
 
-	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
-	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;
-	m_LaunchParams.surfaceTraceParams.sbtStride = 1;
-	//m_LaunchParams.surfaceTraceParams.missSbtIdx = m_SurfaceMissIdx;
-	
-	m_LaunchParams.occlusionTraceParams.rayFlags = OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT | OPTIX_RAY_FLAG_DISABLE_CLOSESTHIT;
-	m_LaunchParams.occlusionTraceParams.sbtOffset = 0;
-	m_LaunchParams.occlusionTraceParams.sbtStride = 1;
-	//m_LaunchParams.occlusionTraceParams.missSbtIdx = m_OcclusionMissIdx;
 	m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
 	// Sync
@@ -251,8 +259,8 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		}
 
 		// Prefix store entries
-		if (m_LaunchParams.restir.gatherM > 1)
 		{
+			// Store entries in buffer
 			ASSERT_OPTIX(optixLaunch(
 				m_PrefixStoreEntriesPipeline.GetHandle(),
 				0,
@@ -262,6 +270,17 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Width,
 				m_Height,
 				1));
+
+			// Rebuild acceleration structure
+			m_PrefixAccelStruct.Rebuild(m_LaunchParams.restir.gatherRadius);
+
+			// Copy traversable handle into launch params and re-upload
+			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
+			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTraversableHandle();
+			m_LaunchParamsBuf.Upload(&m_LaunchParams);
+
+			// Sync after buffer upload
+			ASSERT_CUDA(cudaDeviceSynchronize());
 		}
 
 		// Suffix gen and temp reuse

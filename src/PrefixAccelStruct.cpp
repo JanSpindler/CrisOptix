@@ -23,6 +23,11 @@ CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBufferView() const
 	return CuBufferView<PrefixEntry>(m_PrefixEntries.GetCuPtr(), m_PrefixEntries.GetCount());
 }
 
+OptixTraversableHandle PrefixAccelStruct::GetTraversableHandle() const
+{
+	return m_TraversHandle;
+}
+
 void PrefixAccelStruct::BuildAccel()
 {
 	// Sphere build
@@ -105,5 +110,6 @@ void PrefixAccelStruct::BuildAccel()
 		&m_TraversHandle));
 
 	// Sync
-	//ASSERT_CUDA(cudaDeviceSynchronize());
+	// TODO: Is this sync needed?
+	ASSERT_CUDA(cudaDeviceSynchronize());
 }
