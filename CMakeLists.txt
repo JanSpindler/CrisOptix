@@ -28,7 +28,8 @@ include_directories(${PROJECT_NAME} PUBLIC
 	${CUDAToolkit_INCLUDE_DIRS} 
 	${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 	"${OptiX_INSTALL_DIR}/include"
-	${OPENGL_INCLUDE_DIRS})
+	${OPENGL_INCLUDE_DIRS},
+	"deps/cudaKDTree")
 
 # Glob
 file(GLOB_RECURSE PROJECT_INCLUDE "include/*.h")
@@ -47,6 +48,10 @@ add_executable(${PROJECT_NAME} ${PROJECT_INCLUDE} ${PROJECT_SOURCE} ${PROJECT_CU
 add_dependencies(${PROJECT_NAME} CrisOptixShader)
 
 # Dependencies
+
+# CUDA KD TREE
+add_subdirectory("deps/cudaKDTree")
+target_link_libraries(${PROJECT_NAME} PRIVATE cudaKDTree)
 
 # OPENGL
 find_package(OpenGL REQUIRED)
