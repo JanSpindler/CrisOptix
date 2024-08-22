@@ -23,6 +23,7 @@ Renderer::Renderer(
 	m_PrefixAccelStruct(width* height, optixDeviceContext),
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
+	m_PrefixStoreEntriesPipeline(optixDeviceContext),
 	m_SuffixGenTempReusePipeline(optixDeviceContext),
 	m_SuffixSpatialReusePipeline(optixDeviceContext),
 	m_FinalGatherPipeline(optixDeviceContext),
@@ -78,6 +79,13 @@ Renderer::Renderer(
 
 	m_Scene.AddShader(m_PrefixSpatialReusePipeline, m_Sbt);
 	m_PrefixSpatialReusePipeline.CreatePipeline();
+
+	// Prefix store entries
+	// TODO: Implement as normal cuda kernel? Uses no optix features
+	const OptixProgramGroup prefixStoreEntriesPG = m_PrefixStoreEntriesPipeline.AddRaygenShader({ "prefix_store_entries.ptx", "__raygen__prefix_store_entries" });
+	m_PrefixStoreEntriesSbtIdx = m_Sbt.AddRaygenEntry(prefixStoreEntriesPG);
+
+	m_PrefixStoreEntriesPipeline.CreatePipeline();
 
 	// Suffix gen and temp reuse
 	const OptixProgramGroup suffixGenTempReusePG = m_SuffixGenTempReusePipeline.AddRaygenShader({ "suffix_gen_temp_reuse.ptx", "__raygen__suffix_gen_temp_reuse" });
@@ -195,6 +203,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
+	m_LaunchParams.restir.prefixEntries = m_PrefixAccelStruct.GetPrefixEntryBufferView();
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
 
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
@@ -236,6 +245,20 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_LaunchParamsBuf.GetCuPtr(),
 				m_LaunchParamsBuf.GetByteSize(),
 				m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
+				m_Width,
+				m_Height,
+				1));
+		}
+
+		// Prefix store entries
+		if (m_LaunchParams.restir.gatherM > 1)
+		{
+			ASSERT_OPTIX(optixLaunch(
+				m_PrefixStoreEntriesPipeline.GetHandle(),
+				0,
+				m_LaunchParamsBuf.GetCuPtr(),
+				m_LaunchParamsBuf.GetByteSize(),
+				m_Sbt.GetSBT(m_PrefixStoreEntriesSbtIdx),
 				m_Width,
 				m_Height,
 				1));

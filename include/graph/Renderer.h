@@ -48,6 +48,9 @@ private:
 	Pipeline m_PrefixSpatialReusePipeline;
 	uint32_t m_PrefixSpatialReuseSbtIdx = 0;
 
+	Pipeline m_PrefixStoreEntriesPipeline;
+	uint32_t m_PrefixStoreEntriesSbtIdx = 0;
+
 	Pipeline m_SuffixGenTempReusePipeline;
 	uint32_t m_SuffixGenTempReuseSbtIdx = 0;
 

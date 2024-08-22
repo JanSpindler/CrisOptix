@@ -33,7 +33,7 @@ public:
 
 	void Rebuild(const float radius);
 
-	CuBufferView<PrefixEntry> GetPrefixEntryBuffer() const;
+	CuBufferView<PrefixEntry> GetPrefixEntryBufferView() const;
 
 private:
 	OptixDeviceContext m_Context = nullptr;

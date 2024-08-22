@@ -18,7 +18,7 @@ void PrefixAccelStruct::Rebuild(const float radius)
 	BuildAccel();
 }
 
-CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBuffer() const
+CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBufferView() const
 {
 	return CuBufferView<PrefixEntry>(m_PrefixEntries.GetCuPtr(), m_PrefixEntries.GetCount());
 }
