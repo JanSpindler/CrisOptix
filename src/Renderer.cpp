@@ -48,7 +48,7 @@ Renderer::Renderer(
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
-	m_LaunchParams.restir.gatherRadius = 0.25f;
+	m_LaunchParams.restir.gatherRadius = 0.01f;
 
 	//
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
@@ -129,7 +129,7 @@ Renderer::Renderer(
 	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
 
 	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
-	m_Sbt.AddHitEntry(prefixEntryPG);
+	m_PrefixAccelStruct.SetSbtOffset(m_Sbt.AddHitEntry(prefixEntryPG));
 	
 	const OptixProgramGroup prefixEntryMissPG = m_FinalGatherPipeline.AddMissShader({ "miss.ptx", "__miss__prefix_entry" });
 	m_LaunchParams.restir.prefixEntriesTraceParams.missSbtIdx = m_Sbt.AddMissEntry(prefixEntryMissPG);
@@ -205,7 +205,7 @@ void Renderer::RunImGui()
 	ImGui::Text("Restir Final Gather");
 	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
 	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
-	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.001f, 0.0f, 1.0f);
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -311,7 +311,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 			// Copy traversable handle into launch params and re-upload
 			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
-			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTraversableHandle();
+			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTlas();
 			m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
 			// Sync after buffer upload

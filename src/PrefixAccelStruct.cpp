@@ -11,8 +11,8 @@ PrefixAccelStruct::PrefixAccelStruct(const size_t size, const OptixDeviceContext
 
 void PrefixAccelStruct::Rebuild()
 {
-	// Build accel
-	BuildAccel();
+	BuildGas();
+	BuildTlas();
 }
 
 CuBufferView<OptixAabb> PrefixAccelStruct::GetAabbBufferView() const
@@ -25,12 +25,17 @@ CuBufferView<PrefixEntry> PrefixAccelStruct::GetPrefixEntryBufferView() const
 	return CuBufferView<PrefixEntry>(m_PrefixEntries.GetCuPtr(), m_PrefixEntries.GetCount());
 }
 
-OptixTraversableHandle PrefixAccelStruct::GetTraversableHandle() const
+OptixTraversableHandle PrefixAccelStruct::GetTlas() const
 {
-	return m_TraversHandle;
+	return m_TlasHandle;
 }
 
-void PrefixAccelStruct::BuildAccel()
+void PrefixAccelStruct::SetSbtOffset(const uint32_t sbtOffset)
+{
+	m_SbtOffset = sbtOffset;
+}
+
+void PrefixAccelStruct::BuildGas()
 {
 	// AABB build
 	static constexpr std::array<uint32_t, 1> flags = { OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT };
@@ -80,7 +85,7 @@ void PrefixAccelStruct::BuildAccel()
 		tempBuf.GetByteSize(),
 		outputBuf.GetCuPtr(),
 		outputBuf.GetByteSize(),
-		&m_TraversHandle,
+		&m_GasHandle,
 		&emitDesc,
 		1));
 
@@ -91,16 +96,98 @@ void PrefixAccelStruct::BuildAccel()
 	uint64_t compactedSize = 0;
 	compactSizeBuf.Download(&compactedSize);
 
-	m_AccelBuf.Alloc(compactedSize);
+	m_GasBuf.Alloc(compactedSize);
 	ASSERT_OPTIX(optixAccelCompact(
 		m_Context,
 		0,
-		m_TraversHandle,
-		m_AccelBuf.GetCuPtr(),
-		m_AccelBuf.GetByteSize(),
-		&m_TraversHandle));
+		m_GasHandle,
+		m_GasBuf.GetCuPtr(),
+		m_GasBuf.GetByteSize(),
+		&m_GasHandle));
 
 	// Sync
-	// TODO: Is this sync needed?
+	ASSERT_CUDA(cudaDeviceSynchronize());
+}
+
+void PrefixAccelStruct::BuildTlas()
+{
+	// Instance build
+	static constexpr std::array<uint32_t, 1> flags = { OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT };
+
+	OptixInstance optixInstance{};
+	optixInstance.flags = OPTIX_INSTANCE_FLAG_NONE;
+	optixInstance.instanceId = 0;
+	optixInstance.sbtOffset = m_SbtOffset;
+	optixInstance.visibilityMask = 1;
+	optixInstance.traversableHandle = m_GasHandle;
+	reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(glm::mat4(1.0f)));
+
+	DeviceBuffer<OptixInstance> optixInstanceDev(1);
+	optixInstanceDev.Upload(&optixInstance);
+
+	OptixBuildInput instanceInput{};
+	instanceInput.type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+	instanceInput.instanceArray.instances = optixInstanceDev.GetCuPtr();
+	instanceInput.instanceArray.instanceStride = sizeof(OptixInstance);
+	instanceInput.instanceArray.numInstances = optixInstanceDev.GetCount();
+
+	// Accel
+	// Get memory requirements
+	OptixAccelBuildOptions buildOptions{};
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+	buildOptions.motionOptions.numKeys = 1;
+	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
+	buildOptions.motionOptions.timeBegin = 0.0f;
+	buildOptions.motionOptions.timeEnd = 1.0f;
+	buildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+
+	OptixAccelBufferSizes blasBufferSizes{};
+	ASSERT_OPTIX(optixAccelComputeMemoryUsage(
+		m_Context,
+		&buildOptions,
+		&instanceInput,
+		1,
+		&blasBufferSizes));
+
+	// Build
+	DeviceBuffer<uint64_t> compactSizeBuf(1);
+	DeviceBuffer<uint8_t> tempBuf(blasBufferSizes.tempSizeInBytes);
+	DeviceBuffer<uint8_t> outputBuf(blasBufferSizes.outputSizeInBytes);
+
+	OptixAccelEmitDesc emitDesc;
+	emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+	emitDesc.result = compactSizeBuf.GetCuPtr();
+
+	ASSERT_OPTIX(optixAccelBuild(
+		m_Context,
+		0,
+		&buildOptions,
+		&instanceInput,
+		1,
+		tempBuf.GetCuPtr(),
+		tempBuf.GetByteSize(),
+		outputBuf.GetCuPtr(),
+		outputBuf.GetByteSize(),
+		&m_TlasHandle,
+		&emitDesc,
+		1));
+
+	// Sync
+	ASSERT_CUDA(cudaDeviceSynchronize());
+
+	// Compact
+	uint64_t compactedSize = 0;
+	compactSizeBuf.Download(&compactedSize);
+
+	m_TlasBuf.Alloc(compactedSize);
+	ASSERT_OPTIX(optixAccelCompact(
+		m_Context,
+		0,
+		m_TlasHandle,
+		m_TlasBuf.GetCuPtr(),
+		m_TlasBuf.GetByteSize(),
+		&m_TlasHandle));
+
+	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
 }

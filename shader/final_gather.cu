@@ -9,7 +9,7 @@ __constant__ LaunchParams params;
 
 extern "C" __global__ void __intersection__prefix_entry()
 {
-	printf("__intersection__prefix_entry\n");
+
 }
 
 static __forceinline__ __device__ glm::vec3 GetPathContribution(const PrefixPath& prefix, const SuffixPath& suffix)

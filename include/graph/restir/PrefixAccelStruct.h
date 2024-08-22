@@ -42,18 +42,26 @@ public:
 
 	CuBufferView<OptixAabb> GetAabbBufferView() const;
 	CuBufferView<PrefixEntry> GetPrefixEntryBufferView() const;
-	OptixTraversableHandle GetTraversableHandle() const;
+	OptixTraversableHandle GetTlas() const;
+
+	void SetSbtOffset(const uint32_t sbtOffset);
 
 private:
 	OptixDeviceContext m_Context = nullptr;
 
-	OptixTraversableHandle m_TraversHandle = 0;
-	DeviceBuffer<uint8_t> m_AccelBuf{};
+	OptixTraversableHandle m_GasHandle = 0;
+	DeviceBuffer<uint8_t> m_GasBuf{};
+
+	OptixTraversableHandle m_TlasHandle = 0;
+	DeviceBuffer<uint8_t> m_TlasBuf{};
 
 	DeviceBuffer<OptixAabb> m_Aabbs{};
 	CUdeviceptr m_AabbDevPtr = 0;
 
 	DeviceBuffer<PrefixEntry> m_PrefixEntries{};
 
-	void BuildAccel();
+	uint32_t m_SbtOffset = 0;
+
+	void BuildGas();
+	void BuildTlas();
 };
