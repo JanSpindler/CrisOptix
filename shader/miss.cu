@@ -7,8 +7,6 @@
 
 extern "C" __global__ void __miss__prefix_entry()
 {
-	PrefixSearchPayload* payload = GetPayloadDataPointer<PrefixSearchPayload>();
-	payload->neighCount = 0;
 }
 
 extern "C" __global__ void __miss__main()

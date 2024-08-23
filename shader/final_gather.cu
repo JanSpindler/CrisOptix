@@ -116,17 +116,20 @@ extern "C" __global__ void __raygen__final_gather()
 				params.restir.prefixEntriesTraceParams,
 				&prefixSearchPayload);
 
-			// TODO: Store in array
-			const Reservoir<SuffixPath> neighSuffixRes[1] = { {} };
-
 			// Borrow their suffixes and gather path contributions
 			for (size_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
 			{
+				// Assume: Neighbor prefix and suffix are valid
+
+				// Get suffix
+				const uint32_t suffixPixelIdx = params.restir.prefixNeighbors[k * pixelIdx + suffixIdx].pixelIdx;
+				const SuffixPath& neighSuffix = params.restir.suffixReservoirs[suffixPixelIdx].sample;
+
 				// Calc mis weight m_i(Y_ij^S, X_i^P)
 				const float misWeight = 1.0f;
 
 				// Calc path contribution
-				const glm::vec3 pathContrib = GetPathContribution(neighPrefix, neighSuffixRes[0].sample);
+				const glm::vec3 pathContrib = GetPathContribution(neighPrefix, neighSuffix);
 
 				// Calc ucw
 				const float ucwPrefix = 1.0f / neighPrefix.p;
@@ -134,7 +137,7 @@ extern "C" __global__ void __raygen__final_gather()
 				const float ucw = ucwPrefix * ucwSuffix;
 
 				// Gather
-				//outputRadiance += misWeight * pathContrib * ucw;
+				outputRadiance += misWeight * pathContrib * ucw;
 			}
 		}
 	}
