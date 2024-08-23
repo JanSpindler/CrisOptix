@@ -5,6 +5,27 @@
 #include <graph/DeviceBuffer.h>
 #include <graph/CuBufferView.h>
 
+struct PrefixNeighbor
+{
+	// Pixel index.
+	uint32_t pixelIdx;
+
+	// Distance to searching prefix.
+	float distance;
+
+	__forceinline__ __device__ __host__ PrefixNeighbor() :
+		pixelIdx(0),
+		distance(0.0f)
+	{
+	}
+
+	__forceinline__ __device__ __host__ PrefixNeighbor(const uint32_t _pixelIdx, const float _distance) :
+		pixelIdx(_pixelIdx),
+		distance(_distance)
+	{
+	}
+};
+
 class PrefixAccelStruct
 {
 public:
@@ -13,7 +34,7 @@ public:
 	void Rebuild(const size_t neighCount);
 
 	CuBufferView<OptixAabb> GetAabbBufferView() const;
-	CuBufferView<uint32_t> GetNeighPixelBufferView() const;
+	CuBufferView<PrefixNeighbor> GetPrefixNeighborBufferView() const;
 	OptixTraversableHandle GetTlas() const;
 
 	void SetSbtOffset(const uint32_t sbtOffset);
@@ -30,7 +51,7 @@ private:
 	DeviceBuffer<OptixAabb> m_Aabbs{};
 	CUdeviceptr m_AabbDevPtr = 0;
 
-	DeviceBuffer<uint32_t> m_NeighPixelBuf{};
+	DeviceBuffer<PrefixNeighbor> m_PrefixNeighborBuf{};
 
 	size_t m_PixelCount = 0;
 	size_t m_NeighCount = 0;

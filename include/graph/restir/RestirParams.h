@@ -5,6 +5,7 @@
 #include <graph/restir/PrefixPath.h>
 #include <graph/restir/SuffixPath.h>
 #include <graph/restir/RestirGBuffer.h>
+#include <graph/restir/PrefixAccelStruct.h>
 
 struct RestirParams
 {
@@ -41,5 +42,5 @@ struct RestirParams
 	OptixTraversableHandle prefixEntriesTraversHandle;
 	TraceParameters prefixEntriesTraceParams;
 	CuBufferView<OptixAabb> prefixEntryAabbs;
-	CuBufferView<uint32_t> prefixNeighPixels;
+	CuBufferView<PrefixNeighbor> prefixNeighbors;
 };

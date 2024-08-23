@@ -4,7 +4,7 @@
 #include <util/glm_cuda.h>
 #include <util/pixel_index.h>
 #include <graph/trace.h>
-#include <graph/restir/PrefixEntryResult.h>
+#include <graph/restir/PrefixSearchPayload.h>
 
 __constant__ LaunchParams params;
 
@@ -14,7 +14,7 @@ extern "C" __global__ void __intersection__prefix_entry()
 	const uint32_t neighPixelIdx = optixGetPrimitiveIndex();
 
 	// Get payload
-	PrefixEntryResult* result = GetPayloadDataPointer<PrefixEntryResult>();
+	PrefixSearchPayload* payload = GetPayloadDataPointer<PrefixSearchPayload>();
 
 	// Check if radius is truly as desired
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
@@ -22,27 +22,33 @@ extern "C" __global__ void __intersection__prefix_entry()
 	const float distance = glm::distance(queryPos, neighPos);
 	if (distance > params.restir.gatherRadius) { return; }
 
+	// Build neighbor
+	const PrefixNeighbor neigh(neighPixelIdx, distance);
+
 	// Store neigh pixel idx
 	const uint32_t k = params.restir.gatherM - 1;
-	const uint32_t offset = result->pixelIdx * k;
+	const uint32_t offset = payload->pixelIdx * k;
 
 	// If neigh pixel idx buffer not full
-	if (result->neighCount < k)
+	if (payload->neighCount < k)
 	{
 		// Append neigh pixel idx to buffer
-		params.restir.prefixNeighPixels[offset + result->neighCount] = neighPixelIdx;
+		params.restir.prefixNeighbors[offset + payload->neighCount] = neigh;
 
 		// Inc neigh count
-		++result->neighCount;
+		++payload->neighCount;
 
 		// Find stored neigh with largest distance
-		result->FindLargestDist(params);
+		if (payload->neighCount == k)
+		{
+			payload->FindLargestDist(params);
+		}
 	}
 	// If neigh pixel idx buffer is full AND the distance of new neigh is lower than the max distance so far
-	else if (distance < result->maxNeighDist)
+	else if (distance < payload->maxNeighDist)
 	{
-		params.restir.prefixNeighPixels[offset + result->maxDistNeighIdx] = neighPixelIdx;
-		result->FindLargestDist(params);
+		params.restir.prefixNeighbors[offset + payload->maxDistNeighIdx] = neigh;
+		payload->FindLargestDist(params);
 	}
 }
 
@@ -90,43 +96,46 @@ extern "C" __global__ void __raygen__final_gather()
 
 	// Final gather
 	// K = M - 1
-	const size_t prefixNeighCount = params.restir.gatherM - 1;
-	for (size_t prefixIdx = 1; prefixIdx < params.restir.gatherN; ++prefixIdx)
+	const size_t k = params.restir.gatherM - 1;
+	if (k > 0)
 	{
-		// Trace new prefix for pixel q
-		const PrefixPath neighPrefix{};
-
-		// Find k neighboring prefixes in world space
-		static constexpr float EPSILON = 1e-16;
-		PrefixEntryResult prefixEntryResult(pixelIdx);
-		TraceWithDataPointer<PrefixEntryResult>(
-			params.restir.prefixEntriesTraversHandle,
-			prefix.lastInteraction.pos,
-			glm::vec3(EPSILON),
-			0.0f,
-			EPSILON,
-			params.restir.prefixEntriesTraceParams,
-			&prefixEntryResult);
-
-		// TODO: Store in array
-		const Reservoir<SuffixPath> neighSuffixRes[1] = { {} };
-
-		// Borrow their suffixes and gather path contributions
-		for (size_t suffixIdx = 0; suffixIdx < prefixNeighCount; ++suffixIdx)
+		for (size_t prefixIdx = 1; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
-			// Calc mis weight m_i(Y_ij^S, X_i^P)
-			const float misWeight = 1.0f;
+			// Trace new prefix for pixel q
+			const PrefixPath neighPrefix{};
 
-			// Calc path contribution
-			const glm::vec3 pathContrib = GetPathContribution(neighPrefix, neighSuffixRes[0].sample);
+			// Find k neighboring prefixes in world space
+			static constexpr float EPSILON = 1e-16;
+			PrefixSearchPayload prefixSearchPayload(pixelIdx);
+			TraceWithDataPointer<PrefixSearchPayload>(
+				params.restir.prefixEntriesTraversHandle,
+				prefix.lastInteraction.pos,
+				glm::vec3(EPSILON),
+				0.0f,
+				EPSILON,
+				params.restir.prefixEntriesTraceParams,
+				&prefixSearchPayload);
 
-			// Calc ucw
-			const float ucwPrefix = 1.0f / neighPrefix.p;
-			const float ucwSuffix = 1.0f; // TODO: Shift and use ucw after shift
-			const float ucw = ucwPrefix * ucwSuffix;
+			// TODO: Store in array
+			const Reservoir<SuffixPath> neighSuffixRes[1] = { {} };
 
-			// Gather
-			//outputRadiance += misWeight * pathContrib * ucw;
+			// Borrow their suffixes and gather path contributions
+			for (size_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
+			{
+				// Calc mis weight m_i(Y_ij^S, X_i^P)
+				const float misWeight = 1.0f;
+
+				// Calc path contribution
+				const glm::vec3 pathContrib = GetPathContribution(neighPrefix, neighSuffixRes[0].sample);
+
+				// Calc ucw
+				const float ucwPrefix = 1.0f / neighPrefix.p;
+				const float ucwSuffix = 1.0f; // TODO: Shift and use ucw after shift
+				const float ucw = ucwPrefix * ucwSuffix;
+
+				// Gather
+				//outputRadiance += misWeight * pathContrib * ucw;
+			}
 		}
 	}
 

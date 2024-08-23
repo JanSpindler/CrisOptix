@@ -5,7 +5,7 @@ PrefixAccelStruct::PrefixAccelStruct(const size_t pixelCount, const size_t neigh
 	m_Context(context),
 	m_Aabbs(pixelCount),
 	m_AabbDevPtr(m_Aabbs.GetCuPtr()),
-	m_NeighPixelBuf(pixelCount * neighCount),
+	m_PrefixNeighborBuf(pixelCount * neighCount),
 	m_PixelCount(pixelCount),
 	m_NeighCount(neighCount)
 {
@@ -17,7 +17,7 @@ void PrefixAccelStruct::Rebuild(const size_t neighCount)
 	if (neighCount != m_NeighCount)
 	{
 		m_NeighCount = neighCount;
-		m_NeighPixelBuf.AllocIfRequired(m_NeighCount * m_PixelCount);
+		m_PrefixNeighborBuf.AllocIfRequired(m_NeighCount * m_PixelCount);
 	}
 
 	// Rebuild AS
@@ -30,9 +30,9 @@ CuBufferView<OptixAabb> PrefixAccelStruct::GetAabbBufferView() const
 	return CuBufferView<OptixAabb>(m_Aabbs.GetCuPtr(), m_Aabbs.GetCount());
 }
 
-CuBufferView<uint32_t> PrefixAccelStruct::GetNeighPixelBufferView() const
+CuBufferView<PrefixNeighbor> PrefixAccelStruct::GetPrefixNeighborBufferView() const
 {
-	return CuBufferView<uint32_t>(m_NeighPixelBuf.GetCuPtr(), m_NeighPixelBuf.GetCount());
+	return CuBufferView<PrefixNeighbor>(m_PrefixNeighborBuf.GetCuPtr(), m_PrefixNeighborBuf.GetCount());
 }
 
 OptixTraversableHandle PrefixAccelStruct::GetTlas() const

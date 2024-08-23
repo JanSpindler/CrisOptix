@@ -20,7 +20,7 @@ Renderer::Renderer(
 	m_Height(height),
 	m_Cam(cam),
 	m_Scene(scene),
-	m_PrefixAccelStruct(width* height, 0, optixDeviceContext),
+	m_PrefixAccelStruct(width * height, 0, optixDeviceContext),
 	m_PrefixGenTempReusePipeline(optixDeviceContext),
 	m_PrefixSpatialReusePipeline(optixDeviceContext),
 	m_PrefixStoreEntriesPipeline(optixDeviceContext),
@@ -226,7 +226,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
 
 	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();
-	m_LaunchParams.restir.prefixNeighPixels = m_PrefixAccelStruct.GetNeighPixelBufferView();
+	m_LaunchParams.restir.prefixNeighbors = m_PrefixAccelStruct.GetPrefixNeighborBufferView();
 
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
 
@@ -312,6 +312,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			// Copy traversable handle into launch params and re-upload
 			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
 			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTlas();
+			m_LaunchParams.restir.prefixNeighbors = m_PrefixAccelStruct.GetPrefixNeighborBufferView();
 			m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
 			// Sync after buffer upload
