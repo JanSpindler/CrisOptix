@@ -10,10 +10,40 @@ __constant__ LaunchParams params;
 
 extern "C" __global__ void __intersection__prefix_entry()
 {
-	const uint32_t primitiveIdx = optixGetPrimitiveIndex();
-	
-	const PrefixPath& prefix = params.restir.prefixReservoirs[primitiveIdx].sample;
-	const SuffixPath& suffix = params.restir.suffixReservoirs[primitiveIdx].sample;
+	// Get pixel index of hit
+	const uint32_t neighPixelIdx = optixGetPrimitiveIndex();
+
+	// Get payload
+	PrefixEntryResult* result = GetPayloadDataPointer<PrefixEntryResult>();
+
+	// Check if radius is truly as desired
+	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
+	const glm::vec3& neighPos = params.restir.prefixReservoirs[neighPixelIdx].sample.lastInteraction.pos;
+	const float distance = glm::distance(queryPos, neighPos);
+	if (distance > params.restir.gatherRadius) { return; }
+
+	// Store neigh pixel idx
+	const uint32_t k = params.restir.gatherM - 1;
+	const uint32_t offset = result->pixelIdx * k;
+
+	// If neigh pixel idx buffer not full
+	if (result->neighCount < k)
+	{
+		// Append neigh pixel idx to buffer
+		params.restir.prefixNeighPixels[offset + result->neighCount] = neighPixelIdx;
+
+		// Inc neigh count
+		++result->neighCount;
+
+		// Find stored neigh with largest distance
+		result->FindLargestDist(params);
+	}
+	// If neigh pixel idx buffer is full AND the distance of new neigh is lower than the max distance so far
+	else if (distance < result->maxNeighDist)
+	{
+		params.restir.prefixNeighPixels[offset + result->maxDistNeighIdx] = neighPixelIdx;
+		result->FindLargestDist(params);
+	}
 }
 
 static __forceinline__ __device__ glm::vec3 GetPathContribution(const PrefixPath& prefix, const SuffixPath& suffix)
@@ -68,7 +98,7 @@ extern "C" __global__ void __raygen__final_gather()
 
 		// Find k neighboring prefixes in world space
 		static constexpr float EPSILON = 1e-16;
-		PrefixEntryResult prefixEntryResult{};
+		PrefixEntryResult prefixEntryResult(pixelIdx);
 		TraceWithDataPointer<PrefixEntryResult>(
 			params.restir.prefixEntriesTraversHandle,
 			prefix.lastInteraction.pos,
