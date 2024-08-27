@@ -70,4 +70,15 @@ private:
 	CuEvent m_PostSuffixSpatialReuseEvent{};
 	CuEvent m_PostPrefixStoreEvent{};
 	CuEvent m_StopEvent{};
+
+	float m_PrefixGenTempReuseTime = 0.0f;
+	float m_PrefixSpatialReuseTime = 0.0f;
+	float m_SuffixGenTempReuseTime = 0.0f;
+	float m_SuffixSpatialReuseTime = 0.0f;
+	float m_PrefixStoreTime	= 0.0f;
+	float m_FinalGatherTime = 0.0f;
+	float m_TotalTime = 0.0f;
+
+	void RunImGuiSettings();
+	void RunImGuiPerformance();
 };

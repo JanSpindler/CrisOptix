@@ -206,6 +206,7 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // Imgui - General Info
         ImGui::Begin("General Info");
 
         ImGui::Text("Total Delta Time: %fs", deltaTime);
@@ -218,9 +219,12 @@ int main()
         const glm::vec3& camDir = cam.GetViewDir();
         ImGui::Text("Cam Dir: (%f, %f, %f)", camDir.x, camDir.y, camDir.z);
 
+        ImGui::End();
+
+        // Imgui - Renderer
         renderer.RunImGui();
 
-        ImGui::End();
+        // Imgui - Render
         ImGui::Render();
             
         // Render and display

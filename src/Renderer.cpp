@@ -175,37 +175,8 @@ Renderer::Renderer(
 
 void Renderer::RunImGui()
 {
-	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
-
-	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
-
-	// Restir
-	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
-
-	// Restir DI
-	ImGui::Text("Restir DI");
-	//ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
-	//ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
-	//ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
-	//ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
-	//ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
-
-	// Restir Prefix
-	ImGui::Text("Restir Prefix");
-	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.minPrefixLen, 1, 1);
-	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
-	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
-
-	// Restir Suffix
-	ImGui::Text("Restir Suffix");
-	ImGui::Checkbox("Suffix Enable Temportal", &m_LaunchParams.restir.suffixEnableTemporal);
-	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
-
-	// Restir final gather
-	ImGui::Text("Restir Final Gather");
-	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
-	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
-	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.001f, 0.0f, 1.0f);
+	RunImGuiSettings();
+	RunImGuiPerformance();
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -236,6 +207,8 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
+
+	// Record start event
 	m_StartEvent.Record();
 
 	// Prefix gen and temporal reuse
@@ -335,7 +308,6 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			m_Width,
 			m_Height,
 			1));
-		m_StopEvent.Record();
 	}
 	// If not restir
 	else
@@ -345,8 +317,20 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		m_PostSuffixGenTempReuseEvent.Record();
 		m_PostSuffixSpatialReuseEvent.Record();
 		m_PostPrefixStoreEvent.Record();
-		m_StopEvent.Record();
 	}
+	
+	// Ensure that stop event is recorded at the end
+	m_StopEvent.Record();
+	m_StopEvent.Sync();
+
+	// Store time
+	m_PrefixGenTempReuseTime = CuEvent::GetElapsedTimeMs(m_StartEvent, m_PostPrefixGenTempReuseEvent);
+	m_PrefixSpatialReuseTime = CuEvent::GetElapsedTimeMs(m_PostPrefixGenTempReuseEvent, m_PostPrefixSpatialReuseEvent);
+	m_SuffixGenTempReuseTime = CuEvent::GetElapsedTimeMs(m_PostPrefixSpatialReuseEvent, m_PostSuffixGenTempReuseEvent);
+	m_SuffixSpatialReuseTime = CuEvent::GetElapsedTimeMs(m_PostSuffixGenTempReuseEvent, m_PostSuffixSpatialReuseEvent);
+	m_PrefixStoreTime = CuEvent::GetElapsedTimeMs(m_PostSuffixSpatialReuseEvent, m_PostPrefixStoreEvent);
+	m_FinalGatherTime = CuEvent::GetElapsedTimeMs(m_PostPrefixStoreEvent, m_StopEvent);
+	m_TotalTime = CuEvent::GetElapsedTimeMs(m_StartEvent, m_StopEvent);
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
@@ -355,4 +339,62 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 size_t Renderer::GetFrameIdx() const
 {
 	return m_LaunchParams.frameIdx;
+}
+
+void Renderer::RunImGuiSettings()
+{
+	//
+	ImGui::Begin("Renderer Settings");
+
+	// Nee
+	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
+
+	// Accum
+	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
+
+	// Restir
+	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
+
+	// Restir DI
+	ImGui::Text("Restir DI");
+	//ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
+	//ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
+	//ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
+	//ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
+	//ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
+
+	// Restir Prefix
+	ImGui::Text("Restir Prefix");
+	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.minPrefixLen, 1, 1);
+	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
+	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
+
+	// Restir Suffix
+	ImGui::Text("Restir Suffix");
+	ImGui::Checkbox("Suffix Enable Temportal", &m_LaunchParams.restir.suffixEnableTemporal);
+	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
+
+	// Restir final gather
+	ImGui::Text("Restir Final Gather");
+	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
+	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
+	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.001f, 0.0f, 1.0f);
+
+	//
+	ImGui::End();
+}
+
+void Renderer::RunImGuiPerformance()
+{
+	ImGui::Begin("Renderer Performance");
+
+	ImGui::Text("Prefix Gen Temp Reuse: %fms", m_PrefixGenTempReuseTime);
+	ImGui::Text("Prefix Spatial Reuse: %fms", m_PrefixSpatialReuseTime);
+	ImGui::Text("Suffix Gen Temp Reuse: %fms", m_SuffixGenTempReuseTime);
+	ImGui::Text("Suffix Spatial Reuse:  %fms", m_SuffixSpatialReuseTime);
+	ImGui::Text("Prefix Store: %fms", m_PrefixStoreTime);
+	ImGui::Text("Final Gather: %fms", m_FinalGatherTime);
+	ImGui::Text("Total Time: %fms", m_TotalTime);
+
+	ImGui::End();
 }
