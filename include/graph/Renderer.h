@@ -1,14 +1,9 @@
 #pragma once
 
 #include <graph/Camera.h>
-#include <cuda.h>
 #include <model/Scene.h>
-#include <graph/DeviceBuffer.h>
 #include <graph/LaunchParams.h>
-#include <graph/restir/Reservoir.h>
-#include <graph/restir/PrefixPath.h>
-#include <graph/restir/SuffixPath.h>
-#include <graph/restir/PrefixAccelStruct.h>
+#include <graph/CuEvent.h>
 
 class Renderer
 {
@@ -26,22 +21,27 @@ public:
 	size_t GetFrameIdx() const;
 
 private:
+	// General
 	uint32_t m_Width = 0;
 	uint32_t m_Height = 0;
 
 	Camera& m_Cam;
 	const Scene& m_Scene;
 	
+	// Launch params
 	LaunchParams m_LaunchParams{};
 	DeviceBuffer<LaunchParams> m_LaunchParamsBuf = DeviceBuffer<LaunchParams>(1);
 
+	// Buffers
 	DeviceBuffer<Reservoir<PrefixPath>> m_PrefixReservoirs{};
 	DeviceBuffer<Reservoir<SuffixPath>> m_SuffixReservoirs{};
 	DeviceBuffer<RestirGBuffer> m_RestirGBuffers{};
 	DeviceBuffer<glm::vec2> m_MotionVectors{};
 
+	// Prefix AS
 	PrefixAccelStruct m_PrefixAccelStruct;
 
+	// Pipelines and sbt
 	Pipeline m_PrefixGenTempReusePipeline;
 	uint32_t m_PrefixGenTempReuseSbtIdx = 0;
 
@@ -61,4 +61,13 @@ private:
 	uint32_t m_FinalGatherSbtIdx = 0;
 
 	ShaderBindingTable m_Sbt;
+
+	// Events
+	CuEvent m_StartEvent{};
+	CuEvent m_PostPrefixGenTempReuseEvent{};
+	CuEvent m_PostPrefixSpatialReuseEvent{};
+	CuEvent m_PostSuffixGenTempReuseEvent{};
+	CuEvent m_PostSuffixSpatialReuseEvent{};
+	CuEvent m_PostPrefixStoreEvent{};
+	CuEvent m_StopEvent{};
 };
