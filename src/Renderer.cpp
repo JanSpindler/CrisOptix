@@ -236,6 +236,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	// Sync
 	ASSERT_CUDA(cudaDeviceSynchronize());
+	m_StartEvent.Record();
 
 	// Prefix gen and temporal reuse
 	ASSERT_OPTIX(optixLaunch(
@@ -247,6 +248,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		m_Width, 
 		m_Height, 
 		1));
+	m_PostPrefixGenTempReuseEvent.Record();
 
 	// Restir
 	if (m_LaunchParams.enableRestir)
@@ -264,6 +266,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Height,
 				1));
 		}
+		m_PostPrefixSpatialReuseEvent.Record();
 
 		// Suffix gen and temp reuse
 		ASSERT_OPTIX(optixLaunch(
@@ -275,6 +278,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			m_Width,
 			m_Height,
 			1));
+		m_PostSuffixGenTempReuseEvent.Record();
 
 		// Suffix spatial reuse
 		if (m_LaunchParams.restir.suffixEnableSpatial)
@@ -289,6 +293,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 				m_Height,
 				1));
 		}
+		m_PostSuffixSpatialReuseEvent.Record();
 
 		// Prefix store entries
 		{
@@ -318,6 +323,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			// Sync after buffer upload
 			ASSERT_CUDA(cudaDeviceSynchronize());
 		}
+		m_PostPrefixStoreEvent.Record();
 
 		// Final gather
 		ASSERT_OPTIX(optixLaunch(
@@ -329,6 +335,17 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			m_Width,
 			m_Height,
 			1));
+		m_StopEvent.Record();
+	}
+	// If not restir
+	else
+	{
+		// Record all unused restir events so they will produce 0ms delta times
+		m_PostPrefixSpatialReuseEvent.Record();
+		m_PostSuffixGenTempReuseEvent.Record();
+		m_PostSuffixSpatialReuseEvent.Record();
+		m_PostPrefixStoreEvent.Record();
+		m_StopEvent.Record();
 	}
 
 	// Sync
