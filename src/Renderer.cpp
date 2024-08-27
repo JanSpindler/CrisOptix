@@ -50,6 +50,8 @@ Renderer::Renderer(
 	m_LaunchParams.restir.gatherM = 1;
 	m_LaunchParams.restir.gatherRadius = 0.01f;
 
+	m_LaunchParams.restir.trackPrefixStats = false;
+
 	//
 	m_LaunchParams.surfaceTraceParams.rayFlags = OPTIX_RAY_FLAG_NONE;
 	m_LaunchParams.surfaceTraceParams.sbtOffset = 0;
@@ -177,6 +179,7 @@ void Renderer::RunImGui()
 {
 	RunImGuiSettings();
 	RunImGuiPerformance();
+	RunImGuiPrefixStats();
 }
 
 void Renderer::LaunchFrame(glm::vec3* outputBuffer)
@@ -198,6 +201,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 
 	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();
 	m_LaunchParams.restir.prefixNeighbors = m_PrefixAccelStruct.GetPrefixNeighborBufferView();
+	m_LaunchParams.restir.prefixStats = m_PrefixAccelStruct.GetStatsBufferView();
 
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
 
@@ -397,4 +401,21 @@ void Renderer::RunImGuiPerformance()
 	ImGui::Text("Total Time: %fms", m_TotalTime);
 
 	ImGui::End();
+}
+
+void Renderer::RunImGuiPrefixStats()
+{
+	ImGui::Begin("Renderer Prefix Stats");
+
+	const PrefixAccelStruct::Stats stats = m_PrefixAccelStruct.GetStats();
+	const float avgNeighCount = static_cast<float>(stats.totalNeighCount) / static_cast<float>(m_Width * m_Height * m_LaunchParams.restir.gatherN);
+
+	ImGui::Checkbox("Track Prefix Stats", &m_LaunchParams.restir.trackPrefixStats);
+	ImGui::Text("Min neighbor count: %d", stats.minNeighCount);
+	ImGui::Text("Max neighbor count: %d", stats.maxNeighCount);
+	ImGui::Text("Avg neighbor count: %f", avgNeighCount);
+
+	ImGui::End();
+
+	m_PrefixAccelStruct.ResetStats();
 }

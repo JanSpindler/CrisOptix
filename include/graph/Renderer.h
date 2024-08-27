@@ -81,4 +81,5 @@ private:
 
 	void RunImGuiSettings();
 	void RunImGuiPerformance();
+	void RunImGuiPrefixStats();
 };

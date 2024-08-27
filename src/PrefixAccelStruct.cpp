@@ -35,14 +35,32 @@ CuBufferView<PrefixNeighbor> PrefixAccelStruct::GetPrefixNeighborBufferView() co
 	return CuBufferView<PrefixNeighbor>(m_PrefixNeighborBuf.GetCuPtr(), m_PrefixNeighborBuf.GetCount());
 }
 
+CuBufferView<PrefixAccelStruct::Stats> PrefixAccelStruct::GetStatsBufferView() const
+{
+	return CuBufferView<PrefixAccelStruct::Stats>(m_StatsBuf.GetCuPtr(), m_StatsBuf.GetCount());
+}
+
 OptixTraversableHandle PrefixAccelStruct::GetTlas() const
 {
 	return m_TlasHandle;
 }
 
+PrefixAccelStruct::Stats PrefixAccelStruct::GetStats() const
+{
+	PrefixAccelStruct::Stats stats{};
+	m_StatsBuf.Download(&stats);
+	return stats;
+}
+
 void PrefixAccelStruct::SetSbtOffset(const uint32_t sbtOffset)
 {
 	m_SbtOffset = sbtOffset;
+}
+
+void PrefixAccelStruct::ResetStats()
+{
+	PrefixAccelStruct::Stats stats{};
+	m_StatsBuf.Upload(&stats);
 }
 
 void PrefixAccelStruct::BuildGas()

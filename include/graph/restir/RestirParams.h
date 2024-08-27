@@ -43,4 +43,8 @@ struct RestirParams
 	TraceParameters prefixEntriesTraceParams;
 	CuBufferView<OptixAabb> prefixEntryAabbs;
 	CuBufferView<PrefixNeighbor> prefixNeighbors;
+
+	// Prefix stats
+	bool trackPrefixStats;
+	CuBufferView<PrefixAccelStruct::Stats> prefixStats;
 };

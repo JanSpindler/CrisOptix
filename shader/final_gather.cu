@@ -115,9 +115,18 @@ extern "C" __global__ void __raygen__final_gather()
 				EPSILON,
 				params.restir.prefixEntriesTraceParams,
 				&prefixSearchPayload);
+			const uint32_t neighCount = prefixSearchPayload.neighCount;
+
+			// Track prefix stats
+			if (params.restir.trackPrefixStats)
+			{
+				atomicMin(&params.restir.prefixStats[0].minNeighCount, neighCount);
+				atomicMax(&params.restir.prefixStats[0].maxNeighCount, neighCount);
+				atomicAdd(&params.restir.prefixStats[0].totalNeighCount, neighCount);
+			}
 
 			// Borrow their suffixes and gather path contributions
-			for (size_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
+			for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
 			{
 				// Assume: Neighbor prefix and suffix are valid
 
