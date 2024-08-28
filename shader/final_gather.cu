@@ -152,6 +152,7 @@ extern "C" __global__ void __raygen__final_gather()
 	}
 
 	// Accum
+	if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 	if (params.enableAccum)
 	{
 		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
