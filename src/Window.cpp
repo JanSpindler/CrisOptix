@@ -6,7 +6,7 @@
 #include <imgui_impl_opengl3.h>
 
 static const std::string vertShaderSrc = R"(
-#version 330 core
+#version 460 core
 
 layout(location = 0) in vec3 vertexPosition_modelspace;
 out vec2 UV;
@@ -19,7 +19,7 @@ void main()
 )";
 
 static const std::string fragShaderSrc = R"(
-#version 330 core
+#version 460 core
 
 in vec2 UV;
 out vec3 color;
@@ -29,7 +29,7 @@ uniform bool correct_gamma;
 
 void main()
 {
-    color = texture( render_tex, UV ).xyz;
+	color = texture( render_tex, UV ).xyz;
 }
 )";
 
@@ -67,7 +67,7 @@ void Window::HandleIO()
 }
 
 void Window::Display(const GLuint pbo)
-{	
+{
 	// Framebuffer and viewport
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, m_Width, m_Height);
@@ -78,7 +78,7 @@ void Window::Display(const GLuint pbo)
 	// Use glsl program
 	glUseProgram(m_Program);
 
-	// Setupt render texutre
+	// Setup render texutre
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_RenderTex);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -90,13 +90,10 @@ void Window::Display(const GLuint pbo)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 	glUniform1i(m_RenderTexUniformLoc, 0);
 
-	// Setup vertex array
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
 	// Draw
+	glBindVertexArray(m_VertexArray);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
 
 	//
 	glDisableVertexAttribArray(0);
@@ -161,6 +158,9 @@ void Window::InitGlfw(const bool resizable, const std::string& title)
 		exit(1);
 	}
 
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE);
 	m_Handle = glfwCreateWindow(m_Width, m_Height, title.c_str(), nullptr, nullptr);
 	if (m_Handle == nullptr)
@@ -174,9 +174,8 @@ void Window::InitGlfw(const bool resizable, const std::string& title)
 
 void Window::InitOpenGl()
 {
-	// Glad
-	gladLoadGL();
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	// Glew
+	if (glewInit() != GLEW_OK) 
 	{
 		exit(1);
 	}
@@ -196,8 +195,8 @@ void Window::InitRenderTex()
 	
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -206,6 +205,12 @@ void Window::InitRenderTex()
 
 void Window::InitVertexBuffer()
 {
+	// Init vao
+	glGenVertexArrays(1, &m_VertexArray);
+	glBindVertexArray(m_VertexArray);
+	CHECK_GL_ERROR();
+
+	// Init vbo
 	static constexpr GLfloat vertexBufferData[] = {
 		-1.0f, -1.0f, 0.0f,
 		 1.0f, -1.0f, 0.0f,
@@ -219,9 +224,15 @@ void Window::InitVertexBuffer()
 	glGenBuffers(1, &m_VertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexBufferData), reinterpret_cast<const void*>(vertexBufferData), GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 	CHECK_GL_ERROR();
+
+	// Vertex layout
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), nullptr);
+	glEnableVertexAttribArray(0);
+
+	// Unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 void Window::InitProgram()

@@ -198,7 +198,7 @@ int main()
         // Camera movement
         HandleCamMove(deltaTime, cam);
 
-        // Handle window io // TODO: Handle resize
+        // Handle window io
         Window::HandleIO();
 
         // Imgui

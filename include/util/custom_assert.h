@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <util/Log.h>
 #include <cuda.h>
 #include <string>

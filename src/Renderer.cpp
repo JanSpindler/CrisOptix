@@ -408,7 +408,7 @@ void Renderer::RunImGuiPrefixStats()
 	ImGui::Begin("Renderer Prefix Stats");
 
 	const PrefixAccelStruct::Stats stats = m_PrefixAccelStruct.GetStats();
-	const float avgNeighCount = static_cast<float>(stats.totalNeighCount) / static_cast<float>(m_Width * m_Height * m_LaunchParams.restir.gatherN);
+	const float avgNeighCount = static_cast<float>(stats.totalNeighCount) / static_cast<float>(m_Width * m_Height * (m_LaunchParams.restir.gatherN - 1));
 
 	ImGui::Checkbox("Track Prefix Stats", &m_LaunchParams.restir.trackPrefixStats);
 	ImGui::Text("Min neighbor count: %d", stats.minNeighCount);

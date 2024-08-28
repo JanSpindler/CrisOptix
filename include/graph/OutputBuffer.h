@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <vector>
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <cuda.h>
 #include <cuda_gl_interop.h>
 #include <util/custom_assert.h>
@@ -33,8 +33,6 @@ public:
 		CHECK_GL_ERROR();
 
 		ASSERT_CUDA(cudaGraphicsGLRegisterBuffer(&m_CudaGraphRes, m_Pbo, cudaGraphicsMapFlagsWriteDiscard));
-
-		m_PixelStorage.resize(m_Width * m_Height);
 	}
 
 	constexpr void MapCuda()
@@ -67,7 +65,6 @@ private:
 	GLuint m_Pbo = 0;
 	T* m_DevicePixels = nullptr;
 	T* m_HostPixels = nullptr;
-	std::vector<T> m_PixelStorage{};
 
 	CUstream m_Stream = 0;
 };

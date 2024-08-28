@@ -64,9 +64,9 @@ target_link_libraries(CrisOptixShader PRIVATE CUDA::cuda_driver CUDA::cudart ${C
 # OPTIX
 find_package(OptiX REQUIRED)
 
-# GLAD
-find_package(glad CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE glad::glad)
+# GLEW
+find_package(GLEW REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE GLEW::GLEW)
 
 # GLFW
 find_package(glfw3 CONFIG REQUIRED)

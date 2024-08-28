@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <string>
 #include <graph/OutputBuffer.h>
@@ -43,6 +43,7 @@ private:
 
 	// Vertex buffer
 	static inline GLuint m_VertexBuffer = 0;
+	static inline GLuint m_VertexArray = 0;
 
 	// Shader
 	static inline GLuint m_VertexShader = 0;
