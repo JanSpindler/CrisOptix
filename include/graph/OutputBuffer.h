@@ -26,9 +26,11 @@ public:
 			glGenBuffers(1, &m_Pbo);
 		}
 
-		glBindBuffer(GL_ARRAY_BUFFER, m_Pbo);
-		glBufferData(GL_ARRAY_BUFFER, m_Width * m_Height * sizeof(T), nullptr, GL_STREAM_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		const size_t bufferSize = m_Width * m_Height * sizeof(T);
+
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_Pbo);
+		glBufferData(GL_PIXEL_UNPACK_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
 		CHECK_GL_ERROR();
 
@@ -55,6 +57,15 @@ public:
 	constexpr GLuint GetPbo() const
 	{
 		return m_Pbo;
+	}
+
+	constexpr std::vector<T> GetHostData()
+	{
+		// Assume: Already mapped
+
+		std::vector<T> hostData(m_Width * m_Height);
+		ASSERT_CUDA(cudaMemcpy(hostData.data(), m_DevicePixels, m_Width * m_Height * sizeof(T), cudaMemcpyDeviceToHost));
+		return hostData;
 	}
 
 private:

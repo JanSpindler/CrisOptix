@@ -132,8 +132,8 @@ int main()
     std::cout << "Hello there" << std::endl;
 
     // Settings
-    static constexpr uint32_t width = 800;
-    static constexpr uint32_t height = 600;
+    static constexpr uint32_t width = 1600;
+    static constexpr uint32_t height = 900;
     static constexpr size_t pixelCount = width * height;
 
     // Init

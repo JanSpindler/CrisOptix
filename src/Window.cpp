@@ -29,7 +29,7 @@ uniform bool correct_gamma;
 
 void main()
 {
-	color = texture( render_tex, UV ).xyz;
+	color = texture(render_tex, UV).xyz;
 }
 )";
 
@@ -75,28 +75,24 @@ void Window::Display(const GLuint pbo)
 	// Clear
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// Use glsl program
-	glUseProgram(m_Program);
-
 	// Setup render texutre
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_RenderTex);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, m_Width, m_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	// Use glsl program
+	glUseProgram(m_Program);
 	glUniform1i(m_RenderTexUniformLoc, 0);
 
 	// Draw
 	glBindVertexArray(m_VertexArray);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
-
-	//
-	glDisableVertexAttribArray(0);
 
 	CHECK_GL_ERROR();
 
@@ -195,9 +191,9 @@ void Window::InitRenderTex()
 	
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	CHECK_GL_ERROR();

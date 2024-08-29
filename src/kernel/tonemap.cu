@@ -29,12 +29,11 @@ static __global__ void ToneMappingKernel(const CuBufferView<glm::vec3> inputHdr,
 	}
 
 	outputLdr[idx] = LinearToSrgb(inputHdr[idx]);
-	//outputLdr[idx] = glm::u8vec3(100);
 }
 
 void ToneMapping(const CuBufferView<glm::vec3>& inputHdr, CuBufferView<glm::u8vec3>& outputLdr)
 {
 	const uint32_t blockSize = 512;
 	const uint32_t blockCount = CeilDiv(inputHdr.count, blockSize);
-	ToneMappingKernel<<<blockSize, blockCount>>>(inputHdr, outputLdr);
+	ToneMappingKernel<<<blockCount, blockSize>>>(inputHdr, outputLdr);
 }
