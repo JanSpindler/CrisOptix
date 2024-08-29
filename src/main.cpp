@@ -56,8 +56,11 @@ static OptixDeviceContext InitOptix()
     options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
 
     OptixDeviceContext optixContext = nullptr;
+#ifdef _DEBUG
     ASSERT_OPTIX(optixDeviceContextCreate(cudaContext, &options, &optixContext));
-
+#else
+    ASSERT_OPTIX(optixDeviceContextCreate(cudaContext, nullptr, &optixContext));
+#endif
     return optixContext;
 }
 

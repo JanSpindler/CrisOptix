@@ -23,6 +23,8 @@ static std::string GetGlErrorStr(const GLenum result)
     }
 }
 
+#ifdef _DEBUG
+
 #define CHECK_GL_ERROR() \
 	{ \
         const GLenum result = glGetError(); \
@@ -56,3 +58,11 @@ static std::string GetGlErrorStr(const GLenum result)
             Log::Error(ss.str(), true); \
 		} \
 	}
+
+#else
+
+#define CHECK_GL_ERROR(x) {}
+#define ASSERT_CUDA(x) {}
+#define ASSERT_OPTIX(x) {}
+
+#endif // DEBUG

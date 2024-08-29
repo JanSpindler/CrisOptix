@@ -28,9 +28,14 @@ Pipeline::Pipeline(OptixDeviceContext context) :
     m_Context { context }
 {
     // Set default module compile options
-    m_ModuleCompileOptions.maxRegisterCount          = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-    m_ModuleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;//OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-    m_ModuleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;//OPTIX_COMPILE_DEBUG_LEVEL_MINIMAL;
+    m_ModuleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
+#ifdef _DEBUG
+    m_ModuleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+    m_ModuleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+#else
+    m_ModuleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+    m_ModuleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+#endif
 
     // Set default pipeline compile options
     m_PipelineCompileOptions.usesMotionBlur        = false;
@@ -180,7 +185,11 @@ OptixModule Pipeline::CreateNewModule(const std::string &ptx_filename, const Opt
 
     OptixModule ptx_module;
 
+#ifdef _DEBUG
     std::vector<char> ptxSource = ReadFile("./CrisOptixShader.dir/Debug/" + ptx_filename);
+#else
+    std::vector<char> ptxSource = ReadFile("./CrisOptixShader.dir/Release/" + ptx_filename);
+#endif
     OptixResult result = optixModuleCreate(
         context,
         &m_ModuleCompileOptions,
