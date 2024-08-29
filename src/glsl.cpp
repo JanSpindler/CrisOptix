@@ -1,4 +1,4 @@
-#include <glsl.h>
+#include <util/glsl.h>
 #include <util/Log.h>
 #include <util/custom_assert.h>
 
