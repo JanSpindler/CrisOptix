@@ -83,7 +83,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 	//
 	glm::vec3 brdfResult2(1.0f);
-	if (suffix.reconIdx > 0)
+	if (suffix.GetReconIdx() > 0)
 	{
 		// Eval brdf at suffix recon vertex
 		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(

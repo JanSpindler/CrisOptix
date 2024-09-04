@@ -4,11 +4,15 @@
 #include <util/random.h>
 #include <graph/Interaction.h>
 #include <graph/luminance.h>
+#include <cuda_fp16.h>
 
 struct SuffixPath
 {
-	// Valid flag
-	bool valid;
+	// Path flags
+	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)
+	// 8:16 -> reconnection index: Index of recon vertex
+	// 16:17 -> valid
+	uint32_t flags;
 
 	// Position of last prefix vertex (used for jacobian)
 	glm::vec3 lastPrefixPos;
@@ -18,9 +22,6 @@ struct SuffixPath
 
 	// Interaction at recon vertex
 	Interaction reconInteraction;
-
-	// Index of recon vertex
-	uint32_t reconIdx;
 
 	// Out direction after reconnection (used for brdf evaluation)
 	glm::vec3 reconOutDir;
@@ -34,23 +35,18 @@ struct SuffixPath
 	// Sampling pdf
 	float p;
 
-	// Length of path without NEE vertex (0 meaning direct termination into NEE)
-	uint32_t len;
-
 	// State of random number generator before tracing suffix
 	PCG32 rng;
 
 	__forceinline__ __device__ __host__ SuffixPath() :
-		valid(false),
+		flags(0),
 		lastPrefixPos(0.0f),
 		lastPrefixInDir(0.0f),
 		reconInteraction({}),
-		reconIdx(0),
 		reconOutDir(0.0f),
 		f(0.0f),
 		postReconF(0.0f),
 		p(0.0f),
-		len(0),
 		rng({})
 	{
 	}
@@ -63,17 +59,48 @@ struct SuffixPath
 		const glm::vec3& _f,
 		const float _p)
 		:
-		valid(other.valid),
+		flags(other.flags),
 		lastPrefixPos(_lastPrefixPos),
 		lastPrefixInDir(_lastPrefixInDir),
 		reconInteraction(other.reconInteraction),
-		reconIdx(other.reconIdx),
 		reconOutDir(other.reconOutDir),
 		f(_f),
 		postReconF(other.postReconF),
 		p(_p),
-		len(other.len),
 		rng(other.rng)
 	{
+	}
+
+	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
+	{
+		return static_cast<uint32_t>(flags & 0xFF);
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetLength(const uint32_t length)
+	{
+		flags &= ~0xFFu;
+		flags |= length & 0xFFu;
+	}
+
+	constexpr __forceinline__ __device__ __host__ uint32_t GetReconIdx() const
+	{
+		return static_cast<uint32_t>((flags >> 8u) & 0xFFu);
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetReconIdx(const uint32_t reconIdx)
+	{
+		flags &= ~0xFF00u;
+		flags |= (reconIdx & 0xFFu) << 8u;
+	}
+
+	constexpr __forceinline__ __device__ __host__ bool IsValid() const
+	{
+		return static_cast<bool>(flags & (1 << 16));
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetValid(const bool valid)
+	{
+		flags &= ~(1 << 16);
+		if (valid) { flags |= 1 << 16; }
 	}
 };

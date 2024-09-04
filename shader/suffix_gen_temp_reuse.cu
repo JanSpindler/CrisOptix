@@ -20,7 +20,7 @@ static __forceinline__ __device__ void SuffixGen(
 	const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.len, 8, rng, params);
 
 	// Do not store if not valid
-	if (!suffix.valid) { return; }
+	if (!suffix.IsValid()) { return; }
 
 	// Stream into reservoir
 	const float pHat = GetLuminance(suffix.f);
@@ -44,7 +44,7 @@ static __forceinline__ __device__ void SuffixTempReuse(
 	const Reservoir<SuffixPath>& prevSuffixRes = params.restir.suffixReservoirs[prevPixelIdx];
 
 	// Exit if prev suffix is invalid
-	if (!prevSuffixRes.sample.valid) { return; }
+	if (!prevSuffixRes.sample.IsValid()) { return; }
 
 	// Reuse prev suffix
 	SuffixReuse(suffixRes, prevSuffixRes, prefix, rng, params);

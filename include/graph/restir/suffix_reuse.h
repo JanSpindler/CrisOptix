@@ -22,7 +22,7 @@ static __forceinline__ __device__ void SuffixReuse(
 
 	// Reconnect at first vertex (0 for first vertex by nee / 1 for normal surface hit)
 	// TODO: Support hybrid shift
-	if (otherSuffix.reconIdx > 1) { return; }
+	if (otherSuffix.GetReconIdx() > 1) { return; }
 
 	// Calc recon vector
 	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconInteraction.pos - prefix.lastInteraction.pos);
@@ -64,7 +64,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	const float shiftedP = 
 		params.neeProb * // Sampled NEE at some point
 		//brdfEvalResult.samplingPdf * // BRDF sample at reconnection
-		glm::pow(1.0f - params.neeProb, static_cast<float>(otherSuffix.len)); // BRDF sample for path after reconnection
+		glm::pow(1.0f - params.neeProb, static_cast<float>(otherSuffix.GetLength())); // BRDF sample for path after reconnection
 	
 	// Construct shifted PrefixPath
 	const SuffixPath shiftedSuffix = SuffixPath(otherSuffix, currSuffix.lastPrefixPos, currSuffix.lastPrefixInDir, shiftedF, shiftedP);

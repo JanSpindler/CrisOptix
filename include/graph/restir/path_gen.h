@@ -180,12 +180,9 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.f = glm::vec3(1.0f);
 	suffix.p = 1.0f;
 	suffix.postReconF = glm::vec3(1.0f);
-	suffix.len = 0;
 	suffix.rng = rng;
-	suffix.valid = false;
 	suffix.lastPrefixPos = prefix.lastInteraction.pos;
 	suffix.lastPrefixInDir = prefix.lastInteraction.inRayDir;
-	suffix.reconIdx = 0;
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -242,12 +239,12 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 				suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
 				suffix.postReconF = suffix.f;
 
-				suffix.valid = true;
+				suffix.SetValid(false);
 				validEmitterFound = true;
 			}
 		}
 
-		if (!validEmitterFound) { suffix.valid = false; }
+		if (!validEmitterFound) { suffix.SetValid(false); }
 		return suffix;
 	}
 
@@ -258,7 +255,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		rng);
 	if (brdfSampleResult.samplingPdf <= 0.0f)
 	{
-		suffix.valid = false;
+		suffix.SetValid(false);
 		return suffix;
 	}
 
@@ -284,15 +281,15 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		// Exit if no surface found
 		if (!interaction.valid)
 		{
-			suffix.valid = false;
+			suffix.SetValid(false);
 			return suffix;
 		}
 
 		//
-		++suffix.len;
+		suffix.SetLength(suffix.GetLength() + 1);
 
 		// TODO: Also include roughness
-		const bool postRecon = suffix.len > 0;
+		const bool postRecon = suffix.GetLength() > 0;
 
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < params.neeProb)
@@ -339,12 +336,12 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
 					if (postRecon) { suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
 
-					suffix.valid = true;
+					suffix.SetValid(true);
 					validEmitterFound = true;
 				}
 			}
 
-			if (!validEmitterFound) { suffix.valid = false; }
+			if (!validEmitterFound) { suffix.SetValid(false); }
 			return suffix;
 		}
 
@@ -355,15 +352,15 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f)
 		{
-			suffix.valid = false;
+			suffix.SetValid(false);
 			return suffix;
 		}
 
 		// Store as reconnection vertex if fit
-		if (postRecon && suffix.reconIdx == 0)
+		if (postRecon && suffix.GetReconIdx() == 0)
 		{
 			suffix.reconInteraction = interaction;
-			suffix.reconIdx = suffix.len;
+			suffix.SetReconIdx(suffix.GetLength());
 			suffix.reconOutDir = brdfSampleResult.outDir;
 		}
 		else if (postRecon)

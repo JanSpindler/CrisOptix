@@ -23,7 +23,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 
 	// Exit if current suffix 
 	// TODO: Should this be the case?
-	if (!currSuffix.valid) { return; }
+	if (!currSuffix.IsValid()) { return; }
 
 	// Select random neighbor
 	// TODO: Kernel radius as parameter
