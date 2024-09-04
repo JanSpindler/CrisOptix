@@ -6,6 +6,12 @@
 #include <graph/restir/path_gen.h>
 #include <graph/restir/ris_helper.h>
 
+static __forceinline__ __device__ void ShiftPrefix(
+	const PrefixPath& currPrefix,
+	const PrefixPath& otherPrefix)
+{
+}
+
 static __forceinline__ __device__ void PrefixReuse(
 	Reservoir<PrefixPath>& res,
 	const Reservoir<PrefixPath>& otherRes,
@@ -48,7 +54,7 @@ static __forceinline__ __device__ void PrefixReuse(
 
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(
-		otherPrefix.primaryHitPos,
+		otherPrefix.primaryIntSeed.pos,
 		primaryInteraction.pos,
 		otherPrefixReconInt.pos,
 		otherPrefixReconInt.normal);
@@ -71,7 +77,7 @@ static __forceinline__ __device__ void PrefixReuse(
 		glm::pow(1.0f - params.neeProb, static_cast<float>(otherPrefix.GetLength() - 1));
 
 	// Construct shifted PrefixPath
-	const PrefixPath shiftedPrefix = PrefixPath(otherPrefix, shiftedF, shiftedP, primaryInteraction.pos, primaryInteraction.inRayDir);
+	const PrefixPath shiftedPrefix = PrefixPath(otherPrefix, shiftedF, shiftedP, primaryInteraction);
 
 	// Calc ris weight
 	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), otherRes.wSum, jacobian);

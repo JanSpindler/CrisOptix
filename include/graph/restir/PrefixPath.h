@@ -9,6 +9,9 @@ struct PrefixPath
 	// Random number generator state before prefix was generated
 	PCG32 rng;
 
+	// Primary interaction
+	InteractionSeed primaryIntSeed;
+
 	// Interaction at first vertex fit for prefix reconnection
 	InteractionSeed reconIntSeed;
 
@@ -21,12 +24,6 @@ struct PrefixPath
 	// 16:17 -> valid: True if prefix is a valid path
 	// 17:18 -> nee: True if prefix was terminated early by NEE
 	uint32_t flags;
-
-	// Position of primary hit
-	glm::vec3 primaryHitPos;
-
-	// Direction leading into primary hit
-	glm::vec3 primaryHitInDir;
 	
 	// Throughput or radiance if nee hit.
 	glm::vec3 f;
@@ -39,8 +36,7 @@ struct PrefixPath
 
 	__forceinline__ __device__ __host__ PrefixPath() :
 		flags(0u),
-		primaryHitPos(0.0f),
-		primaryHitInDir(0.0f),
+		primaryIntSeed({}),
 		reconIntSeed({}),
 		rng({}),
 		f(0.0f),
@@ -54,12 +50,10 @@ struct PrefixPath
 		const PrefixPath& other,
 		const glm::vec3& _f,
 		const float _p,
-		const glm::vec3& _primaryHitPos,
-		const glm::vec3& _primaryHitInDir)
+		const InteractionSeed& _primaryIntSeed)
 		:
 		flags(other.flags),
-		primaryHitPos(_primaryHitPos),
-		primaryHitInDir(_primaryHitInDir),
+		primaryIntSeed(_primaryIntSeed),
 		reconIntSeed(other.reconIntSeed),
 		rng(other.rng),
 		f(_f),

@@ -67,8 +67,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		//
 		if (prefix.GetLength() == 1)
 		{
-			prefix.primaryHitPos = interaction.pos; 
-			prefix.primaryHitInDir = dir;
+			prefix.primaryIntSeed = interaction;
 			primaryInteraction = interaction;
 		}
 
