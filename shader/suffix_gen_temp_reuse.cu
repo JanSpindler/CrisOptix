@@ -75,7 +75,7 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
 
 	// Exit if prefix is invalid
 	if (!prefix.IsValid() || prefix.IsNee() || !lastPrefixInt.valid) 

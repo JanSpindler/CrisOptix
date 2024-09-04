@@ -50,7 +50,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
-			&interaction);
+			interaction);
 
 		// Exit if no surface found
 		if (!interaction.valid)
@@ -92,12 +92,11 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 				// Cast shadow ray
 				const bool occluded = TraceOcclusion(
-					params.traversableHandle,
 					interaction.pos,
 					lightDir,
 					1e-3f,
 					distance,
-					params.occlusionTraceParams);
+					params);
 
 				// If emitter is occluded -> skip
 				if (occluded)
@@ -184,7 +183,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -207,12 +206,11 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 			// Cast shadow ray
 			const bool occluded = TraceOcclusion(
-				params.traversableHandle,
 				lastPrefixInt.pos,
 				lightDir,
 				1e-3f,
 				distance,
-				params.occlusionTraceParams);
+				params);
 
 			// If emitter is occluded -> skip
 			if (occluded)
@@ -230,7 +228,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					1e-3f,
 					distance + 1.0f,
 					params.surfaceTraceParams,
-					&interaction);
+					interaction);
 				suffix.reconIntSeed = interaction;
 
 				// Calc brdf
@@ -278,7 +276,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
-			&interaction);
+			interaction);
 
 		// Exit if no surface found
 		if (!interaction.valid)
@@ -314,12 +312,11 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 				// Cast shadow ray
 				const bool occluded = TraceOcclusion(
-					params.traversableHandle,
 					interaction.pos,
 					lightDir,
 					1e-3f,
 					distance,
-					params.occlusionTraceParams);
+					params);
 
 				// If emitter is occluded -> skip
 				if (occluded)
@@ -406,7 +403,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
-			&interaction);
+			interaction);
 
 		// Exit if no surface found
 		if (!interaction.valid)
@@ -438,12 +435,11 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 
 				// Cast shadow ray
 				const bool occluded = TraceOcclusion(
-					params.traversableHandle,
 					interaction.pos,
 					lightDir,
 					1e-3f,
 					distance,
-					params.occlusionTraceParams);
+					params);
 
 				// If emitter is occluded -> skip
 				if (occluded)

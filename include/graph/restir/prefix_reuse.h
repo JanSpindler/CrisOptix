@@ -5,6 +5,7 @@
 #include <graph/trace.h>
 #include <graph/restir/path_gen.h>
 #include <graph/restir/ris_helper.h>
+#include <cuda/std/tuple>
 
 static __forceinline__ __device__ void ShiftPrefix(
 	const PrefixPath& currPrefix,
@@ -26,7 +27,7 @@ static __forceinline__ __device__ void PrefixReuse(
 
 	// Get primary interaction
 	Interaction primaryInteraction{};
-	TraceInteractionSeed(currPrefix.primaryIntSeed, primaryInteraction, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(currPrefix.primaryIntSeed, primaryInteraction, params);
 	if (!primaryInteraction.valid) { return; }
 
 	// Exit if prev prefix res is invalid or unfit for reuse
@@ -40,17 +41,16 @@ static __forceinline__ __device__ void PrefixReuse(
 	const glm::vec3 reconDir = glm::normalize(otherPrefix.reconIntSeed.pos - primaryInteraction.pos);
 	const float reconDist = glm::distance(otherPrefix.reconIntSeed.pos, primaryInteraction.pos);
 	const bool occluded = TraceOcclusion(
-		params.traversableHandle,
 		primaryInteraction.pos,
 		reconDir,
 		1e-3f,
 		reconDist,
-		params.occlusionTraceParams);
+		params);
 	if (occluded) { return; }
 
 	// Get other prefix recon interaction
 	Interaction otherPrefixReconInt{};
-	TraceInteractionSeed(otherPrefix.reconIntSeed, otherPrefixReconInt, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(otherPrefix.reconIntSeed, otherPrefixReconInt, params);
 	if (!otherPrefixReconInt.valid) { return; }
 
 	// Calc mis weights

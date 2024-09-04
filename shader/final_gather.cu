@@ -62,7 +62,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 {
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
 	if (!lastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
 	//
@@ -79,17 +79,16 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 	// Trace occlusion
 	const bool occluded = TraceOcclusion(
-		params.traversableHandle,
 		lastPrefixInt.pos,
 		reconDir,
 		1e-3f,
 		reconLen,
-		params.occlusionTraceParams);
+		params);
 	if (occluded) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
-	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params);
 
 	//
 	glm::vec3 brdfResult2(1.0f);
@@ -152,7 +151,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 				0.0f,
 				EPSILON,
 				params.restir.prefixEntriesTraceParams,
-				&prefixSearchPayload);
+				prefixSearchPayload);
 			const uint32_t neighCount = prefixSearchPayload.neighCount;
 			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
 

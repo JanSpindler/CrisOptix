@@ -34,17 +34,16 @@ static __forceinline__ __device__ void SuffixReuse(
 
 	// Check occlusion
 	const bool occluded = TraceOcclusion(
-		params.traversableHandle,
 		prefix.lastIntSeed.pos,
 		reconDir,
 		1e-3f,
 		reconDist,
-		params.occlusionTraceParams);
+		params);
 	if (occluded) { return; }
 
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
-	TraceInteractionSeed(otherSuffix.reconIntSeed, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(otherSuffix.reconIntSeed, reconInteraction, params);
 	if (!reconInteraction.valid) { return; }
 
 	// Calc mis weights
@@ -59,7 +58,7 @@ static __forceinline__ __device__ void SuffixReuse(
 
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
 	if (!lastPrefixInt.valid) { return; }
 
 	// Shift prefix path to target domain
