@@ -6,6 +6,15 @@
 
 struct PrefixPath
 {
+	// Interaction at first vertex fit for prefix reconnection
+	Interaction reconInteraction;
+
+	// Interaction at last vertex (used for generating and reconnection with suffix)
+	Interaction lastInteraction;
+
+	// Random number generator state before prefix was generated
+	PCG32 rng;
+
 	// Path flags
 	// 0:8 -> length: Vertex count starting at primary hit. Does not include NEE hit.
 	// 8:16 -> reconnection index: Index of first vertex fit for prefix reconnection
@@ -18,13 +27,7 @@ struct PrefixPath
 
 	// Direction leading into primary hit
 	glm::vec3 primaryHitInDir;
-
-	// Interaction at first vertex fit for prefix reconnection
-	Interaction reconInteraction;
-
-	// Random number generator state before prefix was generated
-	PCG32 rng;
-
+	
 	// Throughput or radiance if nee hit.
 	glm::vec3 f;
 
@@ -33,9 +36,6 @@ struct PrefixPath
 
 	// Sampling pdf
 	float p;
-
-	// Interaction at last vertex (used for generating and reconnection with suffix)
-	Interaction lastInteraction;
 
 	__forceinline__ __device__ __host__ PrefixPath() :
 		flags(0u),
