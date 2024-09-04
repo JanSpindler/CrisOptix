@@ -4,7 +4,7 @@
 
 struct RestirGBuffer
 {
-	SurfaceInteraction primaryInteraction;
+	Interaction primaryInteraction;
 	glm::uvec2 prevPixelCoord;
 	PCG32 rng;
 
@@ -16,7 +16,7 @@ struct RestirGBuffer
 	}
 
 	__forceinline__ __device__ __host__ RestirGBuffer(
-		const SurfaceInteraction& _primaryInteraction,
+		const Interaction& _primaryInteraction,
 		const glm::uvec2& _prevPixelCoord,
 		const PCG32& _rng)
 		:

@@ -4,9 +4,9 @@
 #include <graph/Reservoir.h>
 #include <graph/sample_emitter.h>
 
-static constexpr __device__ float GetPHatDi(const SurfaceInteraction& interaction, const EmitterSample& emitterSample, PCG32& rng)
+static constexpr __device__ float GetPHatDi(const Interaction& interaction, const EmitterSample& emitterSample, PCG32& rng)
 {
-	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		interaction.meshSbtData->evalMaterialSbtIdx,
 		interaction,
 		glm::normalize(emitterSample.pos - interaction.pos));
@@ -22,7 +22,7 @@ static constexpr __device__ Reservoir<EmitterSample>& GetDiReservoir(const uint3
 static constexpr __device__ Reservoir<EmitterSample> CombineReservoirDi(
 	const Reservoir<EmitterSample>& r1,
 	const Reservoir<EmitterSample>& r2,
-	const SurfaceInteraction& interaction,
+	const Interaction& interaction,
 	PCG32& rng)
 {
 	const float pHat1 = GetPHatDi(interaction, r1.y, rng);
@@ -36,7 +36,7 @@ static constexpr __device__ Reservoir<EmitterSample> CombineReservoirDi(
 	res.W = GetPHatDi(interaction, res.y, rng) * res.wSum / static_cast<float>(res.M);
 }
 
-static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInteraction& interaction, const size_t sampleCount, PCG32& rng, const LaunchParams& params)
+static constexpr __device__ Reservoir<EmitterSample> RestirRis(const Interaction& interaction, const size_t sampleCount, PCG32& rng, const LaunchParams& params)
 {
 	Reservoir<EmitterSample> reservoir = { {}, 0.0f, 0, 0.0f };
 
@@ -52,7 +52,7 @@ static constexpr __device__ Reservoir<EmitterSample> RestirRis(const SurfaceInte
 
 static constexpr __device__ void RestirDi(
 	const glm::uvec3& launchIdx,
-	const SurfaceInteraction& interaction,
+	const Interaction& interaction,
 	PCG32& rng,
 	LaunchParams& params)
 {

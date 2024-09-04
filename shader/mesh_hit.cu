@@ -26,7 +26,7 @@ static __forceinline__ __device__ T InterpolateBary(const glm::vec2& baryCoord, 
 extern "C" __global__ void __closesthit__mesh()
 {
 	// Get interaction by ptr
-	SurfaceInteraction* si = GetPayloadDataPointer<SurfaceInteraction>();
+	Interaction* si = GetPayloadDataPointer<Interaction>();
 	const MeshSbtData* sbtData = *reinterpret_cast<const MeshSbtData**>(optixGetSbtDataPointer());
 	si->meshSbtData = sbtData;
 

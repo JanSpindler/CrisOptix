@@ -11,7 +11,7 @@ extern "C" __global__ void __miss__prefix_entry()
 
 extern "C" __global__ void __miss__main()
 {
-	SurfaceInteraction* si = GetPayloadDataPointer<SurfaceInteraction>();
+	Interaction* si = GetPayloadDataPointer<Interaction>();
 
 	const glm::vec3 world_ray_origin = cuda2glm(optixGetWorldRayOrigin());
 	const glm::vec3 world_ray_dir = cuda2glm(optixGetWorldRayDirection());

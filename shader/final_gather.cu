@@ -65,7 +65,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
 	// Eval brdf at last prefix vert with new out dir
-	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
 		prefix.lastInteraction,
 		reconDir);
@@ -86,7 +86,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	if (suffix.reconIdx > 0)
 	{
 		// Eval brdf at suffix recon vertex
-		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 			suffix.reconInteraction.meshSbtData->evalMaterialSbtIdx,
 			suffix.reconInteraction,
 			suffix.reconOutDir);
@@ -135,7 +135,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			SurfaceInteraction interaction{};
+			Interaction interaction{};
 			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, interaction, rng, params);
 			if (!prefix.valid) { continue; }
 

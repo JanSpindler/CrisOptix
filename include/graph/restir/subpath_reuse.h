@@ -210,7 +210,7 @@ static __forceinline__ bool StreamNeighPathIntoPathRes(
 }
 
 static __forceinline__ glm::vec3 ShiftPrefixRecon(
-	const SurfaceInteraction& interaction,
+	const Interaction& interaction,
 	const Vertex& prefixVert,
 	LastVertexState& lastVertState, 
 	PCG32& rng, 
@@ -230,7 +230,7 @@ static __forceinline__ glm::vec3 ShiftPrefixRecon(
 	const int componentType = 0;
 
 	// Evaluate brdf
-	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		interaction.meshSbtData->evalMaterialSbtIdx,
 		interaction,
 		connectDir);
@@ -277,7 +277,7 @@ static __forceinline__ glm::vec3 ShiftPrefixRecon(
 }
 
 static __forceinline__ glm::vec3 ShiftPrefixReplay(
-	const SurfaceInteraction& interaction,
+	const Interaction& interaction,
 	LastVertexState& lastVertState,
 	PCG32& rng,
 	glm::vec3& newWo,
@@ -286,7 +286,7 @@ static __forceinline__ glm::vec3 ShiftPrefixReplay(
 	const LaunchParams& params)
 {
 	// Sample brdf using rng
-	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 		interaction.meshSbtData->sampleMaterialSbtIdx,
 		interaction,
 		rng);
@@ -301,8 +301,8 @@ static __forceinline__ glm::vec3 ShiftPrefixReplay(
 	const bool isRoughBounce = brdfSampleResult.diffuse || roughness > 0.5f; // TODO: roughness threshold
 
 	// Sample surface interaction
-	SurfaceInteraction newInteraction{};
-	TraceWithDataPointer<SurfaceInteraction>(
+	Interaction newInteraction{};
+	TraceWithDataPointer<Interaction>(
 		params.traversableHandle,
 		interaction.pos,
 		brdfSampleResult.outDir,
@@ -328,7 +328,7 @@ static __forceinline__ glm::vec3 ShiftPrefixReplay(
 }
 
 static __forceinline__ glm::vec3 ShiftPrefix(
-	const SurfaceInteraction& interaction,
+	const Interaction& interaction,
 	const Vertex& currentPrefixVert,
 	PCG32& neighInitRng,
 	const uint32_t prefixLen,
@@ -409,8 +409,8 @@ static __forceinline__ bool ResamplePrefix(
 	const PathReservoir& neighRes,
 	const int temporalHistoryLength,
 
-	const SurfaceInteraction& currentInteraction,
-	const SurfaceInteraction& neighInteraction,
+	const Interaction& currentInteraction,
+	const Interaction& neighInteraction,
 
 	const glm::vec3& currentReplayThroughput,
 	const glm::vec3& neighReplayThroughput,
@@ -428,7 +428,7 @@ static __forceinline__ bool ResamplePrefix(
 	float jacobianShift = 1.0f;
 	glm::vec3 outDirShifted(0.0f);
 
-	SurfaceInteraction shiftedPrefixHit{};
+	Interaction shiftedPrefixHit{};
 
 	float pdfShift = 0.0f;
 	neighPrefixRes.setM(glm::min(temporalHistoryLength * currentPrefixRes.M(), neighPrefixRes.M()));
@@ -470,7 +470,7 @@ static __forceinline__ bool ResamplePrefix(
 	float pathFootprintDummy = 0.0f;
 	float currentJacobian = currentPrefixRes.reconJacobian;
 
-	SurfaceInteraction backShiftedPrefixHit{};
+	Interaction backShiftedPrefixHit{};
 
 	// Back shift
 	glm::vec3 fBackShift = ShiftPrefix(

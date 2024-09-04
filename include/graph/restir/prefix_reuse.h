@@ -9,7 +9,7 @@
 static __forceinline__ __device__ void PrefixReuse(
 	Reservoir<PrefixPath>& res,
 	const Reservoir<PrefixPath>& otherRes,
-	const SurfaceInteraction& primaryInteraction,
+	const Interaction& primaryInteraction,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -54,7 +54,7 @@ static __forceinline__ __device__ void PrefixReuse(
 	// Shift prefix path to target domain
 	// TODO: Add hybrid shift
 	// Evaluate brdf at primary interaction towards reconnection vertex
-	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		primaryInteraction.meshSbtData->evalMaterialSbtIdx,
 		primaryInteraction,
 		reconDir);

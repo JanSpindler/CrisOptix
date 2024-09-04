@@ -24,7 +24,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	const glm::vec3& dir,
 	const size_t maxLen,
 	const size_t maxNeeTries,
-	SurfaceInteraction& primaryInteraction,
+	Interaction& primaryInteraction,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -44,7 +44,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
-		TraceWithDataPointer<SurfaceInteraction>(
+		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
 			currentPos,
 			currentDir,
@@ -111,7 +111,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 				else
 				{
 					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 						prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
 						prefix.lastInteraction,
 						lightDir);
@@ -148,7 +148,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		if (prefix.len == maxLen) { break; }
 
 		// Indirect illumination, generate next ray
-		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
 			prefix.lastInteraction,
 			rng);
@@ -224,7 +224,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			else
 			{
 				// Trace surface interaction at emitter to store as reconInteraction
-				TraceWithDataPointer<SurfaceInteraction>(
+				TraceWithDataPointer<Interaction>(
 					params.traversableHandle,
 					prefix.lastInteraction.pos,
 					lightDir,
@@ -234,7 +234,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					&suffix.reconInteraction);
 
 				// Calc brdf
-				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 					prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
 					prefix.lastInteraction,
 					lightDir);
@@ -252,7 +252,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	}
 
 	// If not directly terminated by NEE -> Sample direction from brdf at last vertex of prefix
-	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 		prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
 		prefix.lastInteraction,
 		rng);
@@ -271,8 +271,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
-		SurfaceInteraction interaction{};
-		TraceWithDataPointer<SurfaceInteraction>(
+		Interaction interaction{};
+		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
 			currentPos,
 			currentDir,
@@ -331,7 +331,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 				else
 				{
 					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 						interaction.meshSbtData->evalMaterialSbtIdx,
 						interaction,
 						lightDir);
@@ -349,7 +349,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		}
 
 		// Indirect illumination, generate next ray
-		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
 			rng);
@@ -400,8 +400,8 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
-		SurfaceInteraction interaction{};
-		TraceWithDataPointer<SurfaceInteraction>(
+		Interaction interaction{};
+		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
 			currentPos,
 			currentDir,
@@ -456,7 +456,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 				else
 				{
 					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 						interaction.meshSbtData->evalMaterialSbtIdx,
 						interaction,
 						lightDir);
@@ -471,7 +471,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 		}
 
 		// Indirect illumination, generate next ray
-		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
+		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
 			rng);

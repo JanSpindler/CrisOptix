@@ -4,7 +4,7 @@
 #include <model/Mesh.h>
 #include <cuda_runtime.h>
 
-struct SurfaceInteraction
+struct Interaction
 {
 	bool valid;
 	glm::vec3 inRayDir;
@@ -16,7 +16,7 @@ struct SurfaceInteraction
 	uint32_t primitiveIdx;
 	const MeshSbtData* meshSbtData;
 
-	__forceinline__ __host__ __device__ SurfaceInteraction() :
+	__forceinline__ __host__ __device__ Interaction() :
 		valid(false),
 		inRayDir(0.0f),
 		inRayDist(0.0f),

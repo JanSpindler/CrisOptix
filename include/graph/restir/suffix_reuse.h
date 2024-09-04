@@ -54,7 +54,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	// Shift prefix path to target domain
 	// TODO: Add hybrid shift
 	// Evaluate brdf at primary interaction towards reconnection vertex
-	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
 		prefix.lastInteraction,
 		reconDir);

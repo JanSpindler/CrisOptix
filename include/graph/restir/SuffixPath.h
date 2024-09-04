@@ -17,7 +17,7 @@ struct SuffixPath
 	glm::vec3 lastPrefixInDir;
 
 	// Interaction at recon vertex
-	SurfaceInteraction reconInteraction;
+	Interaction reconInteraction;
 
 	// Index of recon vertex
 	uint32_t reconIdx;

@@ -112,7 +112,7 @@ static __forceinline__ __device__ float V_SmithJointGGX(float NdotL, float NdotV
 }
 
 
-extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const SurfaceInteraction& interaction, const glm::vec3& outDir)
+extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const Interaction& interaction, const glm::vec3& outDir)
 {
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());
@@ -211,7 +211,7 @@ static __forceinline__ __device__ glm::mat3 ComputeLocalFrame(const glm::vec3& l
     return frame;
 }
 
-extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const SurfaceInteraction& interaction, PCG32& rng)
+extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Interaction& interaction, PCG32& rng)
 {
     // Get ggx data
     const MaterialSbtData* ggxData = *reinterpret_cast<const MaterialSbtData**>(optixGetSbtDataPointer());

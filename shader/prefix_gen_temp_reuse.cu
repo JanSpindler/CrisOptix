@@ -9,14 +9,14 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ SurfaceInteraction PrefixGen(
+static __forceinline__ __device__ Interaction PrefixGen(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	PCG32& rng)
 {
 	// Trace new canonical prefix
-	SurfaceInteraction primaryInteraction{};
+	Interaction primaryInteraction{};
 	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, primaryInteraction, rng, params);
 
 	// Do not store if not valid
@@ -34,7 +34,7 @@ static __forceinline__ __device__ SurfaceInteraction PrefixGen(
 static __forceinline__ __device__ void PrefixTempReuse(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::uvec2& prevPixelCoord,
-	const SurfaceInteraction& primaryInteraction,
+	const Interaction& primaryInteraction,
 	PCG32& rng)
 {
 	// Exit if current prefix is invalid
@@ -85,7 +85,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	{
 		// Generate canonical prefix and stream into new reservoir
 		Reservoir<PrefixPath> prefixRes{};
-		const SurfaceInteraction primaryInteraction = PrefixGen(prefixRes, origin, dir, rng);
+		const Interaction primaryInteraction = PrefixGen(prefixRes, origin, dir, rng);
 
 		// Get motion vector
 		const size_t pixelIdx = GetPixelIdx(pixelCoord, params);

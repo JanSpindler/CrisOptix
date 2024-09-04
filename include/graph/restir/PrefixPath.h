@@ -19,7 +19,7 @@ struct PrefixPath
 	glm::vec3 primaryHitInDir;
 
 	// Interaction at first vertex fit for prefix reconnection
-	SurfaceInteraction reconInteraction;
+	Interaction reconInteraction;
 
 	// Index of first vertex fit for prefix reconnection
 	uint32_t reconIdx;
@@ -40,7 +40,7 @@ struct PrefixPath
 	uint32_t len;
 
 	// Interaction at last vertex (used for generating and reconnection with suffix)
-	SurfaceInteraction lastInteraction;
+	Interaction lastInteraction;
 
 	__forceinline__ __device__ __host__ PrefixPath() :
 		valid(false),
