@@ -9,7 +9,7 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static __forceinline__ __device__ float CalcReconnectionJacobian(
+static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const glm::vec3& oldXi, 
 	const glm::vec3& newXi, 
 	const glm::vec3& targetPos, 
@@ -133,16 +133,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
-		// Store as reconnection vertex if fit
-		if (postRecon && prefix.GetReconIdx() == 0)
-		{
-			prefix.reconIntSeed = interaction;
-			prefix.SetReconIdx(prefix.GetLength());
-		}
-
-		// Do not sample brdf when at last position
-		if (prefix.GetLength() == maxLen) { break; }
-
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
@@ -154,11 +144,22 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
+		// Store as reconnection vertex if fit
+		if (postRecon && prefix.GetReconIdx() == 0)
+		{
+			prefix.reconIntSeed = interaction;
+			prefix.SetReconIdx(prefix.GetLength());
+			prefix.reconOutDir = brdfSampleResult.outDir;
+		}
+		else if (postRecon)
+		{
+			prefix.postReconF *= brdfSampleResult.brdfVal;
+		}
+
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
 
 		prefix.f *= brdfSampleResult.brdfVal;
-		if (postRecon) { prefix.postReconF *= brdfSampleResult.brdfVal; }
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 	}
 

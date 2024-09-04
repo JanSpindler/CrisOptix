@@ -31,6 +31,9 @@ struct PrefixPath
 	// Throughput or radiance after the reconnection vertex
 	glm::vec3 postReconF;
 
+	// Out direction after reconnection (used for brdf evaluation)
+	glm::vec3 reconOutDir;
+
 	// Sampling pdf
 	float p;
 
@@ -42,14 +45,14 @@ struct PrefixPath
 		f(0.0f),
 		p(0.0f),
 		lastIntSeed({}),
-		postReconF(0.0f)
+		postReconF(0.0f),
+		reconOutDir(0.0f)
 	{
 	}
 
 	__forceinline__ __device__ __host__ PrefixPath(
 		const PrefixPath& other,
 		const glm::vec3& _f,
-		const float _p,
 		const InteractionSeed& _primaryIntSeed)
 		:
 		flags(other.flags),
@@ -58,14 +61,15 @@ struct PrefixPath
 		rng(other.rng),
 		f(_f),
 		postReconF(other.postReconF),
-		p(_p),
-		lastIntSeed(other.lastIntSeed)
+		p(other.p),
+		lastIntSeed(other.lastIntSeed),
+		reconOutDir(other.reconOutDir)
 	{
 	}
 
 	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
 	{
-		return static_cast<uint32_t>(flags & 0xFF);
+		return static_cast<uint32_t>(flags & 0xFFu);
 	}
 
 	constexpr __forceinline__ __device__ __host__ void SetLength(const uint32_t length)

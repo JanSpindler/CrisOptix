@@ -1,8 +1,8 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <model/Mesh.h>
 #include <cuda_runtime.h>
+#include <model/Mesh.h>
 
 struct Interaction
 {

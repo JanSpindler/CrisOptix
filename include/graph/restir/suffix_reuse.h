@@ -52,9 +52,6 @@ static __forceinline__ __device__ void SuffixReuse(
 		currSuffix.lastPrefixIntSeed.pos,
 		reconInteraction.pos,
 		reconInteraction.normal);
-	const float pFromCurr = GetLuminance(currSuffix.f);
-	const float pFromPrev = CalcPFromI(GetLuminance(otherSuffix.f), 1.0f / jacobian);
-	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, currRes.confidence, pFromPrev, otherRes.confidence);
 
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
@@ -80,7 +77,8 @@ static __forceinline__ __device__ void SuffixReuse(
 	const SuffixPath shiftedSuffix = SuffixPath(otherSuffix, currSuffix.lastPrefixIntSeed, shiftedF, shiftedP);
 	
 	// Calc ris weight
-	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), otherRes.wSum, jacobian);
+	// TODO
+	const float risWeight = CalcResamplingWeightWi(1.0f, GetLuminance(shiftedF), otherRes.wSum, jacobian);
 
 	// Merge reservoirs
 	if (currRes.Merge(shiftedSuffix, otherRes.confidence, risWeight, rng))
