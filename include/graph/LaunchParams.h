@@ -18,7 +18,7 @@ struct LaunchParams
 	CameraData cameraData;
 
 	float neeProb;
-
+	int neeTries;
 	bool enableAccum;
 
 	bool enableRestir;

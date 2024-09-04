@@ -17,7 +17,7 @@ static __forceinline__ __device__ void SuffixGen(
 	// Assume: Prefix is valid and can be used to generate a suffix
 
 	// Trace canonical suffix
-	const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.GetLength(), 8, rng, params);
+	const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.GetLength(), rng, params);
 
 	// Do not store if not valid
 	if (!suffix.IsValid()) { return; }

@@ -24,7 +24,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
-	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -81,7 +80,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			// NEE
 			bool validEmitterFound = false;
 			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < maxNeeTries)
+			while (!validEmitterFound && neeCounter < params.neeTries)
 			{
 				//
 				++neeCounter;
@@ -171,7 +170,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 static __forceinline__ __device__ SuffixPath TraceSuffix(
 	const PrefixPath& prefix,
 	const size_t maxLen,
-	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -197,7 +195,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		// NEE
 		bool validEmitterFound = false;
 		size_t neeCounter = 0;
-		while (!validEmitterFound && neeCounter < maxNeeTries)
+		while (!validEmitterFound && neeCounter < params.neeTries)
 		{
 			//
 			++neeCounter;
@@ -304,7 +302,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			// NEE
 			bool validEmitterFound = false;
 			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < maxNeeTries)
+			while (!validEmitterFound && neeCounter < params.neeTries)
 			{
 				//
 				++neeCounter;
@@ -386,7 +384,6 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
-	const size_t maxNeeTries,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -429,7 +426,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 			// NEE
 			bool validEmitterFound = false;
 			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < maxNeeTries)
+			while (!validEmitterFound && neeCounter < params.neeTries)
 			{
 				//
 				++neeCounter;

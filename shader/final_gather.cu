@@ -7,6 +7,7 @@
 #include <graph/restir/PrefixSearchPayload.h>
 #include <graph/restir/path_gen.h>
 #include <cuda/std/tuple>
+#include <device_atomic_functions.hpp>
 
 __constant__ LaunchParams params;
 
@@ -138,7 +139,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, rng, params);
+			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
 			if (!prefix.IsValid()) { continue; }
 
 			// Find k neighboring prefixes in world space
@@ -202,7 +203,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	}
 
 	// Add canon suffix contrib
-	outputRadiance += canonSuffixMisWeight * TraceCompletePath(origin, dir, 8, 8, rng, params);
+	outputRadiance += canonSuffixMisWeight * TraceCompletePath(origin, dir, 8, rng, params);
 
 	if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 

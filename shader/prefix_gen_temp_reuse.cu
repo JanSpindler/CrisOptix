@@ -16,7 +16,7 @@ static __forceinline__ __device__ void PrefixGen(
 	PCG32& rng)
 {
 	// Trace new canonical prefix
-	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, rng, params);
+	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
 
 	// Do not store if not valid
 	if (!prefix.IsValid()) { return; }
@@ -102,7 +102,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	else
 	{
 		// Perform normal path tracing
-		outputRadiance = TraceCompletePath(origin, dir, 8, 8, rng, params);
+		outputRadiance = TraceCompletePath(origin, dir, 8, rng, params);
 		if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 
 		// Store radiance output

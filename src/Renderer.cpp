@@ -351,10 +351,10 @@ void Renderer::RunImGuiSettings()
 	//
 	ImGui::Begin("Renderer Settings");
 
-	// Nee
+	// General rendering
 	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
-
-	// Accum
+	ImGui::InputInt("NEE Tries", &m_LaunchParams.neeTries, 1, 4);
+	m_LaunchParams.neeTries = std::max<int>(1, m_LaunchParams.neeTries);
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
 
 	// Restir
