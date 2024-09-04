@@ -4,6 +4,7 @@
 #include <glm/gtc/random.hpp>
 #include <limits>
 #include <random>
+#include <algorithm>
 
 static std::random_device r{};
 static std::default_random_engine e1(r());
@@ -30,7 +31,7 @@ Renderer::Renderer(
 	m_Sbt(optixDeviceContext)
 {
 	//
-	m_LaunchParams.neeProb = 0.5f;
+	m_LaunchParams.neeProb = 0.1f;
 
 	//
 	m_LaunchParams.restir.diEnableTemporal = false;
@@ -381,7 +382,9 @@ void Renderer::RunImGuiSettings()
 	// Restir final gather
 	ImGui::Text("Restir Final Gather");
 	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
+	m_LaunchParams.restir.gatherN = std::max<int>(1, m_LaunchParams.restir.gatherN);
 	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
+	m_LaunchParams.restir.gatherM = std::max<int>(1, m_LaunchParams.restir.gatherM);
 	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.001f, 0.0f, 1.0f);
 
 	//
