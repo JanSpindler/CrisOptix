@@ -21,6 +21,7 @@ struct TraceParameters
 #include <optix.h>
 #include <optix_device.h>
 #include <util/glm_cuda.h>
+#include <graph/Interaction.h>
 
 static __forceinline__ __host__ __device__ void PackPointer(void* ptr, uint32_t& i0, uint32_t& i1)
 {
@@ -43,7 +44,7 @@ static __forceinline__ __device__ void TraceWithDataPointer(
     glm::vec3              ray_direction,
     float                  tmin,
     float                  tmax,
-    TraceParameters        trace_params,
+    const TraceParameters& trace_params,
     T* payload_ptr
 )
 {
@@ -105,6 +106,22 @@ static __forceinline__ __device__ void SetOcclusionPayload(bool occluded)
 {
     // Set the payload that _this_ ray will yield
     optixSetPayload_0(static_cast<uint32_t>(occluded));
+}
+
+static __forceinline__ __device__ void TraceInteractionSeed(
+    const InteractionSeed& seed, 
+    Interaction& interaction, 
+    OptixTraversableHandle handle,
+    const TraceParameters& traceParams)
+{
+    TraceWithDataPointer<Interaction>(
+        handle,
+        seed.pos - seed.inDir,
+        seed.inDir,
+        1e-3f,
+        1.0f + 1e-3,
+        traceParams,
+        &interaction);
 }
 
 #endif

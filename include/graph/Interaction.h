@@ -4,6 +4,24 @@
 #include <model/Mesh.h>
 #include <cuda_runtime.h>
 
+struct InteractionSeed
+{
+	glm::vec3 pos;
+	glm::vec3 inDir;
+
+	__forceinline__ __device__ __host__ InteractionSeed() :
+		pos(0.0f),
+		inDir(0.0f)
+	{
+	}
+
+	__forceinline__ __device__ __host__ InteractionSeed(const glm::vec3& _pos, const glm::vec3& _inDir) :
+		pos(_pos),
+		inDir(_inDir)
+	{
+	}
+};
+
 struct Interaction
 {
 	bool valid;
