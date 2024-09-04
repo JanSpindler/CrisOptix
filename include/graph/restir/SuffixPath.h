@@ -8,11 +8,11 @@
 
 struct SuffixPath
 {
-	// Interaction at recon vertex
-	Interaction reconInteraction;
-
 	// State of random number generator before tracing suffix
 	PCG32 rng;
+
+	// Interaction at recon vertex
+	InteractionSeed reconInteraction;
 
 	// Path flags
 	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)

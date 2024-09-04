@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <graph/Camera.h>
 #include <optix.h>
-#include <graph/trace.h>
+#include <graph/TraceParameters.h>
 #include <model/Emitter.h>
 #include <graph/restir/RestirParams.h>
 

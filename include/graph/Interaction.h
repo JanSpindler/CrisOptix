@@ -4,24 +4,6 @@
 #include <model/Mesh.h>
 #include <cuda_runtime.h>
 
-struct InteractionSeed
-{
-	glm::vec3 pos;
-	glm::vec3 inDir;
-
-	__forceinline__ __device__ __host__ InteractionSeed() :
-		pos(0.0f),
-		inDir(0.0f)
-	{
-	}
-
-	__forceinline__ __device__ __host__ InteractionSeed(const glm::vec3& _pos, const glm::vec3& _inDir) :
-		pos(_pos),
-		inDir(_inDir)
-	{
-	}
-};
-
 struct Interaction
 {
 	bool valid;
@@ -44,6 +26,30 @@ struct Interaction
 		uv(0.0f),
 		primitiveIdx(0),
 		meshSbtData(nullptr)
+	{
+	}
+};
+
+struct InteractionSeed
+{
+	glm::vec3 pos;
+	glm::vec3 inDir;
+
+	__forceinline__ __device__ __host__ InteractionSeed() :
+		pos(0.0f),
+		inDir(0.0f)
+	{
+	}
+
+	constexpr __forceinline__ __device__ __host__ InteractionSeed(const glm::vec3& _pos, const glm::vec3& _inDir) :
+		pos(_pos),
+		inDir(_inDir)
+	{
+	}
+
+	constexpr __forceinline__ __device__ __host__ InteractionSeed(const Interaction& interaction) :
+		pos(interaction.pos),
+		inDir(interaction.inRayDir)
 	{
 	}
 };

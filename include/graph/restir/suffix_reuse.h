@@ -4,6 +4,7 @@
 #include <graph/LaunchParams.h>
 #include <graph/restir/ris_helper.h>
 #include <graph/restir/path_gen.h>
+#include <graph/trace.h>
 
 static __forceinline__ __device__ void SuffixReuse(
 	Reservoir<SuffixPath>& currRes,
@@ -41,12 +42,16 @@ static __forceinline__ __device__ void SuffixReuse(
 		params.occlusionTraceParams);
 	if (occluded) { return; }
 
+	// Get reconnection interaction from seed
+	Interaction reconInteraction{};
+	TraceInteractionSeed(otherSuffix.reconInteraction, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(
 		otherSuffix.lastPrefixPos,
 		currSuffix.lastPrefixPos,
-		otherSuffix.reconInteraction.pos,
-		otherSuffix.reconInteraction.normal);
+		reconInteraction.pos,
+		reconInteraction.normal);
 	const float pFromCurr = GetLuminance(currSuffix.f);
 	const float pFromPrev = CalcPFromI(GetLuminance(otherSuffix.f), 1.0f / jacobian);
 	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, currRes.confidence, pFromPrev, otherRes.confidence);

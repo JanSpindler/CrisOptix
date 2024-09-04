@@ -81,14 +81,18 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 		params.occlusionTraceParams);
 	if (occluded) { return { glm::vec3(0.0f), 0.0f }; }
 
+	// Get reconnection interaction from seed
+	Interaction reconInteraction{};
+	TraceInteractionSeed(suffix.reconInteraction, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+
 	//
 	glm::vec3 brdfResult2(1.0f);
 	if (suffix.GetReconIdx() > 0)
-	{
+	{		
 		// Eval brdf at suffix recon vertex
 		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-			suffix.reconInteraction.meshSbtData->evalMaterialSbtIdx,
-			suffix.reconInteraction,
+			reconInteraction.meshSbtData->evalMaterialSbtIdx,
+			reconInteraction,
 			suffix.reconOutDir);
 		if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 		brdfResult2 = brdfEvalResult2.brdfResult;
@@ -101,8 +105,8 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const float jacobian = CalcReconnectionJacobian(
 		suffix.lastPrefixPos, 
 		prefix.lastInteraction.pos, 
-		suffix.reconInteraction.pos,
-		suffix.reconInteraction.normal);
+		reconInteraction.pos,
+		reconInteraction.normal);
 
 	// Return
 	return { radiance, suffixUcwSrcDomain * jacobian };

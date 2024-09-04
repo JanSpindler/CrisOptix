@@ -7,6 +7,7 @@
 #include <graph/restir/Reconnection.h>
 #include <graph/sample_emitter.h>
 #include <optix_device.h>
+#include <graph/trace.h>
 
 static __forceinline__ __device__ float CalcReconnectionJacobian(
 	const glm::vec3& oldXi, 
@@ -182,6 +183,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.lastPrefixPos = prefix.lastInteraction.pos;
 	suffix.lastPrefixInDir = prefix.lastInteraction.inRayDir;
 
+	Interaction interaction{};
+
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
 	{
@@ -226,7 +229,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					1e-3f,
 					distance + 1.0f,
 					params.surfaceTraceParams,
-					&suffix.reconInteraction);
+					&interaction);
+				suffix.reconInteraction = interaction;
 
 				// Calc brdf
 				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
@@ -266,7 +270,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
-		Interaction interaction{};
 		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
 			currentPos,
