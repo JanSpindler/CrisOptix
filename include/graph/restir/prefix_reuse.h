@@ -44,6 +44,7 @@ static __forceinline__ __device__ void PrefixReuse(
 	// Get other prefix recon interaction
 	Interaction otherPrefixReconInt{};
 	TraceInteractionSeed(otherPrefix.reconIntSeed, otherPrefixReconInt, params.traversableHandle, params.surfaceTraceParams);
+	if (!otherPrefixReconInt.valid) { return; }
 
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(

@@ -45,6 +45,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
 	TraceInteractionSeed(otherSuffix.reconIntSeed, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+	if (!reconInteraction.valid) { return; }
 
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(
@@ -59,6 +60,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
 	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	if (!lastPrefixInt.valid) { return; }
 
 	// Shift prefix path to target domain
 	// TODO: Add hybrid shift

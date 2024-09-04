@@ -62,6 +62,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
 	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+	if (!lastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
 	//
 	const glm::vec3 reconVec = suffix.reconIntSeed.pos - lastPrefixInt.pos;
