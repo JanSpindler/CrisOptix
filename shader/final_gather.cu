@@ -54,33 +54,9 @@ extern "C" __global__ void __intersection__prefix_entry()
 	}
 }
 
-static __forceinline__ __device__ glm::vec3 GetPathContribution(
-	const PrefixPath& prefix, 
-	const SuffixPath& suffix,
-	const float prefixUcw,
-	const float suffixUcw)
-{
-	glm::vec3 output(0.0f);
-
-	if (prefix.valid)
-	{
-		if (prefix.nee)
-		{
-			output = prefix.f * prefixUcw;;
-		}
-		else if (suffix.valid)
-		{
-			output = prefix.f * suffix.f * prefixUcw * suffixUcw;
-		}
-	}
-
-	if (glm::any(glm::isinf(output) || glm::isnan(output))) { return glm::vec3(0.0f); }
-	return output;
-}
-
 static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
-	const PrefixPath& prefix, 
-	const SuffixPath& suffix, 
+	const PrefixPath& prefix,
+	const SuffixPath& suffix,
 	const float suffixUcwSrcDomain)
 {
 	//
@@ -95,33 +71,38 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 		reconDir);
 	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 
-	// Trace new interaction at recon vertex of suffix
-	SurfaceInteraction reconInteraction{};
-	TraceWithDataPointer<SurfaceInteraction>(
+	// Trace occlusion
+	const bool occluded = TraceOcclusion(
 		params.traversableHandle,
 		prefix.lastInteraction.pos,
 		reconDir,
 		1e-3f,
-		1e16f,
-		params.surfaceTraceParams,
-		&reconInteraction);
-	if (!reconInteraction.valid || glm::distance(reconInteraction.pos, suffix.reconInteraction.pos) > 1e-2f) 
+		reconLen,
+		params.occlusionTraceParams);
+	if (occluded) { return { glm::vec3(0.0f), 0.0f }; }
+
+	//
+	glm::vec3 brdfResult2(1.0f);
+	if (suffix.reconIdx > 0)
 	{
-		return { glm::vec3(0.0f), 0.0f };
+		// Eval brdf at suffix recon vertex
+		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
+			suffix.reconInteraction.meshSbtData->evalMaterialSbtIdx,
+			suffix.reconInteraction,
+			suffix.reconOutDir);
+		if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+		brdfResult2 = brdfEvalResult2.brdfResult;
 	}
 
-	// Eval brdf at suffix recon vertex
-	const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const SurfaceInteraction&, const glm::vec3&>(
-		reconInteraction.meshSbtData->evalMaterialSbtIdx,
-		reconInteraction,
-		suffix.reconOutDir);
-	if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
-
 	// Calc total contribution of new path
-	const glm::vec3 radiance = brdfEvalResult1.brdfResult * brdfEvalResult2.brdfResult * suffix.postReconF;
+	const glm::vec3 radiance = brdfEvalResult1.brdfResult * brdfResult2 * suffix.postReconF;
 
 	// Calc jacobian
-	const float jacobian = CalcReconnectionJacobian(suffix.lastPrefixPos, prefix.lastInteraction.pos, reconInteraction.pos, reconInteraction.normal);
+	const float jacobian = CalcReconnectionJacobian(
+		suffix.lastPrefixPos, 
+		prefix.lastInteraction.pos, 
+		suffix.reconInteraction.pos,
+		suffix.reconInteraction.normal);
 
 	// Return
 	return { radiance, suffixUcwSrcDomain * jacobian };
