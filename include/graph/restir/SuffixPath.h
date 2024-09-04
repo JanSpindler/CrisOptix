@@ -22,6 +22,9 @@ struct SuffixPath
 	// Index of recon vertex
 	uint32_t reconIdx;
 
+	// Out direction after reconnection (used for brdf evaluation)
+	glm::vec3 reconOutDir;
+
 	// Path contribution after prefix to light source (including prefix-suffix connection)
 	glm::vec3 f;
 
@@ -43,6 +46,7 @@ struct SuffixPath
 		lastPrefixInDir(0.0f),
 		reconInteraction({}),
 		reconIdx(0),
+		reconOutDir(0.0f),
 		f(0.0f),
 		postReconF(0.0f),
 		p(0.0f),
@@ -64,6 +68,7 @@ struct SuffixPath
 		lastPrefixInDir(_lastPrefixInDir),
 		reconInteraction(other.reconInteraction),
 		reconIdx(other.reconIdx),
+		reconOutDir(other.reconOutDir),
 		f(_f),
 		postReconF(other.postReconF),
 		p(_p),

@@ -348,13 +348,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			return suffix;
 		}
 
-		// Store as reconnection vertex if fit
-		if (postRecon && suffix.reconIdx == 0)
-		{
-			suffix.reconInteraction = interaction;
-			suffix.reconIdx = suffix.len;
-		}
-
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const SurfaceInteraction&, PCG32&>(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
@@ -366,11 +359,22 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			return suffix;
 		}
 
+		// Store as reconnection vertex if fit
+		if (postRecon && suffix.reconIdx == 0)
+		{
+			suffix.reconInteraction = interaction;
+			suffix.reconIdx = suffix.len;
+			suffix.reconOutDir = brdfSampleResult.outDir;
+		}
+		else if (postRecon)
+		{
+			suffix.postReconF *= brdfSampleResult.brdfVal;
+		}
+		
 		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
 
 		suffix.f *= brdfSampleResult.brdfVal;
-		if (postRecon) { suffix.postReconF *= brdfSampleResult.brdfVal; }
 		suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 	}
 
