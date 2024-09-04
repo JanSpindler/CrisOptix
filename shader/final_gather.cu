@@ -95,10 +95,6 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx, PCG32& rng)
 {
-	// Get prefix and suffix from this pixels restir
-	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
-	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx].sample;
-
 	// Exit if prefix is invalid
 	if (!params.restir.restirGBuffers[pixelIdx].primaryInteraction.valid)
 	{
@@ -125,15 +121,15 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		{
 			// Trace new prefix for pixel q
 			SurfaceInteraction interaction{};
-			const PrefixPath neighPrefix = prefixIdx == 0 ? prefix : TracePrefix(origin, dir, params.restir.minPrefixLen, 8, interaction, rng, params);
-			if (!neighPrefix.valid) { continue; }
+			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, interaction, rng, params);
+			if (!prefix.valid) { continue; }
 
 			// Find k neighboring prefixes in world space
 			static constexpr float EPSILON = 1e-16;
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);
 			TraceWithDataPointer<PrefixSearchPayload>(
 				params.restir.prefixEntriesTraversHandle,
-				neighPrefix.lastInteraction.pos,
+				prefix.lastInteraction.pos,
 				glm::vec3(EPSILON),
 				0.0f,
 				EPSILON,
@@ -166,15 +162,15 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 				const SuffixPath& neighSuffix = params.restir.suffixReservoirs[suffixPixelIdx].sample;
 
 				// Shift suffix
-				const cuda::std::pair<glm::vec3, float> shiftedSuffix = ShiftSuffix(neighPrefix, neighSuffix);
+				const cuda::std::pair<glm::vec3, float> shiftedSuffix = ShiftSuffix(prefix, neighSuffix);
 				const glm::vec3& shiftedF = shiftedSuffix.first;
 				const float ucwSuffix = shiftedSuffix.second;
 
 				// Calc path contribution
-				const glm::vec3 pathContrib = glm::max(glm::vec3(0.0f), neighPrefix.f * shiftedF);
+				const glm::vec3 pathContrib = glm::max(glm::vec3(0.0f), prefix.f * shiftedF);
 
 				// Calc ucw
-				const float ucw = ucwSuffix / neighPrefix.p;
+				const float ucw = ucwSuffix / prefix.p;
 
 				// Gather
 				outputRadiance += misWeight * pathContrib * ucw;
