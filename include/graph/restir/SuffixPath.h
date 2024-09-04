@@ -20,11 +20,8 @@ struct SuffixPath
 	// 16:17 -> valid
 	uint32_t flags;
 
-	// Position of last prefix vertex (used for jacobian)
-	glm::vec3 lastPrefixPos;
-
-	// In dir at last prefix vertex (used for jacobian)
-	glm::vec3 lastPrefixInDir;
+	// Last prefix interaction
+	InteractionSeed lastPrefixIntSeed;
 
 	// Out direction after reconnection (used for brdf evaluation)
 	glm::vec3 reconOutDir;
@@ -40,8 +37,7 @@ struct SuffixPath
 
 	__forceinline__ __device__ __host__ SuffixPath() :
 		flags(0),
-		lastPrefixPos(0.0f),
-		lastPrefixInDir(0.0f),
+		lastPrefixIntSeed({}),
 		reconIntSeed({}),
 		reconOutDir(0.0f),
 		f(0.0f),
@@ -54,14 +50,12 @@ struct SuffixPath
 	// Constructor used for shift mapping
 	__forceinline__ __device__ __host__ SuffixPath(
 		const SuffixPath& other,
-		const glm::vec3& _lastPrefixPos,
-		const glm::vec3& _lastPrefixInDir,
+		const InteractionSeed& _lastPrefixIntSeed,
 		const glm::vec3& _f,
 		const float _p)
 		:
 		flags(other.flags),
-		lastPrefixPos(_lastPrefixPos),
-		lastPrefixInDir(_lastPrefixInDir),
+		lastPrefixIntSeed(_lastPrefixIntSeed),
 		reconIntSeed(other.reconIntSeed),
 		reconOutDir(other.reconOutDir),
 		f(_f),

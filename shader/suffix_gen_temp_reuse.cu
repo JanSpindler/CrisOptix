@@ -73,8 +73,12 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	// Get prefix from stored res
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
 
+	// Get last prefix interaction
+	Interaction lastPrefixInt{};
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+
 	// Exit if prefix is invalid
-	if (!prefix.IsValid() || prefix.IsNee() || !prefix.lastInteraction.valid) 
+	if (!prefix.IsValid() || prefix.IsNee() || !lastPrefixInt.valid) 
 	{
 		return;
 	}

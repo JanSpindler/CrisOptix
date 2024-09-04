@@ -30,8 +30,8 @@ static __forceinline__ __device__ void PrefixReuse(
 	if (otherPrefix.GetReconIdx() != 2) { return; }
 
 	// Exit if occluded
-	const glm::vec3 reconDir = glm::normalize(otherPrefix.reconInteraction.pos - primaryInteraction.pos);
-	const float reconDist = glm::distance(otherPrefix.reconInteraction.pos, primaryInteraction.pos);
+	const glm::vec3 reconDir = glm::normalize(otherPrefix.reconIntSeed.pos - primaryInteraction.pos);
+	const float reconDist = glm::distance(otherPrefix.reconIntSeed.pos, primaryInteraction.pos);
 	const bool occluded = TraceOcclusion(
 		params.traversableHandle,
 		primaryInteraction.pos,
@@ -41,12 +41,16 @@ static __forceinline__ __device__ void PrefixReuse(
 		params.occlusionTraceParams);
 	if (occluded) { return; }
 
+	// Get other prefix recon interaction
+	Interaction otherPrefixReconInt{};
+	TraceInteractionSeed(otherPrefix.reconIntSeed, otherPrefixReconInt, params.traversableHandle, params.surfaceTraceParams);
+
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(
 		otherPrefix.primaryHitPos,
 		primaryInteraction.pos,
-		otherPrefix.reconInteraction.pos,
-		otherPrefix.reconInteraction.normal);
+		otherPrefixReconInt.pos,
+		otherPrefixReconInt.normal);
 	const float pFromCurr = GetLuminance(currPrefix.f);
 	const float pFromPrev = CalcPFromI(GetLuminance(otherPrefix.f), 1.0f / jacobian);
 	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, res.confidence, pFromPrev, otherRes.confidence);

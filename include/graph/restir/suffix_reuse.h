@@ -26,8 +26,8 @@ static __forceinline__ __device__ void SuffixReuse(
 	if (otherSuffix.GetReconIdx() > 1) { return; }
 
 	// Calc recon vector
-	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconIntSeed.pos - prefix.lastInteraction.pos);
-	const float reconDist = glm::distance(otherSuffix.reconIntSeed.pos, prefix.lastInteraction.pos);
+	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconIntSeed.pos - prefix.lastIntSeed.pos);
+	const float reconDist = glm::distance(otherSuffix.reconIntSeed.pos, prefix.lastIntSeed.pos);
 
 	// Exit if reconnection vector is invalid
 	if (glm::isinf(reconDist) || glm::isnan(reconDist) || reconDist < 1e-2f) { return; }
@@ -35,7 +35,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	// Check occlusion
 	const bool occluded = TraceOcclusion(
 		params.traversableHandle,
-		prefix.lastInteraction.pos,
+		prefix.lastIntSeed.pos,
 		reconDir,
 		1e-3f,
 		reconDist,
@@ -48,20 +48,24 @@ static __forceinline__ __device__ void SuffixReuse(
 
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(
-		otherSuffix.lastPrefixPos,
-		currSuffix.lastPrefixPos,
+		otherSuffix.lastPrefixIntSeed.pos,
+		currSuffix.lastPrefixIntSeed.pos,
 		reconInteraction.pos,
 		reconInteraction.normal);
 	const float pFromCurr = GetLuminance(currSuffix.f);
 	const float pFromPrev = CalcPFromI(GetLuminance(otherSuffix.f), 1.0f / jacobian);
 	const cuda::std::pair<float, float> misWeights = CalcTalbotMisWeightsMi(pFromCurr, currRes.confidence, pFromPrev, otherRes.confidence);
 
+	// Get last prefix interaction
+	Interaction lastPrefixInt{};
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+
 	// Shift prefix path to target domain
 	// TODO: Add hybrid shift
 	// Evaluate brdf at primary interaction towards reconnection vertex
 	const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
-		prefix.lastInteraction,
+		lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
+		lastPrefixInt,
 		reconDir);
 
 	// Calc shifted f and p
@@ -72,7 +76,7 @@ static __forceinline__ __device__ void SuffixReuse(
 		glm::pow(1.0f - params.neeProb, static_cast<float>(otherSuffix.GetLength())); // BRDF sample for path after reconnection
 	
 	// Construct shifted PrefixPath
-	const SuffixPath shiftedSuffix = SuffixPath(otherSuffix, currSuffix.lastPrefixPos, currSuffix.lastPrefixInDir, shiftedF, shiftedP);
+	const SuffixPath shiftedSuffix = SuffixPath(otherSuffix, currSuffix.lastPrefixIntSeed, shiftedF, shiftedP);
 	
 	// Calc ris weight
 	const float risWeight = CalcResamplingWeightWi(misWeights.second, GetLuminance(shiftedF), otherRes.wSum, jacobian);

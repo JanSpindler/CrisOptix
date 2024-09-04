@@ -26,7 +26,7 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 
 	// Store prefix entry aabb
 	const float radius = params.restir.gatherRadius;
-	const glm::vec3& pos = prefix.lastInteraction.pos;
+	const glm::vec3& pos = prefix.lastIntSeed.pos;
 
 	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
 	if (prefix.IsValid() && suffix.IsValid())

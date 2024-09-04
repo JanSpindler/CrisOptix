@@ -20,7 +20,7 @@ extern "C" __global__ void __intersection__prefix_entry()
 
 	// Check if radius is truly as desired
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
-	const glm::vec3& neighPos = params.restir.prefixReservoirs[neighPixelIdx].sample.lastInteraction.pos;
+	const glm::vec3& neighPos = params.restir.prefixReservoirs[neighPixelIdx].sample.lastIntSeed.pos;
 	const float distance = glm::distance(queryPos, neighPos);
 	if (distance > params.restir.gatherRadius) { return; }
 
@@ -59,22 +59,26 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const SuffixPath& suffix,
 	const float suffixUcwSrcDomain)
 {
+	// Get last prefix interaction
+	Interaction lastPrefixInt{};
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
+
 	//
-	const glm::vec3 reconVec = suffix.reconIntSeed.pos - prefix.lastInteraction.pos;
+	const glm::vec3 reconVec = suffix.reconIntSeed.pos - lastPrefixInt.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
 	// Eval brdf at last prefix vert with new out dir
 	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
-		prefix.lastInteraction,
+		lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
+		lastPrefixInt,
 		reconDir);
 	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Trace occlusion
 	const bool occluded = TraceOcclusion(
 		params.traversableHandle,
-		prefix.lastInteraction.pos,
+		lastPrefixInt.pos,
 		reconDir,
 		1e-3f,
 		reconLen,
@@ -103,8 +107,8 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 	// Calc jacobian
 	const float jacobian = CalcReconnectionJacobian(
-		suffix.lastPrefixPos, 
-		prefix.lastInteraction.pos, 
+		suffix.lastPrefixIntSeed.pos, 
+		lastPrefixInt.pos,
 		reconInteraction.pos,
 		reconInteraction.normal);
 
@@ -148,7 +152,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);
 			TraceWithDataPointer<PrefixSearchPayload>(
 				params.restir.prefixEntriesTraversHandle,
-				prefix.lastInteraction.pos,
+				prefix.lastIntSeed.pos,
 				glm::vec3(EPSILON),
 				0.0f,
 				EPSILON,

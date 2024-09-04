@@ -39,6 +39,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	prefix.postReconF = glm::vec3(1.0f);
 	prefix.SetValid(true);
 
+	Interaction interaction{};
+
 	// Trace
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
@@ -50,10 +52,10 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
-			&prefix.lastInteraction);
+			&interaction);
 
 		// Exit if no surface found
-		if (!prefix.lastInteraction.valid)
+		if (!interaction.valid)
 		{
 			prefix.SetValid(false);
 			break;
@@ -65,9 +67,9 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		//
 		if (prefix.GetLength() == 1)
 		{
-			prefix.primaryHitPos = prefix.lastInteraction.pos; 
+			prefix.primaryHitPos = interaction.pos; 
 			prefix.primaryHitInDir = dir;
-			primaryInteraction = prefix.lastInteraction;
+			primaryInteraction = interaction;
 		}
 
 		// TODO: Also include roughness
@@ -89,13 +91,13 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 				// Sample light source
 				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastInteraction.pos);
-				const float distance = glm::length(emitterSample.pos - prefix.lastInteraction.pos);
+				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+				const float distance = glm::length(emitterSample.pos - interaction.pos);
 
 				// Cast shadow ray
 				const bool occluded = TraceOcclusion(
 					params.traversableHandle,
-					prefix.lastInteraction.pos,
+					interaction.pos,
 					lightDir,
 					1e-3f,
 					distance,
@@ -111,8 +113,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 				{
 					// Calc brdf
 					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-						prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
-						prefix.lastInteraction,
+						interaction.meshSbtData->evalMaterialSbtIdx,
+						interaction,
 						lightDir);
 					
 					prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
@@ -139,7 +141,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		// Store as reconnection vertex if fit
 		if (postRecon && prefix.GetReconIdx() == 0)
 		{
-			prefix.reconInteraction = prefix.lastInteraction;
+			prefix.reconIntSeed = interaction;
 			prefix.SetReconIdx(prefix.GetLength());
 		}
 
@@ -148,8 +150,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
-			prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
-			prefix.lastInteraction,
+			interaction.meshSbtData->sampleMaterialSbtIdx,
+			interaction,
 			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f)
 		{
@@ -157,7 +159,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
-		currentPos = prefix.lastInteraction.pos;
+		currentPos = interaction.pos;
 		currentDir = brdfSampleResult.outDir;
 
 		prefix.f *= brdfSampleResult.brdfVal;
@@ -165,6 +167,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 	}
 
+	prefix.lastIntSeed = interaction;
 	return prefix;
 }
 
@@ -180,10 +183,13 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.p = 1.0f;
 	suffix.postReconF = glm::vec3(1.0f);
 	suffix.rng = rng;
-	suffix.lastPrefixPos = prefix.lastInteraction.pos;
-	suffix.lastPrefixInDir = prefix.lastInteraction.inRayDir;
+	suffix.lastPrefixIntSeed = prefix.lastIntSeed;
 
 	Interaction interaction{};
+
+	// Get last prefix interaction
+	Interaction lastPrefixInt{};
+	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params.traversableHandle, params.surfaceTraceParams);
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -201,13 +207,13 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 			// Sample light source
 			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastInteraction.pos);
-			const float distance = glm::length(emitterSample.pos - prefix.lastInteraction.pos);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastIntSeed.pos);
+			const float distance = glm::length(emitterSample.pos - prefix.lastIntSeed.pos);
 
 			// Cast shadow ray
 			const bool occluded = TraceOcclusion(
 				params.traversableHandle,
-				prefix.lastInteraction.pos,
+				lastPrefixInt.pos,
 				lightDir,
 				1e-3f,
 				distance,
@@ -224,7 +230,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 				// Trace surface interaction at emitter to store as reconInteraction
 				TraceWithDataPointer<Interaction>(
 					params.traversableHandle,
-					prefix.lastInteraction.pos,
+					lastPrefixInt.pos,
 					lightDir,
 					1e-3f,
 					distance + 1.0f,
@@ -234,8 +240,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 				// Calc brdf
 				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-					prefix.lastInteraction.meshSbtData->evalMaterialSbtIdx,
-					prefix.lastInteraction,
+					lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
+					lastPrefixInt,
 					lightDir);
 
 				suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
@@ -252,8 +258,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 	// If not directly terminated by NEE -> Sample direction from brdf at last vertex of prefix
 	const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
-		prefix.lastInteraction.meshSbtData->sampleMaterialSbtIdx,
-		prefix.lastInteraction,
+		lastPrefixInt.meshSbtData->sampleMaterialSbtIdx,
+		lastPrefixInt,
 		rng);
 	if (brdfSampleResult.samplingPdf <= 0.0f)
 	{
@@ -261,7 +267,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		return suffix;
 	}
 
-	glm::vec3 currentPos = prefix.lastInteraction.pos;
+	glm::vec3 currentPos = lastPrefixInt.pos;
 	glm::vec3 currentDir = brdfSampleResult.outDir;
 	suffix.f *= brdfSampleResult.brdfVal;
 	suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);

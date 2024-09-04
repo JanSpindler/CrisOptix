@@ -10,10 +10,10 @@ struct PrefixPath
 	PCG32 rng;
 
 	// Interaction at first vertex fit for prefix reconnection
-	Interaction reconInteraction;
+	InteractionSeed reconIntSeed;
 
 	// Interaction at last vertex (used for generating and reconnection with suffix)
-	Interaction lastInteraction;
+	InteractionSeed lastIntSeed;
 
 	// Path flags
 	// 0:8 -> length: Vertex count starting at primary hit. Does not include NEE hit.
@@ -41,11 +41,12 @@ struct PrefixPath
 		flags(0u),
 		primaryHitPos(0.0f),
 		primaryHitInDir(0.0f),
-		reconInteraction({}),
+		reconIntSeed({}),
 		rng({}),
 		f(0.0f),
 		p(0.0f),
-		lastInteraction({})
+		lastIntSeed({}),
+		postReconF(0.0f)
 	{
 	}
 
@@ -59,12 +60,12 @@ struct PrefixPath
 		flags(other.flags),
 		primaryHitPos(_primaryHitPos),
 		primaryHitInDir(_primaryHitInDir),
-		reconInteraction(other.reconInteraction),
+		reconIntSeed(other.reconIntSeed),
 		rng(other.rng),
 		f(_f),
 		postReconF(other.postReconF),
 		p(_p),
-		lastInteraction(other.lastInteraction)
+		lastIntSeed(other.lastIntSeed)
 	{
 	}
 

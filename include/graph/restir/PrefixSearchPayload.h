@@ -36,7 +36,7 @@ struct PrefixSearchPayload
 		const uint32_t offset = pixelIdx * k;
 
 		// Get current pos
-		const glm::vec3& currPos = params.restir.prefixReservoirs[pixelIdx].sample.lastInteraction.pos;
+		const glm::vec3& currPos = params.restir.prefixReservoirs[pixelIdx].sample.lastIntSeed.pos;
 
 		// Go over all stored neighbors
 		maxDistNeighIdx = 0;
