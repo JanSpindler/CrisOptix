@@ -26,8 +26,8 @@ static __forceinline__ __device__ void SuffixReuse(
 	if (otherSuffix.GetReconIdx() > 1) { return; }
 
 	// Calc recon vector
-	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconInteraction.pos - prefix.lastInteraction.pos);
-	const float reconDist = glm::distance(otherSuffix.reconInteraction.pos, prefix.lastInteraction.pos);
+	const glm::vec3 reconDir = glm::normalize(otherSuffix.reconIntSeed.pos - prefix.lastInteraction.pos);
+	const float reconDist = glm::distance(otherSuffix.reconIntSeed.pos, prefix.lastInteraction.pos);
 
 	// Exit if reconnection vector is invalid
 	if (glm::isinf(reconDist) || glm::isnan(reconDist) || reconDist < 1e-2f) { return; }
@@ -44,7 +44,7 @@ static __forceinline__ __device__ void SuffixReuse(
 
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
-	TraceInteractionSeed(otherSuffix.reconInteraction, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(otherSuffix.reconIntSeed, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
 
 	// Calc mis weights
 	const float jacobian = CalcReconnectionJacobian(

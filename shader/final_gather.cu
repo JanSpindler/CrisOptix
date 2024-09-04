@@ -60,7 +60,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const float suffixUcwSrcDomain)
 {
 	//
-	const glm::vec3 reconVec = suffix.reconInteraction.pos - prefix.lastInteraction.pos;
+	const glm::vec3 reconVec = suffix.reconIntSeed.pos - prefix.lastInteraction.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
@@ -83,7 +83,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
-	TraceInteractionSeed(suffix.reconInteraction, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
+	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params.traversableHandle, params.surfaceTraceParams);
 
 	//
 	glm::vec3 brdfResult2(1.0f);

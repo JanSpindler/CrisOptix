@@ -6,14 +6,14 @@
 
 struct PrefixPath
 {
+	// Random number generator state before prefix was generated
+	PCG32 rng;
+
 	// Interaction at first vertex fit for prefix reconnection
 	Interaction reconInteraction;
 
 	// Interaction at last vertex (used for generating and reconnection with suffix)
 	Interaction lastInteraction;
-
-	// Random number generator state before prefix was generated
-	PCG32 rng;
 
 	// Path flags
 	// 0:8 -> length: Vertex count starting at primary hit. Does not include NEE hit.

@@ -230,7 +230,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					distance + 1.0f,
 					params.surfaceTraceParams,
 					&interaction);
-				suffix.reconInteraction = interaction;
+				suffix.reconIntSeed = interaction;
 
 				// Calc brdf
 				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
@@ -360,7 +360,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		// Store as reconnection vertex if fit
 		if (postRecon && suffix.GetReconIdx() == 0)
 		{
-			suffix.reconInteraction = interaction;
+			suffix.reconIntSeed = interaction;
 			suffix.SetReconIdx(suffix.GetLength());
 			suffix.reconOutDir = brdfSampleResult.outDir;
 		}

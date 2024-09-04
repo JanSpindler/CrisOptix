@@ -12,7 +12,7 @@ struct SuffixPath
 	PCG32 rng;
 
 	// Interaction at recon vertex
-	InteractionSeed reconInteraction;
+	InteractionSeed reconIntSeed;
 
 	// Path flags
 	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)
@@ -42,7 +42,7 @@ struct SuffixPath
 		flags(0),
 		lastPrefixPos(0.0f),
 		lastPrefixInDir(0.0f),
-		reconInteraction({}),
+		reconIntSeed({}),
 		reconOutDir(0.0f),
 		f(0.0f),
 		postReconF(0.0f),
@@ -62,7 +62,7 @@ struct SuffixPath
 		flags(other.flags),
 		lastPrefixPos(_lastPrefixPos),
 		lastPrefixInDir(_lastPrefixInDir),
-		reconInteraction(other.reconInteraction),
+		reconIntSeed(other.reconIntSeed),
 		reconOutDir(other.reconOutDir),
 		f(_f),
 		postReconF(other.postReconF),
