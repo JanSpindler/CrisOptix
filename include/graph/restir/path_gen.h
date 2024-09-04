@@ -25,7 +25,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	const glm::vec3& dir,
 	const size_t maxLen,
 	const size_t maxNeeTries,
-	Interaction& primaryInteraction,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -68,7 +67,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		if (prefix.GetLength() == 1)
 		{
 			prefix.primaryIntSeed = interaction;
-			primaryInteraction = interaction;
 		}
 
 		// TODO: Also include roughness

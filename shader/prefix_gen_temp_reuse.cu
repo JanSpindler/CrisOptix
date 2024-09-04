@@ -9,40 +9,32 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ Interaction PrefixGen(
+static __forceinline__ __device__ void PrefixGen(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	PCG32& rng)
 {
 	// Trace new canonical prefix
-	Interaction primaryInteraction{};
-	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, primaryInteraction, rng, params);
+	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, rng, params);
 
 	// Do not store if not valid
-	if (!prefix.IsValid()) { return {}; }
+	if (!prefix.IsValid()) { return; }
 
 	// Stream into res
 	const float pHat = GetLuminance(prefix.f);
 	const float risWeight = pHat / prefix.p;
 	prefixRes.Update(prefix, risWeight, rng);
-
-	//
-	return primaryInteraction;
 }
 
 static __forceinline__ __device__ void PrefixTempReuse(
 	Reservoir<PrefixPath>& prefixRes,
 	const glm::uvec2& prevPixelCoord,
-	const Interaction& primaryInteraction,
 	PCG32& rng)
 {
 	// Exit if current prefix is invalid
 	const PrefixPath& currPrefix = prefixRes.sample;
 	if (!currPrefix.IsValid()) { return; }
-
-	// Exit if primary interaction is invalid
-	if (!primaryInteraction.valid) { return; }
 
 	// Get previous prefix res
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
@@ -85,7 +77,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	{
 		// Generate canonical prefix and stream into new reservoir
 		Reservoir<PrefixPath> prefixRes{};
-		const Interaction primaryInteraction = PrefixGen(prefixRes, origin, dir, rng);
+		PrefixGen(prefixRes, origin, dir, rng);
 
 		// Get motion vector
 		const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
@@ -97,7 +89,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		// Perform temporal prefix reuse if requested and if previous pixel is valid
 		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
 		{
-			PrefixTempReuse(prefixRes, prevPixelCoord, primaryInteraction, rng);
+			PrefixTempReuse(prefixRes, prevPixelCoord, rng);
 		}
 
 		// Store restir g buffer
