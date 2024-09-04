@@ -119,12 +119,6 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx, PCG32& rng)
 {
-	// Exit if prefix is invalid
-	if (!params.restir.restirGBuffers[pixelIdx].primaryInteraction.valid)
-	{
-		return glm::vec3(0.0f);
-	}
-
 	// Init empty output radiance
 	glm::vec3 outputRadiance(0.0f);
 

@@ -49,7 +49,7 @@ static __forceinline__ __device__ void PrefixTempReuse(
 	const Reservoir<PrefixPath>& prevPrefixRes = params.restir.prefixReservoirs[prevPixelIdx];
 
 	// Prefix reuse
-	PrefixReuse(prefixRes, prevPrefixRes, primaryInteraction, rng, params);
+	PrefixReuse(prefixRes, prevPrefixRes, rng, params);
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
@@ -101,7 +101,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		}
 
 		// Store restir g buffer
-		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(primaryInteraction, prevPixelCoord, rng);
+		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng);
 
 		// Store prefix reservoir
 		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;

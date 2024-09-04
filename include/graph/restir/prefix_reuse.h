@@ -15,18 +15,19 @@ static __forceinline__ __device__ void ShiftPrefix(
 static __forceinline__ __device__ void PrefixReuse(
 	Reservoir<PrefixPath>& res,
 	const Reservoir<PrefixPath>& otherRes,
-	const Interaction& primaryInteraction,
 	PCG32& rng,
 	const LaunchParams& params)
 {
 	// Assume: res and res.sample are valid
 
-	// Exit if primary interaction is invalid
-	if (!primaryInteraction.valid) { return; }
-
 	// Get prefixes from res
 	const PrefixPath& currPrefix = res.sample;
 	const PrefixPath& otherPrefix = otherRes.sample;
+
+	// Get primary interaction
+	Interaction primaryInteraction{};
+	TraceInteractionSeed(currPrefix.primaryIntSeed, primaryInteraction, params.traversableHandle, params.surfaceTraceParams);
+	if (!primaryInteraction.valid) { return; }
 
 	// Exit if prev prefix res is invalid or unfit for reuse
 	if (!otherPrefix.IsValid() || otherPrefix.GetLength() < params.restir.minPrefixLen) { return; }

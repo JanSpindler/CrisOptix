@@ -37,8 +37,7 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 	const PrefixPath& neighPrefix = neighPrefixRes.sample;
 
 	// Prefix reuse
-	const Interaction& primaryInteraction = params.restir.restirGBuffers[currPixelIdx].primaryInteraction;
-	PrefixReuse(currPrefixRes, neighPrefixRes, primaryInteraction, rng, params);
+	PrefixReuse(currPrefixRes, neighPrefixRes, rng, params);
 }
 
 extern "C" __global__ void __raygen__prefix_spatial_reuse()
