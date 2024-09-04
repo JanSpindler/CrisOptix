@@ -6,11 +6,12 @@
 
 struct PrefixPath
 {
-	// True if prefix is a valid path
-	bool valid;
-
-	// True if prefix was terminated early by NEE
-	bool nee;
+	// Path flags
+	// 0:8 -> length: Vertex count starting at primary hit. Does not include NEE hit.
+	// 8:16 -> reconnection index: Index of first vertex fit for prefix reconnection
+	// 16:17 -> valid: True if prefix is a valid path
+	// 17:18 -> nee: True if prefix was terminated early by NEE
+	uint32_t flags;
 
 	// Position of primary hit
 	glm::vec3 primaryHitPos;
@@ -20,9 +21,6 @@ struct PrefixPath
 
 	// Interaction at first vertex fit for prefix reconnection
 	Interaction reconInteraction;
-
-	// Index of first vertex fit for prefix reconnection
-	uint32_t reconIdx;
 
 	// Random number generator state before prefix was generated
 	PCG32 rng;
@@ -36,23 +34,17 @@ struct PrefixPath
 	// Sampling pdf
 	float p;
 
-	// Vertex count starting at primary hit. Does not include NEE hit.
-	uint32_t len;
-
 	// Interaction at last vertex (used for generating and reconnection with suffix)
 	Interaction lastInteraction;
 
 	__forceinline__ __device__ __host__ PrefixPath() :
-		valid(false),
-		nee(false),
+		flags(0u),
 		primaryHitPos(0.0f),
 		primaryHitInDir(0.0f),
 		reconInteraction({}),
-		reconIdx(0),
 		rng({}),
 		f(0.0f),
 		p(0.0f),
-		len(0),
 		lastInteraction({})
 	{
 	}
@@ -64,18 +56,59 @@ struct PrefixPath
 		const glm::vec3& _primaryHitPos,
 		const glm::vec3& _primaryHitInDir)
 		:
-		valid(other.valid),
-		nee(other.nee),
+		flags(other.flags),
 		primaryHitPos(_primaryHitPos),
 		primaryHitInDir(_primaryHitInDir),
 		reconInteraction(other.reconInteraction),
-		reconIdx(other.reconIdx),
 		rng(other.rng),
 		f(_f),
 		postReconF(other.postReconF),
 		p(_p),
-		len(other.len),
 		lastInteraction(other.lastInteraction)
 	{
+	}
+
+	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
+	{
+		return static_cast<uint32_t>(flags & 0xFF);
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetLength(const uint32_t length)
+	{
+		flags &= ~0xFFu;
+		flags |= length & 0xFFu;
+	}
+
+	constexpr __forceinline__ __device__ __host__ uint32_t GetReconIdx() const
+	{
+		return static_cast<uint32_t>((flags >> 8u) & 0xFFu);
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetReconIdx(const uint32_t reconIdx)
+	{
+		flags &= ~0xFF00u;
+		flags |= (reconIdx & 0xFFu) << 8u;
+	}
+
+	constexpr __forceinline__ __device__ __host__ bool IsValid() const
+	{
+		return static_cast<bool>(flags & (1 << 16u));
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetValid(const bool valid)
+	{
+		flags &= ~(1 << 16u);
+		if (valid) { flags |= 1 << 16u; }
+	}
+
+	constexpr __forceinline__ __device__ __host__ bool IsNee() const
+	{
+		return static_cast<bool>(flags & (1 << 17u));
+	}
+
+	constexpr __forceinline__ __device__ __host__ void SetNee(const bool nee)
+	{
+		flags &= ~(1 << 17u);
+		if (nee) { flags |= 1 << 17u; }
 	}
 };

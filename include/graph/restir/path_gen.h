@@ -36,9 +36,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	prefix.p = 1.0f;
 	prefix.f = glm::vec3(1.0f);
 	prefix.postReconF = glm::vec3(1.0f);
-	prefix.valid = true;
-	prefix.nee = false;
-	prefix.len = 0;
+	prefix.SetValid(true);
 
 	// Trace
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
@@ -56,15 +54,15 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		// Exit if no surface found
 		if (!prefix.lastInteraction.valid)
 		{
-			prefix.valid = false;
+			prefix.SetValid(false);
 			break;
 		}
 
 		//
-		++prefix.len;
+		prefix.SetLength(prefix.GetLength() + 1);
 		
 		//
-		if (prefix.len == 1)
+		if (prefix.GetLength() == 1)
 		{
 			prefix.primaryHitPos = prefix.lastInteraction.pos; 
 			prefix.primaryHitInDir = dir;
@@ -72,7 +70,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		}
 
 		// TODO: Also include roughness
-		const bool postRecon = prefix.len > 1;
+		const bool postRecon = prefix.GetLength() > 1;
 
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < params.neeProb)
@@ -119,10 +117,10 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 					prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
 					if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
 
-					if (prefix.len == 1) { prefix.f += brdfEvalResult.emission; }
+					if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission; }
 
-					prefix.nee = true;
-					prefix.valid = true;
+					prefix.SetNee(true);
+					prefix.SetValid(true);
 
 					validEmitterFound = true;
 				}
@@ -130,22 +128,22 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 			if (!validEmitterFound)
 			{
-				prefix.nee = false;
-				prefix.valid = false;
+				prefix.SetNee(false);
+				prefix.SetValid(false);
 			}
 
 			break;
 		}
 
 		// Store as reconnection vertex if fit
-		if (postRecon && prefix.reconIdx == 0)
+		if (postRecon && prefix.GetReconIdx() == 0)
 		{
 			prefix.reconInteraction = prefix.lastInteraction;
-			prefix.reconIdx = prefix.len;
+			prefix.SetReconIdx(prefix.GetLength());
 		}
 
 		// Do not sample brdf when at last position
-		if (prefix.len == maxLen) { break; }
+		if (prefix.GetLength() == maxLen) { break; }
 
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
@@ -154,7 +152,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f)
 		{
-			prefix.valid = false;
+			prefix.SetValid(false);
 			break;
 		}
 

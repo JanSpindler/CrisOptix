@@ -137,7 +137,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			// Trace new prefix for pixel q
 			Interaction interaction{};
 			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, interaction, rng, params);
-			if (!prefix.valid) { continue; }
+			if (!prefix.IsValid()) { continue; }
 
 			// Find k neighboring prefixes in world space
 			static constexpr float EPSILON = 1e-16;

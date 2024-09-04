@@ -15,7 +15,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	const PrefixPath& prefix = params.restir.prefixReservoirs[currPixelIdx].sample;
 	
 	// Exit if current prefix is invalid
-	if (!prefix.valid) { return; }
+	if (!prefix.IsValid()) { return; }
 
 	// Get current suffix
 	Reservoir<SuffixPath>& currSuffixRes = params.restir.suffixReservoirs[currPixelIdx];

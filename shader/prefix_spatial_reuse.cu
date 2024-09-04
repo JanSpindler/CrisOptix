@@ -18,7 +18,7 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 	const PrefixPath& currPrefix = currPrefixRes.sample;
 
 	// Exit if current prefix is invalid or not fit for reuse
-	if (!currPrefix.valid || currPrefix.len < params.restir.minPrefixLen) { return; }
+	if (!currPrefix.IsValid() || currPrefix.GetLength() < params.restir.minPrefixLen) { return; }
 
 	// Select random neighbor
 	static constexpr uint32_t kernelRadius = 2;

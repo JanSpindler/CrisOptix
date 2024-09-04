@@ -23,11 +23,11 @@ static __forceinline__ __device__ void PrefixReuse(
 	const PrefixPath& otherPrefix = otherRes.sample;
 
 	// Exit if prev prefix res is invalid or unfit for reuse
-	if (!otherPrefix.valid || otherPrefix.len < params.restir.minPrefixLen) { return; }
+	if (!otherPrefix.IsValid() || otherPrefix.GetLength() < params.restir.minPrefixLen) { return; }
 
 	// Reconnect after primary hit
 	// TODO: Support hybrid shift
-	if (otherPrefix.reconIdx != 2) { return; }
+	if (otherPrefix.GetReconIdx() != 2) { return; }
 
 	// Exit if occluded
 	const glm::vec3 reconDir = glm::normalize(otherPrefix.reconInteraction.pos - primaryInteraction.pos);
@@ -63,7 +63,7 @@ static __forceinline__ __device__ void PrefixReuse(
 	const glm::vec3 shiftedF = brdfEvalResult.brdfResult * otherPrefix.postReconF;
 	const float shiftedP = 
 		//brdfEvalResult.samplingPdf * 
-		glm::pow(1.0f - params.neeProb, static_cast<float>(otherPrefix.len - 1));
+		glm::pow(1.0f - params.neeProb, static_cast<float>(otherPrefix.GetLength() - 1));
 
 	// Construct shifted PrefixPath
 	const PrefixPath shiftedPrefix = PrefixPath(otherPrefix, shiftedF, shiftedP, primaryInteraction.pos, primaryInteraction.inRayDir);

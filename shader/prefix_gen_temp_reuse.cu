@@ -20,7 +20,7 @@ static __forceinline__ __device__ Interaction PrefixGen(
 	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, 8, primaryInteraction, rng, params);
 
 	// Do not store if not valid
-	if (!prefix.valid) { return {}; }
+	if (!prefix.IsValid()) { return {}; }
 
 	// Stream into res
 	const float pHat = GetLuminance(prefix.f);
@@ -39,7 +39,7 @@ static __forceinline__ __device__ void PrefixTempReuse(
 {
 	// Exit if current prefix is invalid
 	const PrefixPath& currPrefix = prefixRes.sample;
-	if (!currPrefix.valid) { return; }
+	if (!currPrefix.IsValid()) { return; }
 
 	// Exit if primary interaction is invalid
 	if (!primaryInteraction.valid) { return; }

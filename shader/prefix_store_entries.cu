@@ -29,7 +29,7 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	const glm::vec3& pos = prefix.lastInteraction.pos;
 
 	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
-	if (prefix.valid && suffix.IsValid())
+	if (prefix.IsValid() && suffix.IsValid())
 	{
 		aabb.minX = pos.x - radius;
 		aabb.minY = pos.y - radius;
