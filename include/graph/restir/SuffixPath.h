@@ -8,6 +8,12 @@
 
 struct SuffixPath
 {
+	// Interaction at recon vertex
+	Interaction reconInteraction;
+
+	// State of random number generator before tracing suffix
+	PCG32 rng;
+
 	// Path flags
 	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)
 	// 8:16 -> reconnection index: Index of recon vertex
@@ -20,9 +26,6 @@ struct SuffixPath
 	// In dir at last prefix vertex (used for jacobian)
 	glm::vec3 lastPrefixInDir;
 
-	// Interaction at recon vertex
-	Interaction reconInteraction;
-
 	// Out direction after reconnection (used for brdf evaluation)
 	glm::vec3 reconOutDir;
 
@@ -34,9 +37,6 @@ struct SuffixPath
 
 	// Sampling pdf
 	float p;
-
-	// State of random number generator before tracing suffix
-	PCG32 rng;
 
 	__forceinline__ __device__ __host__ SuffixPath() :
 		flags(0),
