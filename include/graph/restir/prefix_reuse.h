@@ -8,7 +8,7 @@
 #include <graph/restir/ShfitResult.h>
 
 // Shifts current prefix into others domain and evaluates the target function "p hat from i"
-static __forceinline__ __device__ float CalcOtherMisWeight(
+static __forceinline__ __device__ float CalcCurrContribInOtherDomain(
 	const PrefixPath& currPrefix,
 	const PrefixPath& otherPrefix,
 	const LaunchParams& params)
@@ -136,7 +136,7 @@ static __forceinline__ __device__ void PrefixReuse(
 
 	// MIS weight | 1 = current sample and 2 = other sample | first index = domain and second index = sample
 	const float m22 = GetLuminance(otherPrefix.f) * otherRes.confidence;
-	const float m12 = CalcOtherMisWeight(currPrefix, otherPrefix, params) * res.confidence;
+	const float m12 = CalcCurrContribInOtherDomain(currPrefix, otherPrefix, params) * res.confidence;
 	const float misWeight = m22 / (m12 + m22);
 
 	// Calc ris weight

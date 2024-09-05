@@ -8,7 +8,7 @@
 #include <graph/restir/ShfitResult.h>
 
 // Shifts current prefix into others domain and evaluates the target function "p hat from i"
-static __forceinline__ __device__ float CalcOtherMisWeight(
+static __forceinline__ __device__ float CalcCurrContribInOtherDomain(
 	const SuffixPath& currSuffix,
 	const SuffixPath& otherSuffix,
 	const LaunchParams& params)
@@ -46,14 +46,20 @@ static __forceinline__ __device__ float CalcOtherMisWeight(
 	if (brdf1.samplingPdf <= 0.0f) { return 0.0f; }
 
 	// Brdf eval 2
-	const BrdfEvalResult brdf2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		currReconInt.meshSbtData->evalMaterialSbtIdx,
-		currReconInt,
-		currSuffix.reconOutDir);
-	if (brdf2.samplingPdf <= 0.0f) { return 0.0f; }
+	glm::vec3 brdfResult2(1.0f);
+	if (currSuffix.GetReconIdx() == 0)
+	{
+		const BrdfEvalResult brdf2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
+			currReconInt.meshSbtData->evalMaterialSbtIdx,
+			currReconInt,
+			currSuffix.reconOutDir);
+		if (brdf2.samplingPdf <= 0.0f) { return 0.0f; }
+
+		brdfResult2 = brdf2.brdfResult;
+	}
 
 	// Inverse shift p hat
-	const glm::vec3 shiftedF = brdf1.samplingPdf * brdf2.samplingPdf * currSuffix.postReconF;
+	const glm::vec3 shiftedF = brdf1.brdfResult * brdfResult2 * currSuffix.postReconF;
 
 	//
 	return GetLuminance(shiftedF) * jacobian;
@@ -145,7 +151,7 @@ static __forceinline__ __device__ void SuffixReuse(
 	
 	// MIS weight | 1 = current sample and 2 = other sample | first index = domain and second index = sample
 	const float m22 = GetLuminance(otherSuffix.f) * otherRes.confidence;
-	const float m12 = CalcOtherMisWeight(currSuffix, otherSuffix, params) * currRes.confidence;
+	const float m12 = CalcCurrContribInOtherDomain(currSuffix, otherSuffix, params) * currRes.confidence;
 	const float misWeight = m22 / (m12 + m22);
 
 	// Calc ris weight

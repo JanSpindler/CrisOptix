@@ -89,6 +89,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
 	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params);
+	if (!reconInteraction.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
 	//
 	glm::vec3 brdfResult2(1.0f);
