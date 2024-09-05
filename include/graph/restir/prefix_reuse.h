@@ -59,7 +59,6 @@ static __forceinline__ __device__ float CalcOtherMisWeight(
 	return GetLuminance(shiftedF) * jacobian;
 }
 
-// shifted f, jacobian
 static __forceinline__ __device__ ShiftResult ShiftPrefix(
 	const PrefixPath& currPrefix,
 	const PrefixPath& otherPrefix,
@@ -151,6 +150,6 @@ static __forceinline__ __device__ void PrefixReuse(
 	if (res.Merge(shiftedPrefix, otherRes.confidence, risWeight, rng))
 	{
 		// Only for debug purposes
-		printf("%f\n", risWeight);
+		//printf("%f\n", risWeight);
 	}
 }

@@ -4,7 +4,6 @@
 #include <util/random.h>
 #include <graph/Interaction.h>
 #include <graph/luminance.h>
-#include <cuda_fp16.h>
 
 struct SuffixPath
 {
@@ -51,8 +50,7 @@ struct SuffixPath
 	__forceinline__ __device__ __host__ SuffixPath(
 		const SuffixPath& other,
 		const InteractionSeed& _lastPrefixIntSeed,
-		const glm::vec3& _f,
-		const float _p)
+		const glm::vec3& _f)
 		:
 		flags(other.flags),
 		lastPrefixIntSeed(_lastPrefixIntSeed),
@@ -60,7 +58,7 @@ struct SuffixPath
 		reconOutDir(other.reconOutDir),
 		f(_f),
 		postReconF(other.postReconF),
-		p(_p),
+		p(other.p),
 		rng(other.rng)
 	{
 	}

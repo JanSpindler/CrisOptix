@@ -14,5 +14,5 @@ static constexpr __forceinline__ __device__ __host__ float CalcResamplingWeightW
 	const float ucwSrcDom, 
 	const float jacobian)
 {
-	return misWeight * pHatTgtDom * ucwSrcDom * jacobian;
+	return glm::max(0.0f, misWeight * pHatTgtDom * ucwSrcDom * jacobian);
 }
