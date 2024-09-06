@@ -26,19 +26,27 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 	const uint32_t currPixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Get current prefix
-	Reservoir<PrefixPath>& currPrefixRes = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
-	const PrefixPath& currPrefix = currPrefixRes.sample;
+	Reservoir<PrefixPath>& currRes = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
+	const PrefixPath& currPrefix = currRes.sample;
 	if (!currPrefix.IsValid()) { return; }
-	
+
 	// Get canonical prefix
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[currPixelIdx];
 	if (!canonPrefix.IsValid()) { return; }
+	const float canonPHat = GetLuminance(canonPrefix.f);
+
+	// Cache data from current reservoir and reset
+	const float currResWSum = currRes.wSum;
+	const float currResConfidence = currRes.confidence;
+	currRes.Reset();
 
 	// RIS with pairwise MIS weights
-	uint32_t validNeighCount = 0;
-	float canonicalWeight = 0.0f;
+	const int neighCount = params.restir.prefixSpatialCount;
 
-	for (uint32_t neighIdx = 0; neighIdx < params.restir.prefixSpatialCount; ++neighIdx)
+	uint32_t validNeighCount = 0;
+	float canonMisWeight = 0.0f;
+
+	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Select new neighbor
 		const glm::uvec2 neighPixelCoord = SelectSpatialNeighbor(pixelCoord, rng);
@@ -56,9 +64,41 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 		if (!neighPrimaryInt.valid) { continue; }
 		++validNeighCount;
 
-		//
+		// Shift
+		float jacobianNeighToCanon = 0.0f;
+		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);
+		const float pFromCanonOfNeigh = GetLuminance(fFromCanonOfNeigh) * jacobianNeighToCanon;
 
+		float jacobianCanonToNeigh = 0.0f;
+		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonPrefix, neighPrefix, jacobianCanonToNeigh, params);
+		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
+
+		// Calc neigh mis weight
+		const float neighMisWeight = neighRes.confidence * GetLuminance(neighPrefix.f) /
+			(currResConfidence * GetLuminance(fFromCanonOfNeigh) + 
+				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighPrefix.f));
+		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
+		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
+
+		// Stream neigh into res
+		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryIntSeed), neighRisWeight, rng))
+		{
+			//printf("Spatial Prefix\n");
+		}
+
+		// Update canonical mis weight
+		canonMisWeight += (currResConfidence * canonPHat) / 
+			((currResConfidence * canonPHat) + 
+				(neighRes.confidence * static_cast<float>(neighCount) * pFromNeighOfCanon));
 	}
+
+	canonMisWeight /= static_cast<float>(neighCount);
+
+	// Calc canon ris weight
+	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
+
+	// Stream result of temporal reuse into reservoir again
+	currRes.Update(currPrefix, canonRisWeight, rng);
 }
 
 extern "C" __global__ void __raygen__prefix_spatial_reuse()
