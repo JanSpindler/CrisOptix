@@ -34,8 +34,13 @@ struct RestirParams
 	float gatherRadius;
 
 	// Buffers
+	uint8_t frontBufferIdx;
+	uint8_t backBufferIdx;
 	CuBufferView<Reservoir<PrefixPath>> prefixReservoirs;
+	CuBufferView<PrefixPath> canonicalPrefixes;
+
 	CuBufferView<Reservoir<SuffixPath>> suffixReservoirs;
+	
 	CuBufferView<RestirGBuffer> restirGBuffers;
 
 	// Prefix entries

@@ -34,7 +34,10 @@ private:
 
 	// Buffers
 	DeviceBuffer<Reservoir<PrefixPath>> m_PrefixReservoirs{};
+	DeviceBuffer<PrefixPath> m_CanonicalPrefixes{};
+
 	DeviceBuffer<Reservoir<SuffixPath>> m_SuffixReservoirs{};
+
 	DeviceBuffer<RestirGBuffer> m_RestirGBuffers{};
 	DeviceBuffer<glm::vec2> m_MotionVectors{};
 

@@ -19,6 +19,12 @@ struct Reservoir
 	{
 	}
 
+	constexpr __forceinline__ __host__ __device__ void Reset()
+	{
+		wSum = 0.0f;
+		confidence = 0.0f;
+	}
+
 	__forceinline__ __host__ __device__ bool Update(const T& _sample, const float risWeight, PCG32& rng)
 	{
 		wSum += risWeight;

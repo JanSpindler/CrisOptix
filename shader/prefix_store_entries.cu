@@ -21,8 +21,8 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	}
 
 	// Get prefix and suffix
-	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
-	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx].sample;
+	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
+	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
 
 	// Store prefix entry aabb
 	const float radius = params.restir.gatherRadius;

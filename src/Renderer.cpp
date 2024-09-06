@@ -149,24 +149,38 @@ Renderer::Renderer(
 	m_Sbt.CreateSBT();
 
 	// LaunchParams buffers
+	m_LaunchParams.restir.frontBufferIdx = 0;
+	m_LaunchParams.restir.backBufferIdx = 0;
+
 	const size_t pixelCount = width * height;
-	std::vector<Reservoir<PrefixPath>> prefixReservoirs(pixelCount);
-	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount);
+	std::vector<Reservoir<PrefixPath>> prefixReservoirs(pixelCount * 2);
+	std::vector<PrefixPath> canonicalPrefixes(pixelCount);
+
+	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount * 2);
+
 	std::vector<RestirGBuffer> restirGBuffers(pixelCount);
 	std::vector<glm::vec2> motionVectors(pixelCount);
 
 	for (size_t idx = 0; idx < pixelCount; ++idx)
 	{
-		prefixReservoirs[idx] = Reservoir<PrefixPath>();
-		suffixReservoirs[idx] = Reservoir<SuffixPath>();
+		prefixReservoirs[idx * 2 + 0] = Reservoir<PrefixPath>();
+		prefixReservoirs[idx * 2 + 1] = Reservoir<PrefixPath>();
+		canonicalPrefixes[idx] = PrefixPath();
+
+		suffixReservoirs[idx * 2 + 0] = Reservoir<SuffixPath>();
+		suffixReservoirs[idx * 2 + 1] = Reservoir<SuffixPath>();
+		
 		restirGBuffers[idx] = RestirGBuffer();
 		motionVectors[idx] = glm::vec2(0.0f);
 	}
 
-	m_PrefixReservoirs.Alloc(pixelCount);
+	m_PrefixReservoirs.Alloc(pixelCount * 2);
 	m_PrefixReservoirs.Upload(prefixReservoirs.data());
 
-	m_SuffixReservoirs.Alloc(pixelCount);
+	m_CanonicalPrefixes.Alloc(pixelCount);
+	m_CanonicalPrefixes.Upload(canonicalPrefixes.data());
+
+	m_SuffixReservoirs.Alloc(pixelCount * 2);
 	m_SuffixReservoirs.Upload(suffixReservoirs.data());
 
 	m_RestirGBuffers.Alloc(pixelCount);
@@ -196,8 +210,22 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.traversableHandle = m_Scene.GetTraversableHandle();
 	m_LaunchParams.cameraData = m_Cam.GetData();
 
+	if (m_LaunchParams.restir.frontBufferIdx == 0)
+	{
+		m_LaunchParams.restir.frontBufferIdx = 1;
+		m_LaunchParams.restir.backBufferIdx = 0;
+	}
+	else
+	{
+		m_LaunchParams.restir.frontBufferIdx = 0;
+		m_LaunchParams.restir.backBufferIdx = 1;
+	}
+
 	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
+	m_LaunchParams.restir.canonicalPrefixes = CuBufferView<PrefixPath>(m_CanonicalPrefixes.GetCuPtr(), m_CanonicalPrefixes.GetCount());
+
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
+	
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
 
 	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();

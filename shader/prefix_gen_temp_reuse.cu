@@ -9,39 +9,68 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ void PrefixGen(
-	Reservoir<PrefixPath>& prefixRes,
-	const glm::vec3& origin,
-	const glm::vec3& dir,
-	PCG32& rng)
-{
-	// Trace new canonical prefix
-	const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
-
-	// Do not store if not valid
-	if (!prefix.IsValid()) { return; }
-
-	// Stream into res
-	const float pHat = GetLuminance(prefix.f);
-	const float risWeight = pHat / prefix.p;
-	prefixRes.Update(prefix, risWeight, rng);
-}
-
-static __forceinline__ __device__ void PrefixTempReuse(
-	Reservoir<PrefixPath>& prefixRes,
+static __forceinline__ __device__ void PrefixGenTempReuse(
+	const glm::uvec2& pixelCoord,
 	const glm::uvec2& prevPixelCoord,
+	const glm::vec3& origin, 
+	const glm::vec3& dir, 
 	PCG32& rng)
 {
-	// Exit if current prefix is invalid
-	const PrefixPath& currPrefix = prefixRes.sample;
-	if (!currPrefix.IsValid()) { return; }
-
-	// Get previous prefix res
+	// Get pixel index
+	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
-	const Reservoir<PrefixPath>& prevPrefixRes = params.restir.prefixReservoirs[prevPixelIdx];
 
-	// Prefix reuse
-	PrefixReuse(prefixRes, prevPrefixRes, rng, params);
+	// Generate canonical prefix and store in buffer for later usage with spatial reuse
+	params.restir.canonicalPrefixes[pixelIdx] = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
+	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
+	const float canonPHat = GetLuminance(canonPrefix.f);
+
+	// Get current reservoir and reset it
+	Reservoir<PrefixPath>& currRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+	currRes.Reset();
+
+	// Get prev reservoir and prev prefix
+	Reservoir<PrefixPath>& prevRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.backBufferIdx];
+	const PrefixPath& prevPrefix = prevRes.sample;
+
+	// If ...
+	if (!params.restir.prefixEnableTemporal || // Do not reuse when not wanted
+		!IsPixelValid(prevPixelCoord, params) || // Do not reuse from invalid pixels
+		prevRes.wSum <= 0.0f || // Do not reuse prefixes with 0 ucw
+		!prevPrefix.IsValid() || // Do not reuse invalid prefixes
+		prevPrefix.IsNee()) // Do not reuse prefixes that wont generate suffixes
+	{
+		// Store canonical prefix and end
+		const float risWeight = canonPHat / canonPrefix.p;
+		currRes.Update(canonPrefix, risWeight, rng);
+		return;
+	}
+
+	// Temp reuse
+	// Shift forward and backward
+	float jacobianCanonToPrev = 0.0f;
+	float jacobianPrevToCanon = 0.0f;
+	const glm::vec3 fFromCanonOfPrev = CalcCurrContribInOtherDomain(prevPrefix, canonPrefix, jacobianPrevToCanon, params);
+	const glm::vec3 fFromPrevOfCanon = CalcCurrContribInOtherDomain(canonPrefix, prevPrefix, jacobianCanonToPrev, params);
+
+	// Calc talbot mis weights
+	const float pFromCanonOfCanon = canonPHat;
+	const float pFromCanonOfPrev = GetLuminance(fFromCanonOfPrev) * jacobianPrevToCanon;
+	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
+	const float pFromPrevOfPrev = GetLuminance(prevPrefix.f);
+
+	const float canonMisWeight = pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
+	const float prevMisWeight = pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
+
+	// Stream canonical sample
+	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;
+	currRes.Update(canonPrefix, canonRisWeight, rng);
+
+	// Stream prev samples
+	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevPrefix.f);
+	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
+	const PrefixPath shiftedPrevPrefix(prevPrefix, glm::vec3(0.0f), canonPrefix.primaryIntSeed);
+	currRes.Update(shiftedPrevPrefix, prevRisWeight, rng);
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
@@ -75,10 +104,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	// If restir
 	if (params.enableRestir)
 	{
-		// Generate canonical prefix and stream into new reservoir
-		Reservoir<PrefixPath> prefixRes{};
-		PrefixGen(prefixRes, origin, dir, rng);
-
 		// Get motion vector
 		const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 		const glm::vec2 motionVector = params.motionVectors[pixelIdx];
@@ -86,17 +111,11 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		// Calc prev pixel coord
 		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
 
-		// Perform temporal prefix reuse if requested and if previous pixel is valid
-		if (params.restir.prefixEnableTemporal && IsPixelValid(prevPixelCoord, params))
-		{
-			PrefixTempReuse(prefixRes, prevPixelCoord, rng);
-		}
+		//
+		PrefixGenTempReuse(pixelCoord, prevPixelCoord, origin, dir, rng);
 
 		// Store restir g buffer
 		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng);
-
-		// Store prefix reservoir
-		params.restir.prefixReservoirs[GetPixelIdx(pixelCoord, params)] = prefixRes;
 	}
 	// If not restir
 	else
