@@ -52,9 +52,6 @@ static __forceinline__ __device__ void SuffixTempReuse(
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 {
-	// Sanity check
-	if (!params.enableRestir) { return; }
-
 	//
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());

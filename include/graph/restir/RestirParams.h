@@ -11,13 +11,14 @@ struct RestirParams
 {
 	// Prefix
 	int prefixLen;
-	
 	bool prefixEnableTemporal;
 	bool prefixEnableSpatial;
+	int prefixSpatialCount;
 
 	// Suffix
 	bool suffixEnableTemporal;
 	bool suffixEnableSpatial;
+	int suffixSpatialCount;
 
 	// Final gather
 	int gatherN;

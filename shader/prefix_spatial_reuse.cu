@@ -42,9 +42,6 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 
 extern "C" __global__ void __raygen__prefix_spatial_reuse()
 {
-	// Sanity check
-	if (!params.enableRestir || !params.restir.prefixEnableSpatial) { return; }
-
 	//
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
@@ -56,7 +53,7 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 		return;
 	}
 
-	// Init RNG
+	// Get rng
 	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
 	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 

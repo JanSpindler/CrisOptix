@@ -37,9 +37,11 @@ Renderer::Renderer(
 	m_LaunchParams.restir.prefixLen = 2;
 	m_LaunchParams.restir.prefixEnableTemporal = false;
 	m_LaunchParams.restir.prefixEnableSpatial = false;
+	m_LaunchParams.restir.prefixSpatialCount = 1;
 
 	m_LaunchParams.restir.suffixEnableTemporal = false;
 	m_LaunchParams.restir.suffixEnableSpatial = false;
+	m_LaunchParams.restir.suffixSpatialCount = 1;
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
@@ -254,7 +256,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	if (m_LaunchParams.enableRestir)
 	{
 		// Prefix spatial reuse
-		if (m_LaunchParams.restir.prefixEnableSpatial)
+		if (m_LaunchParams.restir.prefixEnableSpatial && m_LaunchParams.restir.prefixSpatialCount > 0)
 		{
 			ASSERT_OPTIX(optixLaunch(
 				m_PrefixSpatialReusePipeline.GetHandle(),
@@ -281,7 +283,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		m_PostSuffixGenTempReuseEvent.Record();
 
 		// Suffix spatial reuse
-		if (m_LaunchParams.restir.suffixEnableSpatial)
+		if (m_LaunchParams.restir.suffixEnableSpatial && m_LaunchParams.restir.suffixSpatialCount > 0)
 		{
 			ASSERT_OPTIX(optixLaunch(
 				m_SuffixSpatialReusePipeline.GetHandle(),
@@ -385,13 +387,18 @@ void Renderer::RunImGuiSettings()
 	// Restir Prefix
 	ImGui::Text("Restir Prefix");
 	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.prefixLen, 1, 1);
+	m_LaunchParams.restir.prefixLen = std::max<int>(1, m_LaunchParams.restir.prefixLen);
 	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
 	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
+	ImGui::InputInt("Prefix Spatial Count", &m_LaunchParams.restir.prefixSpatialCount);
+	m_LaunchParams.restir.prefixSpatialCount = std::max<int>(0, m_LaunchParams.restir.prefixSpatialCount);
 
 	// Restir Suffix
 	ImGui::Text("Restir Suffix");
-	ImGui::Checkbox("Suffix Enable Temportal", &m_LaunchParams.restir.suffixEnableTemporal);
+	ImGui::Checkbox("Suffix Enable Temporal", &m_LaunchParams.restir.suffixEnableTemporal);
 	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
+	ImGui::InputInt("Suffix Spatial Count", &m_LaunchParams.restir.suffixSpatialCount);
+	m_LaunchParams.restir.suffixSpatialCount = std::max<int>(0, m_LaunchParams.restir.suffixSpatialCount);
 
 	// Restir final gather
 	ImGui::Text("Restir Final Gather");

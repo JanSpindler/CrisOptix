@@ -47,9 +47,6 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 
 extern "C" __global__ void __raygen__suffix_spatial_reuse()
 {
-	// Sanity check
-	if (!params.enableRestir || !params.restir.suffixEnableSpatial) { return; }
-
 	//
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
