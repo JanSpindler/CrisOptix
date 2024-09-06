@@ -21,7 +21,7 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
 
 	// Generate canonical prefix and store in buffer for later usage with spatial reuse
-	params.restir.canonicalPrefixes[pixelIdx] = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
+	params.restir.canonicalPrefixes[pixelIdx] = TracePrefix(origin, dir, params.restir.prefixLen, rng, params);
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
@@ -64,13 +64,19 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;
-	currRes.Update(canonPrefix, canonRisWeight, rng);
+	if (currRes.Update(canonPrefix, canonRisWeight, rng))
+	{
+		//printf("Curr Prefix\n");
+	}
 
 	// Stream prev samples
 	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevPrefix.f);
 	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
 	const PrefixPath shiftedPrevPrefix(prevPrefix, glm::vec3(0.0f), canonPrefix.primaryIntSeed);
-	currRes.Update(shiftedPrevPrefix, prevRisWeight, rng);
+	if (currRes.Update(shiftedPrevPrefix, prevRisWeight, rng))
+	{
+		//printf("Prev Prefix\n");
+	}
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()

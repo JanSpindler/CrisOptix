@@ -9,18 +9,9 @@
 
 struct RestirParams
 {
-	// Restir DI
-	int diCanonicalCount;
-	bool diEnableTemporal;
-	bool diEnableSpatial;
-	int diSpatialCount;
-	int diSpatialKernelSize;
-
 	// Prefix
-	bool adaptivePrefixLength;
-	int minPrefixLen;
-	uint32_t maxReconLength;
-
+	int prefixLen;
+	
 	bool prefixEnableTemporal;
 	bool prefixEnableSpatial;
 

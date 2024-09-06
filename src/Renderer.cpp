@@ -32,15 +32,9 @@ Renderer::Renderer(
 {
 	//
 	m_LaunchParams.neeProb = 0.1f;
-
+	
 	//
-	m_LaunchParams.restir.diEnableTemporal = false;
-	m_LaunchParams.restir.diEnableSpatial = false;
-	m_LaunchParams.restir.diCanonicalCount = 1;
-	m_LaunchParams.restir.diSpatialCount = 0;
-	m_LaunchParams.restir.diSpatialKernelSize = 1;
-
-	m_LaunchParams.restir.minPrefixLen = 2;
+	m_LaunchParams.restir.prefixLen = 2;
 	m_LaunchParams.restir.prefixEnableTemporal = false;
 	m_LaunchParams.restir.prefixEnableSpatial = false;
 
@@ -388,17 +382,9 @@ void Renderer::RunImGuiSettings()
 	// Restir
 	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
 
-	// Restir DI
-	ImGui::Text("Restir DI");
-	//ImGui::InputInt("DI Canonical Count", &m_LaunchParams.restir.diCanonicalCount, 1, 4);
-	//ImGui::Checkbox("DI Enable Temporal", &m_LaunchParams.restir.diEnableTemporal);
-	//ImGui::Checkbox("DI Enable Spatial", &m_LaunchParams.restir.diEnableSpatial);
-	//ImGui::InputInt("DI Spatial Count", &m_LaunchParams.restir.diSpatialCount, 1, 4);
-	//ImGui::InputInt("DI Spatial Kernel Size", &m_LaunchParams.restir.diSpatialKernelSize, 1, 4);
-
 	// Restir Prefix
 	ImGui::Text("Restir Prefix");
-	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.minPrefixLen, 1, 1);
+	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.prefixLen, 1, 1);
 	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
 	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
 

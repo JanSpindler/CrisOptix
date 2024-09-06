@@ -139,7 +139,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.minPrefixLen, rng, params);
+			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.prefixLen, rng, params);
 			if (!prefix.IsValid()) { continue; }
 
 			// Find k neighboring prefixes in world space
