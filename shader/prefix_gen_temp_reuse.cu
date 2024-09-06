@@ -59,8 +59,8 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
 	const float pFromPrevOfPrev = GetLuminance(prevPrefix.f);
 
-	const float canonMisWeight = pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
-	const float prevMisWeight = pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
+	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
+	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
 
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;

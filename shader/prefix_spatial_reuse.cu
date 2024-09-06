@@ -8,36 +8,57 @@
 
 __constant__ LaunchParams params;
 
+static constexpr uint32_t WINDOW_RADIUS = 3; // 48 total neighbors
+static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
+
+static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
+{
+	const uint32_t xCoord = (pixelCoord.x - WINDOW_RADIUS) + (rng.NextUint32() % WINDOW_SIZE);
+	const uint32_t yCoord = (pixelCoord.y - WINDOW_RADIUS) + (rng.NextUint32() % WINDOW_SIZE);
+	return glm::uvec2(xCoord, yCoord);
+}
+
 static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixelCoord, PCG32& rng)
 {
 	// Assume: pixelCoord are valid
 
+	// Get pixel index
+	const uint32_t currPixelIdx = GetPixelIdx(pixelCoord, params);
+
 	// Get current prefix
-	const size_t currPixelIdx = GetPixelIdx(pixelCoord, params);
-	Reservoir<PrefixPath>& currPrefixRes = params.restir.prefixReservoirs[currPixelIdx];
+	Reservoir<PrefixPath>& currPrefixRes = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
 	const PrefixPath& currPrefix = currPrefixRes.sample;
+	if (!currPrefix.IsValid()) { return; }
+	
+	// Get canonical prefix
+	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[currPixelIdx];
+	if (!canonPrefix.IsValid()) { return; }
 
-	// Exit if current prefix is invalid or not fit for reuse
-	if (!currPrefix.IsValid() || currPrefix.GetLength() < params.restir.prefixLen) { return; }
+	// RIS with pairwise MIS weights
+	uint32_t validNeighCount = 0;
+	float canonicalWeight = 0.0f;
 
-	// Select random neighbor
-	static constexpr uint32_t kernelRadius = 2;
-	const uint32_t randX = rng.NextUint32() % (2 * kernelRadius + 1);
-	const uint32_t randY = rng.NextUint32() % (2 * kernelRadius + 1);
-	const glm::uvec2 neighPixelCoord = pixelCoord + glm::uvec2(randX, randY) - glm::uvec2(kernelRadius, kernelRadius);
+	for (uint32_t neighIdx = 0; neighIdx < params.restir.prefixSpatialCount; ++neighIdx)
+	{
+		// Select new neighbor
+		const glm::uvec2 neighPixelCoord = SelectSpatialNeighbor(pixelCoord, rng);
+		if (!IsPixelValid(neighPixelCoord, params)) { continue; }
+		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
 
-	// Exit if neighbor is current pixel
-	if (neighPixelCoord == pixelCoord) { return; }
+		// Get neighbor res and prefix
+		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const PrefixPath& neighPrefix = neighRes.sample;
+		if (!neighPrefix.IsValid() || neighPrefix.IsNee()) { continue; }
 
-	// Check if neighbor is on screen
-	if (!IsPixelValid(neighPixelCoord, params)) { return; }
+		// Get neighbor primary hit
+		Interaction neighPrimaryInt{};
+		TraceInteractionSeed(neighPrefix.primaryIntSeed, neighPrimaryInt, params);
+		if (!neighPrimaryInt.valid) { continue; }
+		++validNeighCount;
 
-	// Get neighbor prefix reservoir
-	const Reservoir<PrefixPath>& neighPrefixRes = params.restir.prefixReservoirs[GetPixelIdx(neighPixelCoord, params)];
-	const PrefixPath& neighPrefix = neighPrefixRes.sample;
+		//
 
-	// Prefix reuse
-	//PrefixReuse(currPrefixRes, neighPrefixRes, rng, params);
+	}
 }
 
 extern "C" __global__ void __raygen__prefix_spatial_reuse()
