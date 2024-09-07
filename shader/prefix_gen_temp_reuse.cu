@@ -18,7 +18,6 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 {
 	// Get pixel index
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
-	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
 
 	// Generate canonical prefix and store in buffer for later usage with spatial reuse
 	params.restir.canonicalPrefixes[pixelIdx] = TracePrefix(origin, dir, params.restir.prefixLen, rng, params);
@@ -29,20 +28,25 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	Reservoir<PrefixPath>& currRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
 	currRes.Reset();
 
+	// If no temporal reuse or prev pixel is invalid
+	if (!params.restir.prefixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
+	{
+		// Skip temporal reuse
+		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
+		return;
+	}
+
 	// Get prev reservoir and prev prefix
-	Reservoir<PrefixPath>& prevRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.backBufferIdx];
+	const uint32_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
+	const Reservoir<PrefixPath>& prevRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.backBufferIdx];
 	const PrefixPath& prevPrefix = prevRes.sample;
 
 	// If ...
-	if (!params.restir.prefixEnableTemporal || // Do not reuse when not wanted
-		!IsPixelValid(prevPixelCoord, params) || // Do not reuse from invalid pixels
-		prevRes.wSum <= 0.0f || // Do not reuse prefixes with 0 ucw
+	if (prevRes.wSum <= 0.0f || // Do not reuse prefixes with 0 ucw
 		!prevPrefix.IsValid() || // Do not reuse invalid prefixes
 		prevPrefix.IsNee()) // Do not reuse prefixes that wont generate suffixes
 	{
-		// Store canonical prefix and end
-		const float risWeight = canonPHat / canonPrefix.p;
-		currRes.Update(canonPrefix, risWeight, rng);
+		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
 		return;
 	}
 

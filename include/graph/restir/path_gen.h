@@ -185,6 +185,11 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	// Get last prefix interaction
 	Interaction lastPrefixInt{};
 	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
+	if (!lastPrefixInt.valid)
+	{
+		suffix.SetValid(false);
+		return suffix; 
+	}
 
 	// Suffix may directly terminate by NEE
 	if (rng.NextFloat() < params.neeProb)
@@ -230,6 +235,11 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					distance + 1.0f,
 					params.surfaceTraceParams,
 					interaction);
+				if (!interaction.valid)
+				{
+					suffix.SetValid(false);
+					return suffix;
+				}
 				suffix.reconIntSeed = interaction;
 
 				// Calc brdf
@@ -278,8 +288,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			1e16f,
 			params.surfaceTraceParams,
 			interaction);
-
-		// Exit if no surface found
 		if (!interaction.valid)
 		{
 			suffix.SetValid(false);

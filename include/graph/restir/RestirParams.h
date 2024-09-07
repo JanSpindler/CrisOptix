@@ -32,7 +32,8 @@ struct RestirParams
 	CuBufferView<PrefixPath> canonicalPrefixes;
 
 	CuBufferView<Reservoir<SuffixPath>> suffixReservoirs;
-	
+	CuBufferView<SuffixPath> canonicalSuffixes;
+
 	CuBufferView<RestirGBuffer> restirGBuffers;
 
 	// Prefix entries

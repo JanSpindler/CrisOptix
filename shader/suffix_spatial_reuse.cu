@@ -42,7 +42,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[GetPixelIdx(neighPixelCoord, params)];
 
 	// Suffix reuse
-	SuffixReuse(currSuffixRes, neighSuffixRes, prefix, rng, params);
+	//SuffixReuse(currSuffixRes, neighSuffixRes, prefix, rng, params);
 }
 
 extern "C" __global__ void __raygen__suffix_spatial_reuse()

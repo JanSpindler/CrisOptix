@@ -42,8 +42,6 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// RIS with pairwise MIS weights
 	const int neighCount = params.restir.prefixSpatialCount;
-
-	uint32_t validNeighCount = 0;
 	float canonMisWeight = 0.0f;
 
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
@@ -62,8 +60,7 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 		Interaction neighPrimaryInt{};
 		TraceInteractionSeed(neighPrefix.primaryIntSeed, neighPrimaryInt, params);
 		if (!neighPrimaryInt.valid) { continue; }
-		++validNeighCount;
-
+		
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
 		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);

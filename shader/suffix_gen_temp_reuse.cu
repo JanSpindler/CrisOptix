@@ -9,45 +9,79 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ void SuffixGen(
-	Reservoir<SuffixPath>& suffixRes,
-	const PrefixPath& prefix,
-	PCG32& rng)
+static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixelCoord)
 {
-	// Assume: Prefix is valid and can be used to generate a suffix
+	// Calc pixel index
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
-	// Trace canonical suffix
-	const SuffixPath suffix = TraceSuffix(prefix, 8 - prefix.GetLength(), rng, params);
+	// Get prefix
+	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
+	if (!prefix.IsValid() || prefix.IsNee()) { return; }
 
-	// Do not store if not valid
-	if (!suffix.IsValid()) { return; }
+	// Get rng
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
-	// Stream into reservoir
-	const float pHat = GetLuminance(suffix.f);
-	const float risWeight = pHat / suffix.p;
-	suffixRes.Update(suffix, risWeight, rng);
-}
+	// Generate canonical suffix
+	params.restir.canonicalSuffixes[pixelIdx] = TraceSuffix(prefix, 8 - prefix.GetLength(), rng, params);
+	const SuffixPath& canonSuffix = params.restir.canonicalSuffixes[pixelIdx];
+	if (!canonSuffix.IsValid()) { return; }
+	const float canonPHat = GetLuminance(canonSuffix.f);
 
-static __forceinline__ __device__ void SuffixTempReuse(
-	Reservoir<SuffixPath>& suffixRes,
-	const PrefixPath& prefix,
-	const glm::uvec2& prevPixelCoord,
-	PCG32& rng)
-{
-	// Assume: Prefix is valid
+	// Get current reservoir
+	Reservoir<SuffixPath>& currRes = params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+	currRes.Reset();
 
-	// Exit if prev pixel is invalid
-	if (!IsPixelValid(prevPixelCoord, params)) { return; }
+	// Get prev pixel
+	const glm::uvec2& prevPixelCoord = params.restir.restirGBuffers[pixelIdx].prevPixelCoord;
+	const uint32_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
 
-	// Get prev pixel suffix reservoir
-	const size_t prevPixelIdx = GetPixelIdx(prevPixelCoord, params);
-	const Reservoir<SuffixPath>& prevSuffixRes = params.restir.suffixReservoirs[prevPixelIdx];
+	// Skip temporal reuse if prev pixel is invalid or temporal reuse is not active
+	if (!params.restir.suffixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
+	{
+		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng);
+		return;
+	}
 
-	// Exit if prev suffix is invalid
-	if (!prevSuffixRes.sample.IsValid()) { return; }
+	// Get prev reservoir and prev suffix
+	const Reservoir<SuffixPath>& prevRes = params.restir.suffixReservoirs[2 * prevPixelIdx + params.restir.backBufferIdx];
+	const SuffixPath& prevSuffix = prevRes.sample;
+	if (prevRes.wSum <= 0.0f || !prevSuffix.IsValid())
+	{
+		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng);
+		return;
+	}
 
-	// Reuse prev suffix
-	SuffixReuse(suffixRes, prevSuffixRes, prefix, rng, params);
+	// Temp reuse
+	// Shift forward and backward
+	float jacobianCanonToPrev = 0.0f;
+	float jacobianPrevToCanon = 0.0f;
+	const glm::vec3 fFromCanonOfPrev = CalcCurrContribInOtherDomain(prevSuffix, canonSuffix, jacobianPrevToCanon, params);
+	const glm::vec3 fFromPrevOfCanon = CalcCurrContribInOtherDomain(canonSuffix, prevSuffix, jacobianCanonToPrev, params);
+
+	// Calc talbot mis weights
+	const float pFromCanonOfCanon = canonPHat;
+	const float pFromCanonOfPrev = GetLuminance(fFromCanonOfPrev) * jacobianPrevToCanon;
+	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
+	const float pFromPrevOfPrev = GetLuminance(prevSuffix.f);
+
+	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
+	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
+
+	// Stream canonical sample
+	const float canonRisWeight = canonMisWeight * canonPHat / canonSuffix.p;
+	if (currRes.Update(canonSuffix, canonRisWeight, rng))
+	{
+		//printf("Curr Suffix\n");
+	}
+
+	// Stream prev samples
+	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevSuffix.f);
+	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
+	const SuffixPath shiftedPrevSuffix(prevSuffix, canonSuffix.lastPrefixIntSeed, fFromCanonOfPrev);
+	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng))
+	{
+		//printf("Prev Suffix\n");
+	}
 }
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
@@ -56,7 +90,6 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
 	const glm::uvec2 pixelCoord = glm::uvec2(launchIdx);
-	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Exit if invalid launch idx
 	if (launchIdx.x >= params.width || launchIdx.y >= params.height || launchIdx.z >= 1)
@@ -64,32 +97,6 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 		return;
 	}
 
-	// Init RNG
-	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
-
-	// Get prefix from stored res
-	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx].sample;
-
-	// Get last prefix interaction
-	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
-
-	// Exit if prefix is invalid
-	if (!prefix.IsValid() || prefix.IsNee() || !lastPrefixInt.valid) 
-	{
-		return;
-	}
-
-	// Gen canonical suffix
-	Reservoir<SuffixPath> suffixRes{};
-	SuffixGen(suffixRes, prefix, rng);
-
-	// Temporal suffix reuse
-	if (params.restir.suffixEnableTemporal)
-	{
-		SuffixTempReuse(suffixRes, prefix, params.restir.restirGBuffers[pixelIdx].prevPixelCoord, rng);
-	}
-
-	// Store suffix res
-	params.restir.suffixReservoirs[pixelIdx] = suffixRes;
+	//
+	SuffixGenTempReuse(pixelCoord);
 }

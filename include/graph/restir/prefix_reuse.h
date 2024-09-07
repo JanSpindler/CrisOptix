@@ -11,7 +11,7 @@
 static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	const PrefixPath& currPrefix,
 	const PrefixPath& otherPrefix,
-	float& jacobian, // Jacobian: Shift current into prev
+	float& jacobian, // Jacobian: Shift current into other
 	const LaunchParams& params)
 {
 	// Get other primary interaction

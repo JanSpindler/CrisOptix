@@ -153,6 +153,7 @@ Renderer::Renderer(
 	std::vector<PrefixPath> canonicalPrefixes(pixelCount);
 
 	std::vector<Reservoir<SuffixPath>> suffixReservoirs(pixelCount * 2);
+	std::vector<SuffixPath> canonicalSuffixes(pixelCount);
 
 	std::vector<RestirGBuffer> restirGBuffers(pixelCount);
 	std::vector<glm::vec2> motionVectors(pixelCount);
@@ -165,7 +166,8 @@ Renderer::Renderer(
 
 		suffixReservoirs[idx * 2 + 0] = Reservoir<SuffixPath>();
 		suffixReservoirs[idx * 2 + 1] = Reservoir<SuffixPath>();
-		
+		canonicalSuffixes[idx] = SuffixPath();
+
 		restirGBuffers[idx] = RestirGBuffer();
 		motionVectors[idx] = glm::vec2(0.0f);
 	}
@@ -178,6 +180,9 @@ Renderer::Renderer(
 
 	m_SuffixReservoirs.Alloc(pixelCount * 2);
 	m_SuffixReservoirs.Upload(suffixReservoirs.data());
+
+	m_CanonicalSuffixes.Alloc(pixelCount);
+	m_CanonicalSuffixes.Upload(canonicalSuffixes.data());
 
 	m_RestirGBuffers.Alloc(pixelCount);
 	m_RestirGBuffers.Upload(restirGBuffers.data());
@@ -221,7 +226,8 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.canonicalPrefixes = CuBufferView<PrefixPath>(m_CanonicalPrefixes.GetCuPtr(), m_CanonicalPrefixes.GetCount());
 
 	m_LaunchParams.restir.suffixReservoirs = CuBufferView<Reservoir<SuffixPath>>(m_SuffixReservoirs.GetCuPtr(), m_SuffixReservoirs.GetCount());
-	
+	m_LaunchParams.restir.canonicalSuffixes = CuBufferView<SuffixPath>(m_CanonicalSuffixes.GetCuPtr(), m_CanonicalSuffixes.GetCount());
+
 	m_LaunchParams.restir.restirGBuffers = CuBufferView<RestirGBuffer>(m_RestirGBuffers.GetCuPtr(), m_RestirGBuffers.GetCount());
 
 	m_LaunchParams.restir.prefixEntryAabbs = m_PrefixAccelStruct.GetAabbBufferView();
