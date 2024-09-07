@@ -65,10 +65,11 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
 	if (!lastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
-	//
+	// Trace occlusion
 	const glm::vec3 reconVec = suffix.reconIntSeed.pos - lastPrefixInt.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
+	if (TraceOcclusion(lastPrefixInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Eval brdf at last prefix vert with new out dir
 	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
@@ -77,19 +78,11 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 		reconDir);
 	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 
-	// Trace occlusion
-	const bool occluded = TraceOcclusion(
-		lastPrefixInt.pos,
-		reconDir,
-		1e-3f,
-		reconLen,
-		params);
-	if (occluded) { return { glm::vec3(0.0f), 0.0f }; }
-
 	// Get reconnection interaction from seed
 	Interaction reconInteraction{};
 	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params);
 	if (!reconInteraction.valid) { return { glm::vec3(0.0f), 0.0f }; }
+	reconInteraction.inRayDir = reconDir;
 
 	//
 	glm::vec3 brdfResult2(1.0f);

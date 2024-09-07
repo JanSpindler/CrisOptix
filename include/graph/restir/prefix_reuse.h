@@ -39,6 +39,9 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
 	if (TraceOcclusion(otherPrimaryInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
 
+	// Fix recon interaction in dir
+	currReconInt.inRayDir = reconDir;
+
 	// Brdf eval 1
 	const BrdfEvalResult brdf1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		otherPrimaryInt.meshSbtData->evalMaterialSbtIdx,
