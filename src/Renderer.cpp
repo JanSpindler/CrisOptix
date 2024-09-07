@@ -418,7 +418,7 @@ void Renderer::RunImGuiSettings()
 	ImGui::End();
 }
 
-void Renderer::RunImGuiPerformance()
+void Renderer::RunImGuiPerformance() const
 {
 	ImGui::Begin("Renderer Performance");
 

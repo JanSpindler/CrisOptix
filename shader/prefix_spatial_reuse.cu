@@ -8,16 +8,6 @@
 
 __constant__ LaunchParams params;
 
-static constexpr uint32_t WINDOW_RADIUS = 3; // 48 total neighbors
-static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
-
-static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
-{
-	const uint32_t xCoord = (pixelCoord.x - WINDOW_RADIUS) + (rng.NextUint32() % WINDOW_SIZE);
-	const uint32_t yCoord = (pixelCoord.y - WINDOW_RADIUS) + (rng.NextUint32() % WINDOW_SIZE);
-	return glm::uvec2(xCoord, yCoord);
-}
-
 static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixelCoord, PCG32& rng)
 {
 	// Assume: pixelCoord are valid

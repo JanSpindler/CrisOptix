@@ -84,6 +84,6 @@ private:
 	float m_TotalTime = 0.0f;
 
 	void RunImGuiSettings();
-	void RunImGuiPerformance();
+	void RunImGuiPerformance() const;
 	void RunImGuiPrefixStats();
 };
