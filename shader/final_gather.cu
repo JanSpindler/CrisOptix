@@ -21,7 +21,7 @@ extern "C" __global__ void __intersection__prefix_entry()
 
 	// Check if radius is truly as desired
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
-	const glm::vec3& neighPos = params.restir.prefixReservoirs[neighPixelIdx].sample.lastIntSeed.pos;
+	const glm::vec3& neighPos = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastIntSeed.pos;
 	const float distance = glm::distance(queryPos, neighPos);
 	if (distance > params.restir.gatherRadius) { return; }
 
@@ -177,7 +177,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 
 				// Get suffix
 				const uint32_t suffixPixelIdx = params.restir.prefixNeighbors[k * pixelIdx + suffixIdx].pixelIdx;
-				const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[suffixPixelIdx];
+				const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * suffixPixelIdx + params.restir.frontBufferIdx];
 				const SuffixPath& neighSuffix = neighSuffixRes.sample;
 
 				// Shift suffix

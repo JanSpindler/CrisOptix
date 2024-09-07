@@ -12,7 +12,6 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
 	const glm::uvec2 pixelCoord = glm::uvec2(launchIdx);
-	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Exit if invalid launch idx
 	if (launchIdx.x >= params.width || launchIdx.y >= params.height || launchIdx.z >= 1)
@@ -21,6 +20,7 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	}
 
 	// Get prefix and suffix
+	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
 	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
 
