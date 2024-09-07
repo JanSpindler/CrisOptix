@@ -31,7 +31,7 @@ Renderer::Renderer(
 	m_Sbt(optixDeviceContext)
 {
 	//
-	m_LaunchParams.neeProb = 0.1f;
+	m_LaunchParams.neeProb = 0.3f;
 	
 	//
 	m_LaunchParams.restir.prefixLen = 2;

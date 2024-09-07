@@ -33,11 +33,9 @@ extern "C" __global__ void __closesthit__mesh()
 	// Fill ray info
 	const glm::vec3 worldRayOrigin = cuda2glm(optixGetWorldRayOrigin());
 	const glm::vec3 worldRayDir = cuda2glm(optixGetWorldRayDirection());
-	const float tMax = optixGetRayTmax();
-
+	
 	// Fill basic interaction info
 	si->inRayDir = worldRayDir;
-	si->inRayDist = tMax;
 	si->valid = true;
 
 	// Get primitive data

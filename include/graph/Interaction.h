@@ -8,7 +8,6 @@ struct Interaction
 {
 	bool valid;
 	glm::vec3 inRayDir;
-	float inRayDist;
 	glm::vec3 pos;
 	glm::vec3 normal;
 	glm::vec3 tangent;
@@ -19,7 +18,6 @@ struct Interaction
 	__forceinline__ __host__ __device__ Interaction() :
 		valid(false),
 		inRayDir(0.0f),
-		inRayDist(0.0f),
 		pos(0.0f),
 		normal(0.0f),
 		tangent(0.0f),
