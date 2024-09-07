@@ -118,8 +118,11 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	return { radiance, suffixUcwSrcDomain * jacobian };
 }
 
-static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx, PCG32& rng)
+static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx)
 {
+	// Init RNG
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
+
 	// Init empty output radiance
 	glm::vec3 outputRadiance(0.0f);
 
@@ -216,19 +219,16 @@ extern "C" __global__ void __raygen__final_gather()
 	const glm::uvec3 launchIdx = cuda2glm(optixGetLaunchIndex());
 	const glm::uvec3 launchDims = cuda2glm(optixGetLaunchDimensions());
 	const glm::uvec2 pixelCoord = glm::uvec2(launchIdx);
-	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
-
+	
 	// Exit if invalid launch idx
 	if (launchIdx.x >= params.width || launchIdx.y >= params.height || launchIdx.z >= 1)
 	{
 		return;
 	}
 
-	// Init RNG
-	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
-
 	// Accum
-	const glm::vec3 outputRadiance = GetRadiance(launchIdx, pixelIdx, rng);
+	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	const glm::vec3 outputRadiance = GetRadiance(launchIdx, pixelIdx);
 	if (params.enableAccum)
 	{
 		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
