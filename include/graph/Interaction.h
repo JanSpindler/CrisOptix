@@ -4,6 +4,19 @@
 #include <cuda_runtime.h>
 #include <model/Mesh.h>
 
+struct HitInfo
+{
+	uint32_t instanceId;
+	uint32_t primitiveIdx;
+	glm::vec2 baryCoord;
+};
+
+struct PackedInteraction
+{
+	HitInfo hitInfo;
+	glm::vec3 inRayDir;
+};
+
 struct Interaction
 {
 	bool valid;
