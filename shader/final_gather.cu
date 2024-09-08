@@ -29,7 +29,10 @@ extern "C" __global__ void __intersection__prefix_entry()
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
 	const glm::vec3& neighPos = neighLastInt.pos;
 	const float distance = glm::distance(queryPos, neighPos);
-	if (distance > params.restir.gatherRadius) { return; }
+	if (distance > params.restir.gatherRadius) 
+	{
+		return;
+	}
 
 	// Build neighbor
 	const PrefixNeighbor neigh(neighPixelIdx, distance);
@@ -123,6 +126,46 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	return { radiance, suffixUcwSrcDomain * jacobian };
 }
 
+static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& launchIdx, const size_t pixelIdx)
+{
+	// Init RNG
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
+
+	// Final gather
+	// Spawn camera ray
+	glm::vec3 origin(0.0f);
+	glm::vec3 dir(0.0f);
+	glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
+	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
+	SpawnCameraRay(params.cameraData, uv, origin, dir);
+
+	// Sample surface interaction
+	Interaction interaction{};
+	TraceWithDataPointer<Interaction>(
+		params.traversableHandle,
+		origin,
+		dir,
+		1e-3f,
+		1e16f,
+		params.surfaceTraceParams,
+		interaction);
+	if (!interaction.valid) { return glm::vec3(0.0f); }
+
+	// Find k neighboring prefixes in world space
+	static constexpr float EPSILON = 1e-16f;
+	PrefixSearchPayload prefixSearchPayload(pixelIdx);
+	TraceWithDataPointer<PrefixSearchPayload>(
+		params.restir.prefixEntriesTraversHandle,
+		interaction.pos,
+		glm::vec3(EPSILON),
+		0.0f,
+		EPSILON,
+		params.restir.prefixEntriesTraceParams,
+		prefixSearchPayload);
+
+	return prefixSearchPayload.neighCount ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f);
+}
+
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx)
 {
 	// Init RNG
@@ -168,6 +211,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			const uint32_t neighCount = prefixSearchPayload.neighCount;
 			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
 
+			//printf("%f, %f, %f\n", prefixLastInt.pos.x, prefixLastInt.pos.y, prefixLastInt.pos.z);
 			//printf("%d\n", prefixSearchPayload.intersectionCount);
 
 			// Set mis weight for canonical suffix
@@ -237,8 +281,15 @@ extern "C" __global__ void __raygen__final_gather()
 		return;
 	}
 
-	// Accum
+	// Show prefix entries
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	if (params.restir.showPrefixEntries)
+	{
+		params.outputBuffer[pixelIdx] = ShowPrefixEntries(launchIdx, pixelIdx);
+		return;
+	}
+
+	// Accum
 	const glm::vec3 outputRadiance = GetRadiance(launchIdx, pixelIdx);
 	if (params.enableAccum)
 	{

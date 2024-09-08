@@ -43,6 +43,7 @@ struct RestirParams
 	CuBufferView<PrefixNeighbor> prefixNeighbors;
 
 	// Prefix stats
+	bool showPrefixEntries;
 	bool trackPrefixStats;
 	CuBufferView<PrefixAccelStruct::Stats> prefixStats;
 };

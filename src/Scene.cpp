@@ -95,7 +95,7 @@ void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 	instanceInput.instanceArray.numInstances = modelInstanceCount;
 
 	OptixAccelBuildOptions buildOptions{};
-	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_ALLOW_RANDOM_INSTANCE_ACCESS;
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
 	buildOptions.motionOptions.numKeys = 1;
 	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
 	buildOptions.motionOptions.timeBegin = 0.0f;
