@@ -77,7 +77,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	// Stream prev samples
 	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevSuffix.f);
 	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
-	const SuffixPath shiftedPrevSuffix(prevSuffix, canonSuffix.lastPrefixIntSeed, fFromCanonOfPrev);
+	const SuffixPath shiftedPrevSuffix(prevSuffix, canonSuffix.lastPrefixInt, fFromCanonOfPrev);
 	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng))
 	{
 		//printf("Prev Suffix\n");

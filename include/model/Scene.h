@@ -19,6 +19,7 @@ public:
 
 	OptixTraversableHandle GetTraversableHandle() const;
 	CuBufferView<EmitterData> GetEmitterTable() const;
+	CuBufferView<glm::mat4> GetTransforms() const;
 
 private:
 	OptixTraversableHandle m_TraversableHandle = 0;
@@ -27,6 +28,7 @@ private:
 	
 	DeviceBuffer<uint8_t> m_AccelBuf{};
 	DeviceBuffer<EmitterData> m_EmitterTable{};
+	DeviceBuffer<glm::mat4> m_Transforms{};
 
 	void BuildAccel(const OptixDeviceContext optixDeviceContext);
 	void BuildEmitterTable(const std::vector<const Emitter*>& explicitEmitters);

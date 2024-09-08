@@ -75,7 +75,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		//
 		if (prefix.GetLength() == 1)
 		{
-			prefix.primaryIntSeed = interaction;
+			prefix.primaryInt = interaction;
 		}
 
 		// TODO: Also include roughness
@@ -157,7 +157,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		// Store as reconnection vertex if fit
 		if (postRecon && prefix.GetReconIdx() == 0)
 		{
-			prefix.reconIntSeed = interaction;
+			prefix.reconInt = interaction;
 			prefix.SetReconIdx(prefix.GetLength());
 			prefix.reconOutDir = brdfSampleResult.outDir;
 		}
@@ -173,7 +173,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 	}
 
-	prefix.lastIntSeed = interaction;
+	prefix.lastInt = interaction;
 	return prefix;
 }
 
@@ -188,13 +188,12 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.p = 1.0f;
 	suffix.postReconF = glm::vec3(1.0f);
 	suffix.rng = rng;
-	suffix.lastPrefixIntSeed = prefix.lastIntSeed;
+	suffix.lastPrefixInt = prefix.lastInt;
 
 	Interaction interaction{};
 
 	// Get last prefix interaction
-	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
+	const Interaction lastPrefixInt(prefix.lastInt, params.transforms);
 	if (!lastPrefixInt.valid)
 	{
 		suffix.SetValid(false);
@@ -217,8 +216,8 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 			// Sample light source
 			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - prefix.lastIntSeed.pos);
-			const float distance = glm::length(emitterSample.pos - prefix.lastIntSeed.pos);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - lastPrefixInt.pos);
+			const float distance = glm::length(emitterSample.pos - lastPrefixInt.pos);
 
 			// Cast shadow ray
 			const bool occluded = TraceOcclusion(
@@ -250,7 +249,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					suffix.SetValid(false);
 					return suffix;
 				}
-				suffix.reconIntSeed = interaction;
+				suffix.reconInt = interaction;
 
 				// Calc brdf
 				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
@@ -377,7 +376,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		// Store as reconnection vertex if fit
 		if (postRecon && suffix.GetReconIdx() == 0)
 		{
-			suffix.reconIntSeed = interaction;
+			suffix.reconInt = interaction;
 			suffix.SetReconIdx(suffix.GetLength());
 			suffix.reconOutDir = brdfSampleResult.outDir;
 		}

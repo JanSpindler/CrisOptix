@@ -47,8 +47,7 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 		if (!neighPrefix.IsValid() || neighPrefix.IsNee()) { continue; }
 
 		// Get neighbor primary hit
-		Interaction neighPrimaryInt{};
-		TraceInteractionSeed(neighPrefix.primaryIntSeed, neighPrimaryInt, params);
+		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
 		if (!neighPrimaryInt.valid) { continue; }
 		
 		// Shift
@@ -68,7 +67,7 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
 
 		// Stream neigh into res
-		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryIntSeed), neighRisWeight, rng))
+		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng))
 		{
 			//printf("Spatial Prefix\n");
 		}

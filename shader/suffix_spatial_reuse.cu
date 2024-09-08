@@ -48,8 +48,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		if (!neighSuffix.IsValid()) { continue; }
 
 		// Get neighbor primary hit
-		Interaction neighLastPrefixInt{};
-		TraceInteractionSeed(neighSuffix.lastPrefixIntSeed, neighLastPrefixInt, params);
+		const Interaction neighLastPrefixInt(neighSuffix.lastPrefixInt, params.transforms);
 		if (!neighLastPrefixInt.valid) { continue; }
 
 		// Shift
@@ -69,7 +68,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
 
 		// Stream neigh into res
-		if (currRes.Update(SuffixPath(neighSuffix, currSuffix.lastPrefixIntSeed, fFromCanonOfNeigh), neighRisWeight, rng))
+		if (currRes.Update(SuffixPath(neighSuffix, currSuffix.lastPrefixInt, fFromCanonOfNeigh), neighRisWeight, rng))
 		{
 			//printf("Spatial Suffix\n");
 		}

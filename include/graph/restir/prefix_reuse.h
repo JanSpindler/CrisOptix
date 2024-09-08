@@ -14,19 +14,21 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	float& jacobian, // Jacobian: Shift current into other
 	const LaunchParams& params)
 {
+	// Get current primary interaction
+	const Interaction currPrimaryInt(currPrefix.primaryInt, params.transforms);
+	if (!currPrimaryInt.valid) { return; }
+
 	// Get other primary interaction
-	Interaction otherPrimaryInt{};
-	TraceInteractionSeed(otherPrefix.primaryIntSeed, otherPrimaryInt, params);
+	const Interaction otherPrimaryInt(otherPrefix.primaryInt, params.transforms);
 	if (!otherPrimaryInt.valid) { return glm::vec3(0.0f); }
 
 	// Get reconnection interaction
-	Interaction currReconInt{};
-	TraceInteractionSeed(currPrefix.reconIntSeed, currReconInt, params);
+	Interaction currReconInt(currPrefix.reconInt, params.transforms);
 	if (!currReconInt.valid) { return glm::vec3(0.0f); }
 
 	// Jacobian inverse shift
 	jacobian = CalcReconnectionJacobian(
-		currPrefix.primaryIntSeed.pos,
+		currPrimaryInt.pos,
 		otherPrimaryInt.pos,
 		currReconInt.pos,
 		currReconInt.normal);

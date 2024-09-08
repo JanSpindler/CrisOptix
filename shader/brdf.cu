@@ -142,7 +142,7 @@ extern "C" __device__ BrdfEvalResult __direct_callable__ggx_eval(const Interacti
 
     //
     const glm::vec3 lightDir = outDir;
-    const glm::vec3 viewDir = -interaction.inRayDir;
+    const glm::vec3 viewDir = -static_cast<glm::vec3>(interaction.inRayDir);
     const glm::vec3 normal = interaction.normal;
 
     const float nDotV = glm::dot(normal, viewDir);
@@ -238,7 +238,7 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Inter
 
     // Get info from interaction
     const glm::vec3 normal = interaction.normal;
-    const glm::vec3 viewDir = -interaction.inRayDir;
+    const glm::vec3 viewDir = -static_cast<glm::vec3>(interaction.inRayDir);
 
     // Check if valid
     BrdfSampleResult result{};
@@ -288,7 +288,7 @@ extern "C" __device__ BrdfSampleResult __direct_callable__ggx_sample(const Inter
         glm::vec3 microNormal(microNormalR * glm::cos(phi), microNormalR * glm::sin(phi), microNormalZ);
 
         // Out dir
-        result.outDir = glm::reflect(interaction.inRayDir, localFrame * microNormal);
+        result.outDir = glm::reflect(static_cast<glm::vec3>(interaction.inRayDir), localFrame * microNormal);
 
         //
         if (glm::dot(result.outDir, normal) < 0.0f)

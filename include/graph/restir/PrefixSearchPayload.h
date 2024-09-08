@@ -16,11 +16,15 @@ struct PrefixSearchPayload
 	// Index of furthest neighbor without offset.
 	uint32_t maxDistNeighIdx;
 
+	// Intersection count
+	uint32_t intersectionCount;
+
 	__forceinline__ __device__ __host__ PrefixSearchPayload(const uint32_t _pixelIdx) :
 		pixelIdx(_pixelIdx),
 		neighCount(0),
 		maxNeighDist(0.0f),
-		maxDistNeighIdx(0)
+		maxDistNeighIdx(0),
+		intersectionCount(0)
 	{
 	}
 
@@ -35,8 +39,13 @@ struct PrefixSearchPayload
 		const uint32_t k = params.restir.gatherM - 1;
 		const uint32_t offset = pixelIdx * k;
 
+		// Get last prefix interaction
+		const Interaction lastPrefixInt(
+			params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].sample.lastInt, 
+			params.transforms);
+
 		// Get current pos
-		const glm::vec3& currPos = params.restir.prefixReservoirs[pixelIdx].sample.lastIntSeed.pos;
+		const glm::vec3& currPos = lastPrefixInt.pos;
 
 		// Go over all stored neighbors
 		maxDistNeighIdx = 0;

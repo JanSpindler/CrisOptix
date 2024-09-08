@@ -24,13 +24,16 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
 	const SuffixPath& suffix = params.restir.suffixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
 
-	// Store prefix entry aabb
-	const float radius = params.restir.gatherRadius;
-	const glm::vec3& pos = prefix.lastIntSeed.pos;
+	// Get last prefix interaction
+	const Interaction lastPrefixInt(prefix.lastInt, params.transforms);
 
+	// Store aabb
 	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
-	if (prefix.IsValid() && suffix.IsValid())
+	if (prefix.IsValid() && suffix.IsValid() && lastPrefixInt.valid)
 	{
+		const float radius = params.restir.gatherRadius;
+		const glm::vec3& pos = lastPrefixInt.pos;
+
 		aabb.minX = pos.x - radius;
 		aabb.minY = pos.y - radius;
 		aabb.minZ = pos.z - radius;

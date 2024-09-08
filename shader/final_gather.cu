@@ -18,10 +18,16 @@ extern "C" __global__ void __intersection__prefix_entry()
 
 	// Get payload
 	PrefixSearchPayload* payload = GetPayloadDataPointer<PrefixSearchPayload>();
+	++payload->intersectionCount;
+
+	// Get neighbor last interaction
+	const Interaction neighLastInt(
+		params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastInt, 
+		params.transforms);
 
 	// Check if radius is truly as desired
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
-	const glm::vec3& neighPos = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastIntSeed.pos;
+	const glm::vec3& neighPos = neighLastInt.pos;
 	const float distance = glm::distance(queryPos, neighPos);
 	if (distance > params.restir.gatherRadius) { return; }
 
@@ -61,28 +67,30 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const float suffixUcwSrcDomain)
 {
 	// Get last prefix interaction
-	Interaction lastPrefixInt{};
-	TraceInteractionSeed(prefix.lastIntSeed, lastPrefixInt, params);
-	if (!lastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+	const Interaction prefixLastInt(prefix.lastInt, params.transforms);
+	if (!prefixLastInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+
+	// Get suffix reconnection interaction
+	Interaction reconInt(suffix.reconInt, params.transforms);
+	if (!reconInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Trace occlusion
-	const glm::vec3 reconVec = suffix.reconIntSeed.pos - lastPrefixInt.pos;
+	const glm::vec3 reconVec = reconInt.pos - prefixLastInt.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
-	if (TraceOcclusion(lastPrefixInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
+
+	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return { glm::vec3(0.0f), 0.0f }; }
+	if (TraceOcclusion(prefixLastInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Eval brdf at last prefix vert with new out dir
 	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
-		lastPrefixInt,
+		prefixLastInt.meshSbtData->evalMaterialSbtIdx,
+		prefixLastInt,
 		reconDir);
 	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 
-	// Get reconnection interaction from seed
-	Interaction reconInteraction{};
-	TraceInteractionSeed(suffix.reconIntSeed, reconInteraction, params);
-	if (!reconInteraction.valid) { return { glm::vec3(0.0f), 0.0f }; }
-	reconInteraction.inRayDir = reconDir;
+	// 
+	reconInt.inRayDir = reconDir;
 
 	//
 	glm::vec3 brdfResult2(1.0f);
@@ -90,8 +98,8 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	{		
 		// Eval brdf at suffix recon vertex
 		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-			reconInteraction.meshSbtData->evalMaterialSbtIdx,
-			reconInteraction,
+			reconInt.meshSbtData->evalMaterialSbtIdx,
+			reconInt,
 			suffix.reconOutDir);
 		if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 		brdfResult2 = brdfEvalResult2.brdfResult;
@@ -100,12 +108,16 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	// Calc total contribution of new path
 	const glm::vec3 radiance = brdfEvalResult1.brdfResult * brdfResult2 * suffix.postReconF;
 
+	// Get suffix last prefix int
+	const Interaction suffixLastPrefixInt(suffix.lastPrefixInt, params.transforms);
+	if (!suffixLastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+
 	// Calc jacobian
 	const float jacobian = CalcReconnectionJacobian(
-		suffix.lastPrefixIntSeed.pos, 
-		lastPrefixInt.pos,
-		reconInteraction.pos,
-		reconInteraction.normal);
+		suffixLastPrefixInt.pos, 
+		prefixLastInt.pos,
+		reconInt.pos,
+		reconInt.normal);
 
 	// Return
 	return { radiance, suffixUcwSrcDomain * jacobian };
@@ -138,12 +150,16 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			const PrefixPath prefix = TracePrefix(origin, dir, params.restir.prefixLen, rng, params);
 			if (!prefix.IsValid()) { continue; }
 
+			// Get prefix last interaction
+			const Interaction prefixLastInt(prefix.lastInt, params.transforms);
+			if (!prefixLastInt.valid) { continue; }
+
 			// Find k neighboring prefixes in world space
-			static constexpr float EPSILON = 1e-16;
+			static constexpr float EPSILON = 1e-16f;
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);
 			TraceWithDataPointer<PrefixSearchPayload>(
 				params.restir.prefixEntriesTraversHandle,
-				prefix.lastIntSeed.pos,
+				prefixLastInt.pos,
 				glm::vec3(EPSILON),
 				0.0f,
 				EPSILON,
@@ -151,6 +167,8 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 				prefixSearchPayload);
 			const uint32_t neighCount = prefixSearchPayload.neighCount;
 			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
+
+			//printf("%d\n", prefixSearchPayload.intersectionCount);
 
 			// Set mis weight for canonical suffix
 			if (prefixIdx == 0)

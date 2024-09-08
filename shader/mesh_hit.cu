@@ -4,23 +4,14 @@
 #include <graph/Interaction.h>
 #include <graph/trace.h>
 
-static __forceinline__ __device__ glm::vec3 PointObjectToWorld(const glm::vec3& point)
+static constexpr __forceinline__ __device__ glm::vec3 PointObjectToWorld(const glm::vec3& point)
 {
 	return cuda2glm(optixTransformPointFromObjectToWorldSpace(glm2cuda(point)));
 }
 
-static __forceinline__ __device__ glm::vec3 NormalObjectToWorld(const glm::vec3& normal)
+static constexpr __forceinline__ __device__ glm::vec3 NormalObjectToWorld(const glm::vec3& normal)
 {
 	return glm::normalize(cuda2glm(optixTransformNormalFromObjectToWorldSpace(glm2cuda(normal))));
-}
-
-template <typename T>
-static __forceinline__ __device__ T InterpolateBary(const glm::vec2& baryCoord, const T& v0, const T& v1, const T& v2)
-{
-	return
-		(1.0f - baryCoord.x - baryCoord.y) * v0
-		+ baryCoord.x * v1
-		+ baryCoord.y * v2;
 }
 
 extern "C" __global__ void __closesthit__mesh()
@@ -41,6 +32,7 @@ extern "C" __global__ void __closesthit__mesh()
 	// Get primitive data
 	const uint32_t primIdx = optixGetPrimitiveIndex();
 	const glm::vec2 baryCoord = cuda2glm(optixGetTriangleBarycentrics());
+	si->instanceId = optixGetInstanceId();
 	si->primitiveIdx = primIdx;
 
 	// Indices of triangle vertices in the mesh
@@ -50,9 +42,9 @@ extern "C" __global__ void __closesthit__mesh()
 		sbtData->indices[primIdx * 3 + 2]);
 
 	// Vertices
-	const Vertex v0 = sbtData->vertices[indices.x];
-	const Vertex v1 = sbtData->vertices[indices.y];
-	const Vertex v2 = sbtData->vertices[indices.z];
+	const Vertex& v0 = sbtData->vertices[indices.x];
+	const Vertex& v1 = sbtData->vertices[indices.y];
+	const Vertex& v2 = sbtData->vertices[indices.z];
 
 	// Interpolate
 	si->pos = InterpolateBary<glm::vec3>(baryCoord, v0.pos, v1.pos, v2.pos);

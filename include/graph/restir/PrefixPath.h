@@ -10,13 +10,13 @@ struct PrefixPath
 	PCG32 rng;
 
 	// Primary interaction
-	InteractionSeed primaryIntSeed;
+	PackedInteraction primaryInt;
 
 	// Interaction at first vertex fit for prefix reconnection
-	InteractionSeed reconIntSeed;
+	PackedInteraction reconInt;
 
 	// Interaction at last vertex (used for generating and reconnection with suffix)
-	InteractionSeed lastIntSeed;
+	PackedInteraction lastInt;
 
 	// Path flags
 	// 0:8 -> length: Vertex count starting at primary hit. Does not include NEE hit.
@@ -31,20 +31,20 @@ struct PrefixPath
 	// Throughput or radiance after the reconnection vertex
 	glm::vec3 postReconF;
 
-	// Out direction after reconnection (used for brdf evaluation)
-	glm::vec3 reconOutDir;
-
 	// Sampling pdf
 	float p;
 
+	// Out direction after reconnection (used for brdf evaluation)
+	Vec3 reconOutDir;
+
 	__forceinline__ __device__ __host__ PrefixPath() :
 		flags(0u),
-		primaryIntSeed({}),
-		reconIntSeed({}),
+		primaryInt({}),
+		reconInt({}),
 		rng({}),
 		f(0.0f),
 		p(0.0f),
-		lastIntSeed({}),
+		lastInt({}),
 		postReconF(0.0f),
 		reconOutDir(0.0f)
 	{
@@ -53,16 +53,16 @@ struct PrefixPath
 	__forceinline__ __device__ __host__ PrefixPath(
 		const PrefixPath& other,
 		const glm::vec3& _f,
-		const InteractionSeed& _primaryIntSeed)
+		const PackedInteraction& _primaryInt)
 		:
 		flags(other.flags),
-		primaryIntSeed(_primaryIntSeed),
-		reconIntSeed(other.reconIntSeed),
+		primaryInt(_primaryInt),
+		reconInt(other.reconInt),
 		rng(other.rng),
 		f(_f),
 		postReconF(other.postReconF),
 		p(other.p),
-		lastIntSeed(other.lastIntSeed),
+		lastInt(other.lastInt),
 		reconOutDir(other.reconOutDir)
 	{
 	}

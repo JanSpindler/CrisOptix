@@ -26,6 +26,7 @@ struct LaunchParams
 	
 	CuBufferView<glm::vec2> motionVectors;
 	CuBufferView<EmitterData> emitterTable;
+	CuBufferView<glm::mat4> transforms;
 	
 	OptixTraversableHandle traversableHandle;
 	

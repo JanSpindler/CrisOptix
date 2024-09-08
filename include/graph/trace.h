@@ -93,17 +93,17 @@ static constexpr __forceinline__ __device__ void SetOcclusionPayload(bool occlud
     optixSetPayload_0(static_cast<uint32_t>(occluded));
 }
 
-static constexpr __forceinline__ __device__ void TraceInteractionSeed(
-    const InteractionSeed& seed, 
-    Interaction& interaction, 
-    const LaunchParams& params)
-{
-    TraceWithDataPointer<Interaction>(
-        params.traversableHandle,
-        seed.pos - seed.inDir,
-        seed.inDir,
-        1e-3f,
-        1.0f + 1e-3,
-        params.surfaceTraceParams,
-        interaction);
-}
+//static constexpr __forceinline__ __device__ void TraceInteractionSeed(
+//    const InteractionSeed& seed, 
+//    Interaction& interaction, 
+//    const LaunchParams& params)
+//{
+//    TraceWithDataPointer<Interaction>(
+//        params.traversableHandle,
+//        seed.pos - static_cast<glm::vec3>(seed.inDir),
+//        seed.inDir,
+//        1e-3f,
+//        1.0f + 1e-3,
+//        params.surfaceTraceParams,
+//        interaction);
+//}

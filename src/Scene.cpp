@@ -40,10 +40,16 @@ CuBufferView<EmitterData> Scene::GetEmitterTable() const
 	return CuBufferView<EmitterData>(m_EmitterTable.GetCuPtr(), m_EmitterTable.GetCount());
 }
 
+CuBufferView<glm::mat4> Scene::GetTransforms() const
+{
+	return CuBufferView<glm::mat4>(m_Transforms.GetCuPtr(), m_Transforms.GetCount());
+}
+
 void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();
 	std::vector<OptixInstance> optixInstances(modelInstanceCount);
+	std::vector<glm::mat4> transforms(modelInstanceCount);
 
 	std::map<const Model*, size_t> modelSbtOffsetMap{};
 
@@ -68,10 +74,18 @@ void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 		optixInstance.traversableHandle = modelInstance->GetModel().GetTraversHandle();
 		reinterpret_cast<glm::mat3x4&>(optixInstance.transform) = glm::transpose(glm::mat4x3(modelInstance->GetTransform()));
 
+		// Store transform in transform buffer
+		transforms[idx] = modelInstance->GetTransform();
+
 		// Increase sbt offset if model was new
 		if (modelNew) { sbtOffset += model.GetMeshCount(); }
 	}
 
+	// Upload transforms
+	m_Transforms.Alloc(modelInstanceCount);
+	m_Transforms.Upload(transforms.data());
+
+	// Upload instances
 	DeviceBuffer<OptixInstance> optixDevInstances(modelInstanceCount);
 	optixDevInstances.Upload(optixInstances.data());
 
@@ -81,7 +95,7 @@ void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 	instanceInput.instanceArray.numInstances = modelInstanceCount;
 
 	OptixAccelBuildOptions buildOptions{};
-	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+	buildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_ALLOW_RANDOM_INSTANCE_ACCESS;
 	buildOptions.motionOptions.numKeys = 1;
 	buildOptions.motionOptions.flags = OPTIX_MOTION_FLAG_NONE;
 	buildOptions.motionOptions.timeBegin = 0.0f;

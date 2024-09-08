@@ -4,6 +4,7 @@
 #include <util/random.h>
 #include <graph/Interaction.h>
 #include <graph/luminance.h>
+#include <config.h>
 
 struct SuffixPath
 {
@@ -11,7 +12,7 @@ struct SuffixPath
 	PCG32 rng;
 
 	// Interaction at recon vertex
-	InteractionSeed reconIntSeed;
+	PackedInteraction reconInt;
 
 	// Path flags
 	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)
@@ -20,10 +21,7 @@ struct SuffixPath
 	uint32_t flags;
 
 	// Last prefix interaction
-	InteractionSeed lastPrefixIntSeed;
-
-	// Out direction after reconnection (used for brdf evaluation)
-	glm::vec3 reconOutDir;
+	PackedInteraction lastPrefixInt;
 
 	// Path contribution after prefix to light source (including prefix-suffix connection)
 	glm::vec3 f;
@@ -34,10 +32,13 @@ struct SuffixPath
 	// Sampling pdf
 	float p;
 
+	// Out direction after reconnection (used for brdf evaluation)
+	Vec3 reconOutDir;
+
 	__forceinline__ __device__ __host__ SuffixPath() :
 		flags(0),
-		lastPrefixIntSeed({}),
-		reconIntSeed({}),
+		lastPrefixInt({}),
+		reconInt({}),
 		reconOutDir(0.0f),
 		f(0.0f),
 		postReconF(0.0f),
@@ -49,12 +50,12 @@ struct SuffixPath
 	// Constructor used for shift mapping
 	__forceinline__ __device__ __host__ SuffixPath(
 		const SuffixPath& other,
-		const InteractionSeed& _lastPrefixIntSeed,
+		const PackedInteraction& _lastPrefixInt,
 		const glm::vec3& _f)
 		:
 		flags(other.flags),
-		lastPrefixIntSeed(_lastPrefixIntSeed),
-		reconIntSeed(other.reconIntSeed),
+		lastPrefixInt(_lastPrefixInt),
+		reconInt(other.reconInt),
 		reconOutDir(other.reconOutDir),
 		f(_f),
 		postReconF(other.postReconF),

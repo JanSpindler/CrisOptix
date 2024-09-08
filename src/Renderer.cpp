@@ -235,8 +235,8 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_LaunchParams.restir.prefixStats = m_PrefixAccelStruct.GetStatsBufferView();
 
 	m_LaunchParams.motionVectors = CuBufferView<glm::vec2>(m_MotionVectors.GetCuPtr(), m_MotionVectors.GetCount());
-
 	m_LaunchParams.emitterTable = m_Scene.GetEmitterTable();
+	m_LaunchParams.transforms = m_Scene.GetTransforms();
 
 	m_LaunchParamsBuf.Upload(&m_LaunchParams);
 
@@ -412,7 +412,7 @@ void Renderer::RunImGuiSettings()
 	m_LaunchParams.restir.gatherN = std::max<int>(1, m_LaunchParams.restir.gatherN);
 	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
 	m_LaunchParams.restir.gatherM = std::max<int>(1, m_LaunchParams.restir.gatherM);
-	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 0.001f, 0.0f, 1.0f);
+	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 1e-3f, 0.0f, 1.0f);
 
 	//
 	ImGui::End();
