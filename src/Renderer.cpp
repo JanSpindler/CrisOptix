@@ -127,7 +127,7 @@ Renderer::Renderer(
 	const OptixProgramGroup finalGatherPG = m_FinalGatherPipeline.AddRaygenShader({ "final_gather.ptx", "__raygen__final_gather" });
 	m_FinalGatherSbtIdx = m_Sbt.AddRaygenEntry(finalGatherPG);
 
-	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "final_gather.ptx", "__intersection__prefix_entry" }, {}, {});
+	const OptixProgramGroup prefixEntryPG = m_FinalGatherPipeline.AddProceduralHitGroupShader({ "prefix_search_hit.ptx", "__intersection__prefix_entry" }, {}, {});
 	m_PrefixAccelStruct.SetSbtOffset(m_Sbt.AddHitEntry(prefixEntryPG));
 	
 	const OptixProgramGroup prefixEntryMissPG = m_FinalGatherPipeline.AddMissShader({ "miss.ptx", "__miss__prefix_entry" });
