@@ -9,6 +9,9 @@
 
 struct RestirParams
 {
+	// General
+	float roughnessLimit;
+
 	// Prefix
 	int prefixLen;
 	bool prefixEnableTemporal;

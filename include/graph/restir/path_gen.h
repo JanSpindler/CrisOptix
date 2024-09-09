@@ -26,8 +26,9 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const glm::vec3& targetNormal)
 {
 	const float term1 = glm::abs(glm::dot(newXi - targetPos, targetNormal) / glm::dot(oldXi - targetPos, targetNormal));
-	const float term2 = glm::distance(targetPos, oldXi) / glm::distance(targetPos, newXi);
-	const float result = term1 * term2;
+	const float term2 = glm::dot(targetPos - oldXi, targetPos - oldXi);
+	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
+	const float result = term1 * term2 / term3;
 	if (result > 2.0f || glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
 	return result;
 }
