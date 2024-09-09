@@ -31,6 +31,7 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 }
 
 static __forceinline__ __device__ PrefixPath TracePrefix(
+	PrefixPath& prefix,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	const size_t maxLen,
@@ -40,7 +41,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	glm::vec3 currentPos = origin;
 	glm::vec3 currentDir = dir;
 
-	PrefixPath prefix{};
+	prefix.Reset();
 	prefix.rng = rng;
 	prefix.p = 1.0f;
 	prefix.f = glm::vec3(1.0f);
@@ -178,12 +179,13 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 }
 
 static __forceinline__ __device__ SuffixPath TraceSuffix(
+	SuffixPath& suffix,
 	const PrefixPath& prefix,
 	const size_t maxLen,
 	PCG32& rng,
 	const LaunchParams& params)
 {
-	SuffixPath suffix{};
+	suffix.Reset();
 	suffix.f = glm::vec3(1.0f);
 	suffix.p = 1.0f;
 	suffix.postReconF = glm::vec3(1.0f);

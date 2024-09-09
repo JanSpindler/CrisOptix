@@ -22,7 +22,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
 	// Generate canonical suffix
-	params.restir.canonicalSuffixes[pixelIdx] = TraceSuffix(prefix, 8 - prefix.GetLength(), rng, params);
+	TraceSuffix(params.restir.canonicalSuffixes[pixelIdx], prefix, 8 - prefix.GetLength(), rng, params);
 	const SuffixPath& canonSuffix = params.restir.canonicalSuffixes[pixelIdx];
 	if (!canonSuffix.IsValid()) { return; }
 	const float canonPHat = GetLuminance(canonSuffix.f);

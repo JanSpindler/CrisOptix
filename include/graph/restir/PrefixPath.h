@@ -67,6 +67,11 @@ struct PrefixPath
 	{
 	}
 
+	constexpr __forceinline__ __device__ __host__ void Reset()
+	{
+		flags = 0;
+	}
+
 	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
 	{
 		return static_cast<uint32_t>(flags & 0xFFu);

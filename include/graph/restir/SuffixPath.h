@@ -14,14 +14,14 @@ struct SuffixPath
 	// Interaction at recon vertex
 	PackedInteraction reconInt;
 
+	// Last prefix interaction
+	PackedInteraction lastPrefixInt;
+
 	// Path flags
 	// 0:8 -> length: Length of path without NEE vertex (0 meaning direct termination into NEE)
 	// 8:16 -> reconnection index: Index of recon vertex
 	// 16:17 -> valid
 	uint32_t flags;
-
-	// Last prefix interaction
-	PackedInteraction lastPrefixInt;
 
 	// Path contribution after prefix to light source (including prefix-suffix connection)
 	glm::vec3 f;
@@ -64,6 +64,11 @@ struct SuffixPath
 	{
 	}
 
+	constexpr __forceinline__ __device__ __host__ void Reset()
+	{
+		flags = 0;
+	}
+	
 	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
 	{
 		return static_cast<uint32_t>(flags & 0xFF);

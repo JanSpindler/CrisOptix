@@ -20,7 +20,7 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Generate canonical prefix and store in buffer for later usage with spatial reuse
-	params.restir.canonicalPrefixes[pixelIdx] = TracePrefix(origin, dir, params.restir.prefixLen, rng, params);
+	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, params.restir.prefixLen, rng, params);
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
