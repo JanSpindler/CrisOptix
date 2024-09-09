@@ -158,9 +158,6 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			const uint32_t neighCount = prefixSearchPayload.neighCount;
 			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
 
-			//printf("%f, %f, %f\n", prefixLastInt.pos.x, prefixLastInt.pos.y, prefixLastInt.pos.z);
-			//printf("%d\n", prefixSearchPayload.intersectionCount);
-
 			// Set mis weight for canonical suffix
 			if (prefixIdx == 0)
 			{

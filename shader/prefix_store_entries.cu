@@ -40,8 +40,6 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 		aabb.maxX = pos.x + radius;
 		aabb.maxY = pos.y + radius;
 		aabb.maxZ = pos.z + radius;
-
-		//printf("%f, %f, %f, %f, %f, %f\n", aabb.minX, aabb.maxX, aabb.minY, aabb.maxY, aabb.minZ, aabb.maxZ);
 	}
 	else
 	{

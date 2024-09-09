@@ -13,7 +13,6 @@ extern "C" __global__ void __intersection__prefix_entry()
 
 	// Get payload
 	PrefixSearchPayload* payload = GetPayloadDataPointer<PrefixSearchPayload>();
-	++payload->intersectionCount;
 
 	// Get neighbor last interaction
 	const Interaction neighLastInt(
@@ -28,6 +27,7 @@ extern "C" __global__ void __intersection__prefix_entry()
 	{
 		return;
 	}
+	++payload->intersectionCount;
 
 	// Build neighbor
 	const PrefixNeighbor neigh(neighPixelIdx, distance);

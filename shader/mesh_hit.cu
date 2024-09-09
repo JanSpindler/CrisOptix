@@ -35,6 +35,9 @@ extern "C" __global__ void __closesthit__mesh()
 	si->instanceId = optixGetInstanceId();
 	si->primitiveIdx = primIdx;
 
+	// Store bary coord
+	si->baryCoord = baryCoord;
+
 	// Indices of triangle vertices in the mesh
 	const glm::uvec3 indices(
 		sbtData->indices[primIdx * 3 + 0],
