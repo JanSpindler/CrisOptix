@@ -12,12 +12,11 @@
 __constant__ LaunchParams params;
 
 static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
-	const PrefixPath& prefix,
+	const Interaction& prefixLastInt,
 	const SuffixPath& suffix,
 	const float suffixUcwSrcDomain)
 {
 	// Get last prefix interaction
-	const Interaction prefixLastInt(prefix.lastInt, params.transforms);
 	if (!prefixLastInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Get suffix reconnection interaction
@@ -115,6 +114,10 @@ static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& 
 
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx)
 {
+	// Exit if primary interaction did not hit
+	const PrefixPath& prefix = params.restir.canonicalPrefixes[pixelIdx];
+	if (!prefix.primaryInt.IsValid()) { return glm::vec3(0.0f); }
+
 	// Init RNG
 	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
@@ -134,24 +137,38 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	const size_t k = params.restir.gatherM - 1;
 	if (k > 0)
 	{
-		PrefixPath prefix{};
+		bool nee = false;
+		Interaction lastInt{};
+		glm::vec3 throughput(0.0f);
+		float p = 0.0f;
 
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			TracePrefix(prefix, origin, dir, params.restir.prefixLen, rng, params);
-			if (!prefix.IsValid()) { continue; }
+			if (!TracePrefixForFinalGather(throughput, p, nee, lastInt, origin, dir, params.restir.prefixLen, rng, params))
+			{
+				continue;
+			}
+			
+			// Handle nee
+			if (nee)
+			{
+				const float misWeight = 0.5f;
+				if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
+				
+				glm::vec3 result = misWeight * throughput / p;
+				if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
 
-			// Get prefix last interaction
-			const Interaction prefixLastInt(prefix.lastInt, params.transforms);
-			if (!prefixLastInt.valid) { continue; }
+				outputRadiance += result;
+				continue;
+			}
 
 			// Find k neighboring prefixes in world space
 			static constexpr float EPSILON = 1e-16f;
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);
 			TraceWithDataPointer<PrefixSearchPayload>(
 				params.restir.prefixEntriesTraversHandle,
-				prefixLastInt.pos,
+				lastInt.pos,
 				glm::vec3(EPSILON),
 				0.0f,
 				EPSILON,
@@ -161,10 +178,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
 
 			// Set mis weight for canonical suffix
-			if (prefixIdx == 0)
-			{
-				canonSuffixMisWeight = misWeight;
-			}
+			if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
 
 			// Track prefix stats
 			if (params.restir.trackPrefixStats)
@@ -186,20 +200,22 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 
 				// Shift suffix
 				const cuda::std::pair<glm::vec3, float> shiftedSuffix = ShiftSuffix(
-					prefix, 
+					lastInt, 
 					neighSuffix, 
 					neighSuffixRes.wSum / GetLuminance(neighSuffix.f));
 				const glm::vec3& shiftedF = shiftedSuffix.first;
 				const float ucwSuffix = shiftedSuffix.second;
 
 				// Calc path contribution
-				const glm::vec3 pathContrib = glm::max(glm::vec3(0.0f), prefix.f * shiftedF);
+				const glm::vec3 pathContrib = glm::max(glm::vec3(0.0f), throughput * shiftedF);
 
-				// Calc ucw
-				const float ucw = ucwSuffix / prefix.p;
+				//
+				const float ucw = ucwSuffix / p;
 
 				// Gather
-				outputRadiance += misWeight * pathContrib * ucw;
+				glm::vec3 result = misWeight * pathContrib * ucw;
+				if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
+				outputRadiance += result;
 			}
 		}
 
