@@ -32,7 +32,9 @@ Renderer::Renderer(
 {
 	//
 	m_LaunchParams.neeProb = 0.3f;
-	
+
+	m_LaunchParams.rendererType = RendererType::PathTracer;
+
 	//
 	m_LaunchParams.restir.reconMinDistance = 0.5f;
 	m_LaunchParams.restir.reconMinRoughness = 0.5f;
@@ -262,7 +264,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_PostPrefixGenTempReuseEvent.Record();
 
 	// Restir
-	if (m_LaunchParams.enableRestir)
+	if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
 	{
 		// Prefix spatial reuse
 		if (m_LaunchParams.restir.prefixEnableSpatial && m_LaunchParams.restir.prefixSpatialCount > 0)
@@ -390,34 +392,46 @@ void Renderer::RunImGuiSettings()
 	m_LaunchParams.neeTries = std::max<int>(1, m_LaunchParams.neeTries);
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
 
+	ImGui::Combo("Renderer Type", reinterpret_cast<int*>(&m_LaunchParams.rendererType), RENDERER_TYPE_NAMES, RENDERER_TYPE_COUNT);
+
 	// Restir
-	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
-	ImGui::DragFloat("Min Recon Distance", &m_LaunchParams.restir.reconMinDistance, 0.01f, 0.0f, 4.0f);
-	ImGui::DragFloat("Min Recon Roughness", &m_LaunchParams.restir.reconMinRoughness, 0.01f, 0.0f, 1.0f);
+	if (m_LaunchParams.rendererType == RendererType::RestirPt || m_LaunchParams.rendererType == RendererType::ConditionalRestir)
+	{
+		// Common
+		ImGui::DragFloat("Min Recon Distance", &m_LaunchParams.restir.reconMinDistance, 0.01f, 0.0f, 4.0f);
+		ImGui::DragFloat("Min Recon Roughness", &m_LaunchParams.restir.reconMinRoughness, 0.01f, 0.0f, 1.0f);
 
-	// Restir Prefix
-	ImGui::Text("Restir Prefix");
-	ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.prefixLen, 1, 1);
-	m_LaunchParams.restir.prefixLen = std::max<int>(1, m_LaunchParams.restir.prefixLen);
-	ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
-	ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
-	ImGui::InputInt("Prefix Spatial Count", &m_LaunchParams.restir.prefixSpatialCount);
-	m_LaunchParams.restir.prefixSpatialCount = std::max<int>(0, m_LaunchParams.restir.prefixSpatialCount);
+		// Restir Prefix
+		ImGui::Text("Restir Prefix");
+		if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
+		{
+			ImGui::InputInt("Prefix Min Len", &m_LaunchParams.restir.prefixLen, 1, 1);
+			m_LaunchParams.restir.prefixLen = std::max<int>(1, m_LaunchParams.restir.prefixLen);
+		}
+		ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
+		ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
+		ImGui::InputInt("Prefix Spatial Count", &m_LaunchParams.restir.prefixSpatialCount);
+		m_LaunchParams.restir.prefixSpatialCount = std::max<int>(0, m_LaunchParams.restir.prefixSpatialCount);
 
-	// Restir Suffix
-	ImGui::Text("Restir Suffix");
-	ImGui::Checkbox("Suffix Enable Temporal", &m_LaunchParams.restir.suffixEnableTemporal);
-	ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
-	ImGui::InputInt("Suffix Spatial Count", &m_LaunchParams.restir.suffixSpatialCount);
-	m_LaunchParams.restir.suffixSpatialCount = std::max<int>(0, m_LaunchParams.restir.suffixSpatialCount);
+		// Conditional restir
+		if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
+		{
+			// Restir Suffix
+			ImGui::Text("Restir Suffix");
+			ImGui::Checkbox("Suffix Enable Temporal", &m_LaunchParams.restir.suffixEnableTemporal);
+			ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
+			ImGui::InputInt("Suffix Spatial Count", &m_LaunchParams.restir.suffixSpatialCount);
+			m_LaunchParams.restir.suffixSpatialCount = std::max<int>(0, m_LaunchParams.restir.suffixSpatialCount);
 
-	// Restir final gather
-	ImGui::Text("Restir Final Gather");
-	ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
-	m_LaunchParams.restir.gatherN = std::max<int>(1, m_LaunchParams.restir.gatherN);
-	ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
-	m_LaunchParams.restir.gatherM = std::max<int>(1, m_LaunchParams.restir.gatherM);
-	ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 1e-3f, 0.0f, 1.0f);
+			// Restir final gather
+			ImGui::Text("Restir Final Gather");
+			ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
+			m_LaunchParams.restir.gatherN = std::max<int>(1, m_LaunchParams.restir.gatherN);
+			ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
+			m_LaunchParams.restir.gatherM = std::max<int>(1, m_LaunchParams.restir.gatherM);
+			ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 1e-3f, 0.0f, 1.0f);
+		}
+	}
 
 	//
 	ImGui::End();

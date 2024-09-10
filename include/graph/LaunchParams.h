@@ -6,6 +6,7 @@
 #include <graph/TraceParameters.h>
 #include <model/Emitter.h>
 #include <graph/restir/RestirParams.h>
+#include <graph/restir/settings.h>
 
 struct LaunchParams
 {
@@ -21,7 +22,7 @@ struct LaunchParams
 	int neeTries;
 	bool enableAccum;
 
-	bool enableRestir;
+	RendererType rendererType;
 	RestirParams restir;
 	
 	CuBufferView<glm::vec2> motionVectors;

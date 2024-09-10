@@ -112,7 +112,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
 	// If restir
-	if (params.enableRestir)
+	if (params.rendererType == RendererType::ConditionalRestir || params.rendererType == RendererType::RestirPt)
 	{
 		// Get motion vector
 		const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
@@ -128,7 +128,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng);
 	}
 	// If not restir
-	else
+	else if (params.rendererType == RendererType::PathTracer)
 	{
 		// Perform normal path tracing
 		outputRadiance = TraceCompletePath(origin, dir, 8, rng, params);
