@@ -137,7 +137,6 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	const size_t k = params.restir.gatherM - 1;
 	if (k > 0)
 	{
-		bool nee = false;
 		Interaction lastInt{};
 		glm::vec3 throughput(0.0f);
 		float p = 0.0f;
@@ -145,24 +144,11 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			if (!TracePrefixForFinalGather(throughput, p, nee, lastInt, origin, dir, params.restir.prefixLen, rng, params))
+			if (!TracePrefixForFinalGather(throughput, p, lastInt, origin, dir, params.restir.prefixLen, rng, params))
 			{
 				continue;
 			}
 			
-			// Handle nee
-			if (nee)
-			{
-				const float misWeight = 0.5f;
-				if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
-				
-				glm::vec3 result = misWeight * throughput / p;
-				if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
-
-				outputRadiance += result;
-				continue;
-			}
-
 			// Find k neighboring prefixes in world space
 			static constexpr float EPSILON = 1e-16f;
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);

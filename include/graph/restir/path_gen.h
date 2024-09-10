@@ -509,7 +509,6 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 static __forceinline__ __device__ bool TracePrefixForFinalGather(
 	glm::vec3& throughput,
 	float& p,
-	bool& nee,
 	Interaction& lastInt,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
@@ -523,7 +522,6 @@ static __forceinline__ __device__ bool TracePrefixForFinalGather(
 
 	throughput = glm::vec3(1.0f);
 	p = 1.0f;
-	nee = false;
 	lastInt.valid = false;
 
 	// Trace
@@ -548,57 +546,6 @@ static __forceinline__ __device__ bool TracePrefixForFinalGather(
 		//
 		++currentDepth;
 
-		// Decide if NEE or continue PT
-		if (rng.NextFloat() < params.neeProb)
-		{
-			//
-			nee = true;
-			p *= params.neeProb;
-
-			// NEE
-			bool validEmitterFound = false;
-			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < params.neeTries)
-			{
-				//
-				++neeCounter;
-
-				// Sample light source
-				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - lastInt.pos);
-				const float distance = glm::length(emitterSample.pos - lastInt.pos);
-
-				// Cast shadow ray
-				const bool occluded = TraceOcclusion(
-					lastInt.pos,
-					lightDir,
-					1e-3f,
-					distance,
-					params);
-
-				// If emitter is occluded -> skip
-				if (occluded)
-				{
-					validEmitterFound = false;
-				}
-				// If emitter is not occluded -> end NEE
-				else
-				{
-					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-						lastInt.meshSbtData->evalMaterialSbtIdx,
-						lastInt,
-						lightDir);
-					throughput *= brdfEvalResult.brdfResult * emitterSample.color;
-					if (currentDepth == 1) { throughput += brdfEvalResult.emission; }
-
-					validEmitterFound = true;
-				}
-			}
-
-			return validEmitterFound;
-		}
-
 		// Indirect illumination, generate next ray
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			lastInt.meshSbtData->sampleMaterialSbtIdx,
@@ -612,7 +559,7 @@ static __forceinline__ __device__ bool TracePrefixForFinalGather(
 		currentPos = lastInt.pos;
 		currentDir = brdfSampleResult.outDir;
 		throughput *= brdfSampleResult.brdfVal;
-		p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+		p *= brdfSampleResult.samplingPdf;
 	}
 
 	return true;
