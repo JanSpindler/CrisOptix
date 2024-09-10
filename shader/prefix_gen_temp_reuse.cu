@@ -151,7 +151,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		}
 
 		// Store restir g buffer
-		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng);
+		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng, validPrimaryInt);
 	}
 	// If not restir
 	else if (params.rendererType == RendererType::PathTracer)

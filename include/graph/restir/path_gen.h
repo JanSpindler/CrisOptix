@@ -206,6 +206,12 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	}
 
 	prefix.lastInt = interaction;
+
+	if (!prefix.IsValid() || prefix.reconInt.hitInfo.meshSbtData == nullptr) { return prefix; }
+	if (prefix.reconInt.hitInfo.meshSbtData->indices.count / 3 <= prefix.reconInt.hitInfo.primitiveIdx)
+	{
+		prefix.SetValid(false);
+	}
 	return prefix;
 }
 

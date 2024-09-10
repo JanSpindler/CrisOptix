@@ -54,6 +54,9 @@ struct PrefixPath
 	{
 	}
 
+	constexpr __forceinline__ __device__ __host__ PrefixPath(const PrefixPath&) = default;
+	constexpr __forceinline__ __device__ __host__ PrefixPath& operator=(const PrefixPath&) = default;
+
 	__forceinline__ __device__ __host__ PrefixPath(
 		const PrefixPath& other,
 		const glm::vec3& _f,
@@ -70,6 +73,11 @@ struct PrefixPath
 		reconOutDir(other.reconOutDir),
 		pathLen(other.pathLen)
 	{
+		if (!IsValid() || reconInt.hitInfo.meshSbtData == nullptr) { return; }
+		if (reconInt.hitInfo.meshSbtData->indices.count / 3 <= reconInt.hitInfo.primitiveIdx)
+		{
+			SetValid(false);
+		}
 	}
 
 	constexpr __forceinline__ __device__ __host__ void Reset()
@@ -109,13 +117,6 @@ struct PrefixPath
 	{
 		flags &= ~(1 << 16u);
 		if (valid) { flags |= 1 << 16u; }
-
-		if (!valid)
-		{
-			primaryInt.hitInfo.meshSbtData = nullptr;
-			reconInt.hitInfo.meshSbtData = nullptr;
-			lastInt.hitInfo.meshSbtData = nullptr;
-		}
 	}
 
 	constexpr __forceinline__ __device__ __host__ bool IsNee() const

@@ -4,21 +4,25 @@
 
 struct RestirGBuffer
 {
-	glm::uvec2 prevPixelCoord;
 	PCG32 rng;
+	glm::uvec2 prevPixelCoord;
+	bool primaryIntValid;
 
 	__forceinline__ __device__ __host__ RestirGBuffer() :
 		prevPixelCoord(0),
-		rng({})
+		rng({}),
+		primaryIntValid(false)
 	{
 	}
 
 	__forceinline__ __device__ __host__ RestirGBuffer(
 		const glm::uvec2& _prevPixelCoord,
-		const PCG32& _rng)
+		const PCG32& _rng,
+		const bool _primaryIntValid)
 		:
 		prevPixelCoord(_prevPixelCoord),
-		rng(_rng)
+		rng(_rng),
+		primaryIntValid(_primaryIntValid)
 	{
 	}
 };

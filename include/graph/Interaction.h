@@ -39,6 +39,9 @@ struct HitInfo
 	{
 	}
 
+	constexpr __forceinline__ __device__ __host__ HitInfo(const HitInfo&) = default;
+	constexpr __forceinline__ __device__ __host__ HitInfo& operator=(const HitInfo&) = default;
+
 	constexpr __forceinline__ __device__ __host__ HitInfo(
 		const MeshSbtData* _meshSbtData,
 		const uint32_t _instanceId,
@@ -57,28 +60,28 @@ struct PackedInteraction
 {
 	HitInfo hitInfo;
 	Vec3 inRayDir;
+	bool valid;
 
 	__forceinline__ __device__ __host__ PackedInteraction() :
 		hitInfo({}),
-		inRayDir(0.0f)
+		inRayDir(0.0f),
+		valid(false)
 	{
 	}
 
-	constexpr __forceinline__ __device__ __host__ PackedInteraction(const PackedInteraction& other) :
-		hitInfo(other.hitInfo),
-		inRayDir(other.inRayDir)
-	{
-	}
+	constexpr __forceinline__ __device__ __host__ PackedInteraction(const PackedInteraction&) = default;
+	constexpr __forceinline__ __device__ __host__ PackedInteraction& operator=(const PackedInteraction&) = default;
 
-	constexpr __forceinline__ __device__ __host__ PackedInteraction(const HitInfo& _hitInfo, const Vec3& _inRayDir) :
+	constexpr __forceinline__ __device__ __host__ PackedInteraction(const HitInfo& _hitInfo, const Vec3& _inRayDir, const bool _valid) :
 		hitInfo(_hitInfo),
-		inRayDir(_inRayDir)
+		inRayDir(_inRayDir),
+		valid(_valid)
 	{
 	}
 
 	constexpr __forceinline__ __device__ __host__ bool IsValid() const
 	{
-		return hitInfo.meshSbtData != nullptr;
+		return valid;
 	}
 };
 
@@ -111,7 +114,7 @@ struct Interaction
 
 	__forceinline__ __device__ Interaction(const PackedInteraction& packedInt, const CuBufferView<glm::mat4>& transforms)
 		:
-		valid(packedInt.IsValid()),
+		valid(packedInt.valid),
 		inRayDir(packedInt.inRayDir),
 		pos(0.0f),
 		normal(0.0f),
@@ -129,7 +132,7 @@ struct Interaction
 #endif
 
 		// Exit if mesh data invalid
-		if (meshSbtData == nullptr || !valid)
+		if (!valid)
 		{
 			valid = false;
 			return;
@@ -140,6 +143,11 @@ struct Interaction
 		const glm::mat4& glmTransform = transforms[0];
 
 		// Indices of triangle vertices in the mesh
+		if (primitiveIdx >= meshSbtData->indices.count / 3)
+		{
+			valid = false;
+			return;
+		}
 		const glm::uvec3 indices(
 			meshSbtData->indices.Get(primitiveIdx * 3 + 0, __FILE__, __LINE__),
 			meshSbtData->indices.Get(primitiveIdx * 3 + 1, __FILE__, __LINE__),
@@ -165,8 +173,8 @@ struct Interaction
 
 	constexpr __forceinline__ __device__ __host__ operator PackedInteraction() const
 	{
-		const HitInfo hitInfo(valid ? meshSbtData : nullptr, instanceId, primitiveIdx, baryCoord);
-		return PackedInteraction(hitInfo, inRayDir);
+		const HitInfo hitInfo(meshSbtData, instanceId, primitiveIdx, baryCoord);
+		return PackedInteraction(hitInfo, inRayDir, valid);
 	}
 
 	constexpr __forceinline__ __device__ __host__ bool IsValid() const
