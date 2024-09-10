@@ -17,9 +17,12 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	// Default jacobian
 	jacobian = 0.0f;
 
+	//
+	if (!currPrefix.IsValid() || otherPrefix.IsValid()) { return glm::vec3(0.0f); }
+
 	// Get current primary interaction
 	const Interaction currPrimaryInt(currPrefix.primaryInt, params.transforms);
-	if (!currPrimaryInt.valid) { return; }
+	if (!currPrimaryInt.valid) { return glm::vec3(0.0f); }
 
 	// Get other primary interaction
 	Interaction otherPrimaryInt(otherPrefix.primaryInt, params.transforms);
@@ -62,7 +65,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
-	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
+	if (reconLen == INFINITY || glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
 	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
 
 	// Brdf eval 1

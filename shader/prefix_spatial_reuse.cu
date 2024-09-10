@@ -70,7 +70,6 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighPrefix.f));
 		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
-		//printf("%f\n", GetLuminance(fFromCanonOfNeigh));
 
 		// Stream neigh into res
 		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng))
