@@ -21,6 +21,8 @@ public:
 	CuBufferView<EmitterData> GetEmitterTable() const;
 	CuBufferView<glm::mat4> GetTransforms() const;
 
+	float GetSceneSize() const;
+
 private:
 	OptixTraversableHandle m_TraversableHandle = 0;
 	const std::vector<const ModelInstance*>& m_ModelInstances;

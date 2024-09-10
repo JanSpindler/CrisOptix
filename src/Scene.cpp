@@ -45,6 +45,31 @@ CuBufferView<glm::mat4> Scene::GetTransforms() const
 	return CuBufferView<glm::mat4>(m_Transforms.GetCuPtr(), m_Transforms.GetCount());
 }
 
+float Scene::GetSceneSize() const
+{
+	glm::vec3 minPos(0.0f);
+	glm::vec3 maxPos(0.0f);
+	for (const ModelInstance* modelInstance : m_ModelInstances)
+	{
+		const Model& model = modelInstance->GetModel();
+		for (const Mesh* mesh : model.GetMeshes())
+		{
+			const DeviceBuffer<Vertex> vertexDevBuffer = mesh->GetDeviceVertexBuffer();
+			std::vector<Vertex> vertices(vertexDevBuffer.GetCount());
+			vertexDevBuffer.Download(vertices.data());
+
+			for (const Vertex& vertex : vertices)
+			{
+				const glm::vec3& pos = vertex.pos;
+				minPos = glm::min(minPos, pos);
+				maxPos = glm::max(maxPos, pos);
+			}
+		}
+	}
+
+	return glm::distance(minPos, maxPos);
+}
+
 void Scene::BuildAccel(const OptixDeviceContext optixDeviceContext)
 {
 	const size_t modelInstanceCount = m_ModelInstances.size();

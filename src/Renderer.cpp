@@ -36,8 +36,8 @@ Renderer::Renderer(
 	m_LaunchParams.rendererType = RendererType::PathTracer;
 
 	//
-	m_LaunchParams.restir.reconMinDistance = 0.5f;
-	m_LaunchParams.restir.reconMinRoughness = 0.5f;
+	m_LaunchParams.restir.reconMinDistance = 0.01f * m_Scene.GetSceneSize();
+	m_LaunchParams.restir.reconMinRoughness = 0.2f;
 
 	m_LaunchParams.restir.prefixLen = 2;
 	m_LaunchParams.restir.prefixEnableTemporal = false;
