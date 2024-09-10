@@ -23,39 +23,68 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	Interaction reconInt(suffix.reconInt, params.transforms);
 	if (!reconInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
+	// Hybrid shift
+	const uint32_t reconVertCount = glm::max<int>(suffix.GetReconIdx() - 1, 0);
+	Interaction currInt = prefixLastInt;
+	PCG32 otherRng = suffix.rng;
+	glm::vec3 throughput(1.0f);
+	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
+	{
+		//printf("%d\n", otherSuffix.GetReconIdx());
+
+		// Sampled brdf
+		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
+			currInt.meshSbtData->sampleMaterialSbtIdx,
+			currInt,
+			otherRng);
+		if (brdf.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+		throughput *= brdf.brdfVal;
+
+		// Recon dir
+		const glm::vec3& reconDir = brdf.outDir;
+
+		// Trace new interaction
+		const glm::vec3 oldPos = currInt.pos;
+		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, reconDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
+		if (!currInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+
+		// Trace occlusion
+		if (TraceOcclusion(oldPos, reconDir, 1e-3f, glm::distance(oldPos, currInt.pos), params)) { return { glm::vec3(0.0f), 0.0f }; }
+	}
+
 	// Trace occlusion
-	const glm::vec3 reconVec = reconInt.pos - prefixLastInt.pos;
+	const glm::vec3 reconVec = reconInt.pos - currInt.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
 	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return { glm::vec3(0.0f), 0.0f }; }
-	if (TraceOcclusion(prefixLastInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
+	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
 
 	// Eval brdf at last prefix vert with new out dir
 	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		prefixLastInt.meshSbtData->evalMaterialSbtIdx,
-		prefixLastInt,
+		currInt.meshSbtData->evalMaterialSbtIdx,
+		currInt,
 		reconDir);
 	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+	throughput *= brdfEvalResult1.brdfResult;
 
 	// 
 	reconInt.inRayDir = reconDir;
 
 	//
-	glm::vec3 brdfResult2(1.0f);
 	if (suffix.GetReconIdx() > 0)
-	{		
+	{
 		// Eval brdf at suffix recon vertex
 		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 			reconInt.meshSbtData->evalMaterialSbtIdx,
 			reconInt,
 			suffix.reconOutDir);
 		if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
-		brdfResult2 = brdfEvalResult2.brdfResult;
+		throughput *= brdfEvalResult2.brdfResult;
 	}
 
 	// Calc total contribution of new path
-	const glm::vec3 radiance = brdfEvalResult1.brdfResult * brdfResult2 * suffix.postReconF;
+	const glm::vec3 radiance = throughput * suffix.postReconF;
 
 	// Get suffix last prefix int
 	const Interaction suffixLastPrefixInt(suffix.lastPrefixInt, params.transforms);
@@ -64,7 +93,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	// Calc jacobian
 	const float jacobian = CalcReconnectionJacobian(
 		suffixLastPrefixInt.pos, 
-		prefixLastInt.pos,
+		currInt.pos,
 		reconInt.pos,
 		reconInt.normal);
 
