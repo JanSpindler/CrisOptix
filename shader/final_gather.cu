@@ -137,14 +137,14 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	const size_t k = params.restir.gatherM - 1;
 	if (k > 0)
 	{
-		Interaction lastInt{};
-		glm::vec3 throughput(0.0f);
-		float p = 0.0f;
+		Interaction lastPrefixInt{};
+		glm::vec3 prefixThroughput(0.0f);
+		float prefixP = 0.0f;
 
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
 			// Trace new prefix for pixel q
-			if (!TracePrefixForFinalGather(throughput, p, lastInt, origin, dir, params.restir.prefixLen, rng, params))
+			if (!TracePrefixForFinalGather(prefixThroughput, prefixP, lastPrefixInt, origin, dir, params.restir.prefixLen, rng, params))
 			{
 				continue;
 			}
@@ -154,7 +154,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			PrefixSearchPayload prefixSearchPayload(pixelIdx);
 			TraceWithDataPointer<PrefixSearchPayload>(
 				params.restir.prefixEntriesTraversHandle,
-				lastInt.pos,
+				lastPrefixInt.pos,
 				glm::vec3(EPSILON),
 				0.0f,
 				EPSILON,
@@ -175,6 +175,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 			}
 
 			// Borrow their suffixes and gather path contributions
+			glm::vec3 suffixContrib(0.0f);
 			for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
 			{
 				// Assume: Neighbor prefix and suffix are valid
@@ -186,23 +187,20 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 
 				// Shift suffix
 				const cuda::std::pair<glm::vec3, float> shiftedSuffix = ShiftSuffix(
-					lastInt, 
+					lastPrefixInt, 
 					neighSuffix, 
 					neighSuffixRes.wSum / GetLuminance(neighSuffix.f));
 				const glm::vec3& shiftedF = shiftedSuffix.first;
 				const float ucwSuffix = shiftedSuffix.second;
 
-				// Calc path contribution
-				const glm::vec3 pathContrib = glm::max(glm::vec3(0.0f), throughput * shiftedF);
-
-				//
-				const float ucw = ucwSuffix / p;
-
-				// Gather
-				glm::vec3 result = misWeight * pathContrib * ucw;
-				if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
-				outputRadiance += result;
+				// Add
+				suffixContrib += misWeight * shiftedF * ucwSuffix;
 			}
+
+			// Gather
+			glm::vec3 result = suffixContrib * prefixThroughput / prefixP;
+			if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
+			outputRadiance += result;
 		}
 
 		outputRadiance /= static_cast<float>(params.restir.gatherN);
