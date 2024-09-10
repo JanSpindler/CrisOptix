@@ -264,7 +264,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	m_PostPrefixGenTempReuseEvent.Record();
 
 	// Restir
-	if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
+	if (m_LaunchParams.rendererType == RendererType::ConditionalRestir || m_LaunchParams.rendererType == RendererType::RestirPt)
 	{
 		// Prefix spatial reuse
 		if (m_LaunchParams.restir.prefixEnableSpatial && m_LaunchParams.restir.prefixSpatialCount > 0)
@@ -281,73 +281,84 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		}
 		m_PostPrefixSpatialReuseEvent.Record();
 
-		// Suffix gen and temp reuse
-		ASSERT_OPTIX(optixLaunch(
-			m_SuffixGenTempReusePipeline.GetHandle(),
-			0,
-			m_LaunchParamsBuf.GetCuPtr(),
-			m_LaunchParamsBuf.GetByteSize(),
-			m_Sbt.GetSBT(m_SuffixGenTempReuseSbtIdx),
-			m_Width,
-			m_Height,
-			1));
-		m_PostSuffixGenTempReuseEvent.Record();
-
-		// Suffix spatial reuse
-		if (m_LaunchParams.restir.suffixEnableSpatial && m_LaunchParams.restir.suffixSpatialCount > 0)
+		// Conditional restir
+		if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
 		{
+			// Suffix gen and temp reuse
 			ASSERT_OPTIX(optixLaunch(
-				m_SuffixSpatialReusePipeline.GetHandle(),
+				m_SuffixGenTempReusePipeline.GetHandle(),
 				0,
 				m_LaunchParamsBuf.GetCuPtr(),
 				m_LaunchParamsBuf.GetByteSize(),
-				m_Sbt.GetSBT(m_SuffixSpatialReuseSbtIdx),
+				m_Sbt.GetSBT(m_SuffixGenTempReuseSbtIdx),
+				m_Width,
+				m_Height,
+				1));
+			m_PostSuffixGenTempReuseEvent.Record();
+
+			// Suffix spatial reuse
+			if (m_LaunchParams.restir.suffixEnableSpatial && m_LaunchParams.restir.suffixSpatialCount > 0)
+			{
+				ASSERT_OPTIX(optixLaunch(
+					m_SuffixSpatialReusePipeline.GetHandle(),
+					0,
+					m_LaunchParamsBuf.GetCuPtr(),
+					m_LaunchParamsBuf.GetByteSize(),
+					m_Sbt.GetSBT(m_SuffixSpatialReuseSbtIdx),
+					m_Width,
+					m_Height,
+					1));
+			}
+			m_PostSuffixSpatialReuseEvent.Record();
+
+			// Prefix store entries
+			{
+				// Store entries in buffer
+				ASSERT_OPTIX(optixLaunch(
+					m_PrefixStoreEntriesPipeline.GetHandle(),
+					0,
+					m_LaunchParamsBuf.GetCuPtr(),
+					m_LaunchParamsBuf.GetByteSize(),
+					m_Sbt.GetSBT(m_PrefixStoreEntriesSbtIdx),
+					m_Width,
+					m_Height,
+					1));
+
+				// Sync
+				ASSERT_CUDA(cudaDeviceSynchronize());
+
+				// Rebuild acceleration structure
+				m_PrefixAccelStruct.Rebuild(m_LaunchParams.restir.gatherM - 1);
+
+				// Copy traversable handle into launch params and re-upload
+				// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
+				m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTlas();
+				m_LaunchParams.restir.prefixNeighbors = m_PrefixAccelStruct.GetPrefixNeighborBufferView();
+				m_LaunchParamsBuf.Upload(&m_LaunchParams);
+
+				// Sync after buffer upload
+				ASSERT_CUDA(cudaDeviceSynchronize());
+			}
+			m_PostPrefixStoreEvent.Record();
+
+			// Final gather
+			ASSERT_OPTIX(optixLaunch(
+				m_FinalGatherPipeline.GetHandle(),
+				0,
+				m_LaunchParamsBuf.GetCuPtr(),
+				m_LaunchParamsBuf.GetByteSize(),
+				m_Sbt.GetSBT(m_FinalGatherSbtIdx),
 				m_Width,
 				m_Height,
 				1));
 		}
-		m_PostSuffixSpatialReuseEvent.Record();
-
-		// Prefix store entries
+		// Restir Pt
+		else
 		{
-			// Store entries in buffer
-			ASSERT_OPTIX(optixLaunch(
-				m_PrefixStoreEntriesPipeline.GetHandle(),
-				0,
-				m_LaunchParamsBuf.GetCuPtr(),
-				m_LaunchParamsBuf.GetByteSize(),
-				m_Sbt.GetSBT(m_PrefixStoreEntriesSbtIdx),
-				m_Width,
-				m_Height,
-				1));
-
-			// Sync
-			ASSERT_CUDA(cudaDeviceSynchronize());
-
-			// Rebuild acceleration structure
-			m_PrefixAccelStruct.Rebuild(m_LaunchParams.restir.gatherM - 1);
-
-			// Copy traversable handle into launch params and re-upload
-			// TODO: Optimize by constant CUdeviceptr to buffer containing handle?
-			m_LaunchParams.restir.prefixEntriesTraversHandle = m_PrefixAccelStruct.GetTlas();
-			m_LaunchParams.restir.prefixNeighbors = m_PrefixAccelStruct.GetPrefixNeighborBufferView();
-			m_LaunchParamsBuf.Upload(&m_LaunchParams);
-
-			// Sync after buffer upload
-			ASSERT_CUDA(cudaDeviceSynchronize());
+			m_PostSuffixGenTempReuseEvent.Record();
+			m_PostSuffixSpatialReuseEvent.Record();
+			m_PostPrefixStoreEvent.Record();
 		}
-		m_PostPrefixStoreEvent.Record();
-
-		// Final gather
-		ASSERT_OPTIX(optixLaunch(
-			m_FinalGatherPipeline.GetHandle(),
-			0,
-			m_LaunchParamsBuf.GetCuPtr(),
-			m_LaunchParamsBuf.GetByteSize(),
-			m_Sbt.GetSBT(m_FinalGatherSbtIdx),
-			m_Width,
-			m_Height,
-			1));
 	}
 	// If not restir
 	else

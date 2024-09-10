@@ -84,7 +84,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		}
 
 		// Decide if NEE or continue PT
-		if (rng.NextFloat() < params.neeProb)
+		const bool forceNee = params.rendererType == RendererType::RestirPt && traceIdx == maxLen - 1;
+		if (rng.NextFloat() < params.neeProb || forceNee)
 		{
 			//
 			prefix.p *= params.neeProb;

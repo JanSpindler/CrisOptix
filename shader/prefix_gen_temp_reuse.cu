@@ -20,7 +20,8 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Generate canonical prefix and store in buffer for later usage with spatial reuse
-	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, params.restir.prefixLen, rng, params);
+	const uint32_t prefixLen = params.rendererType == RendererType::RestirPt ? 8 : params.restir.prefixLen;
+	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, prefixLen, rng, params);
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
@@ -42,9 +43,10 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const PrefixPath& prevPrefix = prevRes.sample;
 
 	// If ...
+	const bool skipBecauseOfNee = params.rendererType == RendererType::ConditionalRestir && prevPrefix.IsNee();
 	if (prevRes.wSum <= 0.0f || // Do not reuse prefixes with 0 ucw
 		!prevPrefix.IsValid() || // Do not reuse invalid prefixes
-		prevPrefix.IsNee()) // Do not reuse prefixes that wont generate suffixes
+		skipBecauseOfNee) // Do not reuse prefixes that wont generate suffixes
 	{
 		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
 		return;
