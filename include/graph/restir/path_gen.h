@@ -319,6 +319,15 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			//
 			suffix.p *= params.neeProb;
 
+			//
+			if (!postRecon)
+			{
+				suffix.reconInt = interaction;
+				suffix.SetReconIdx(suffix.GetLength());
+				suffix.reconOutDir = brdfSampleResult.outDir;
+				postRecon = true;
+			}
+
 			// NEE
 			bool validEmitterFound = false;
 			size_t neeCounter = 0;
@@ -355,7 +364,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 						lightDir);
 
 					suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-					if (postRecon) { suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+					suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color;
 
 					suffix.SetValid(true);
 					validEmitterFound = true;
