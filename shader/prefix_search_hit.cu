@@ -19,11 +19,15 @@ extern "C" __global__ void __intersection__prefix_entry()
 		params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastInt,
 		params.transforms);
 
+	// Get radius
+	const OptixAabb& aabb = params.restir.prefixEntryAabbs[neighPixelIdx];
+	const float radius = (aabb.maxX - aabb.minX) / 2.0f;
+
 	// Check if radius is truly as desired
 	const glm::vec3 queryPos = cuda2glm(optixGetWorldRayOrigin());
 	const glm::vec3& neighPos = neighLastInt.pos;
 	const float distance = glm::distance(queryPos, neighPos);
-	if (distance > params.restir.gatherRadius)
+	if (distance > radius)
 	{
 		return;
 	}

@@ -19,4 +19,4 @@ enum class PrefixRadiusType : int
 };
 
 static constexpr size_t PREFIX_RADIUS_TYPE_COUNT = 2;
-static constexpr const char * PREFIX_RADIUS_TYPE_NAMES[] = { "Constant", "Path Length" };
+static constexpr const char* PREFIX_RADIUS_TYPE_NAMES[] = { "Constant", "Path Length" };

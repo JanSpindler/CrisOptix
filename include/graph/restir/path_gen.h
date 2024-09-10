@@ -74,10 +74,13 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
-		//
+		// Add to path length
+		prefix.pathLen += glm::distance(currentPos, interaction.pos);
+
+		// Inc vertex count
 		prefix.SetLength(prefix.GetLength() + 1);
 		
-		//
+		// Store primary interaction
 		if (prefix.GetLength() == 1)
 		{
 			prefix.primaryInt = interaction;

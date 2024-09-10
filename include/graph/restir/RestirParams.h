@@ -6,6 +6,7 @@
 #include <graph/restir/SuffixPath.h>
 #include <graph/restir/RestirGBuffer.h>
 #include <graph/restir/PrefixAccelStruct.h>
+#include <graph/restir/settings.h>
 
 struct RestirParams
 {
@@ -28,6 +29,7 @@ struct RestirParams
 	int gatherN;
 	int gatherM;
 	float gatherRadius;
+	PrefixRadiusType gatherRadiusType;
 
 	// Buffers
 	uint8_t frontBufferIdx;

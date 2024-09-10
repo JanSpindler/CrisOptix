@@ -31,7 +31,12 @@ extern "C" __global__ void __raygen__prefix_store_entries()
 	OptixAabb& aabb = params.restir.prefixEntryAabbs[pixelIdx];
 	if (prefix.IsValid() && suffix.IsValid() && lastPrefixInt.valid)
 	{
-		const float radius = params.restir.gatherRadius;
+		float radius = params.restir.gatherRadius;
+		if (params.restir.gatherRadiusType == PrefixRadiusType::PathLength)
+		{
+			radius *= prefix.pathLen / 4.5f; // An emperically chosen correction factor to make both methods comparable
+		}
+		
 		const glm::vec3& pos = lastPrefixInt.pos;
 
 		aabb.minX = pos.x - radius;

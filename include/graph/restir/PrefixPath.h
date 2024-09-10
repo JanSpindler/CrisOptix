@@ -34,6 +34,9 @@ struct PrefixPath
 	// Sampling pdf
 	float p;
 
+	// Path length
+	float pathLen;
+
 	// Out direction after reconnection (used for brdf evaluation)
 	Vec3 reconOutDir;
 
@@ -46,7 +49,8 @@ struct PrefixPath
 		p(0.0f),
 		lastInt({}),
 		postReconF(0.0f),
-		reconOutDir(0.0f)
+		reconOutDir(0.0f),
+		pathLen(0.0f)
 	{
 	}
 
@@ -70,6 +74,7 @@ struct PrefixPath
 	constexpr __forceinline__ __device__ __host__ void Reset()
 	{
 		flags = 0;
+		pathLen = 0.0f;
 	}
 
 	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
