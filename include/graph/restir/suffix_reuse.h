@@ -22,53 +22,82 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	if (!currLastPrefixInt.valid) { return glm::vec3(0.0f); }
 
 	// Get other last perfix interaction
-	const Interaction otherLastPrefixInt(otherSuffix.lastPrefixInt, params.transforms);
+	Interaction otherLastPrefixInt(otherSuffix.lastPrefixInt, params.transforms);
 	if (!otherLastPrefixInt.valid) { return glm::vec3(0.0f); }
 
 	// Get reconnection interaction
 	Interaction currReconInt(currSuffix.reconInt, params.transforms);
 	if (!currReconInt.valid) { return glm::vec3(0.0f); }
 
-	// Jacobian inverse shift
-	jacobian = CalcReconnectionJacobian(
-		currLastPrefixInt.pos,
-		otherLastPrefixInt.pos,
-		currReconInt.pos,
-		currReconInt.normal);
+	// Hybrid shift
+	const uint32_t reconVertCount = glm::max<int>(otherSuffix.GetReconIdx() - 2, 0);
+	Interaction& currInt = otherLastPrefixInt;
+	PCG32 otherRng = otherSuffix.rng;
+	glm::vec3 throughput(1.0f);
+	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
+	{
+		printf("%d\n", otherSuffix.GetReconIdx());
+
+		// Sampled brdf
+		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
+			currInt.meshSbtData->sampleMaterialSbtIdx,
+			currInt,
+			otherRng);
+		if (brdf.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
+		throughput *= brdf.brdfVal;
+
+		// Recon dir
+		const glm::vec3& reconDir = brdf.outDir;
+
+		// Trace new interaction
+		const glm::vec3 oldPos = currInt.pos;
+		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, reconDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
+		if (!currInt.valid) { return glm::vec3(0.0f); }
+
+		// Trace occlusion
+		if (TraceOcclusion(oldPos, reconDir, 1e-3f, glm::distance(oldPos, currInt.pos), params)) { return glm::vec3(0.0f); }
+	}
 
 	// Check occlusion
-	const glm::vec3 reconVec = currReconInt.pos - otherLastPrefixInt.pos;
+	const glm::vec3 reconVec = currReconInt.pos - currInt.pos;
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
 	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
-	if (TraceOcclusion(otherLastPrefixInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
-
-	// Fix recon interaction in dir
-	currReconInt.inRayDir = reconDir;
+	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
 
 	// Brdf eval 1
 	const BrdfEvalResult brdf1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		otherLastPrefixInt.meshSbtData->evalMaterialSbtIdx,
-		otherLastPrefixInt,
+		currInt.meshSbtData->evalMaterialSbtIdx,
+		currInt,
 		reconDir);
 	if (brdf1.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
+	throughput *= brdf1.brdfResult;
 
 	// Brdf eval 2
-	glm::vec3 brdfResult2(1.0f);
 	if (currSuffix.GetReconIdx() == 0)
 	{
+		// Fix recon interaction in dir
+		currReconInt.inRayDir = reconDir;
+
+		// Brdf
 		const BrdfEvalResult brdf2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 			currReconInt.meshSbtData->evalMaterialSbtIdx,
 			currReconInt,
 			currSuffix.reconOutDir);
 		if (brdf2.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
-
-		brdfResult2 = brdf2.brdfResult;
+		throughput *= brdf2.brdfResult;
 	}
 
+	// Jacobian inverse shift
+	jacobian = CalcReconnectionJacobian(
+		currLastPrefixInt.pos,
+		currInt.pos,
+		currReconInt.pos,
+		currReconInt.normal);
+
 	// Inverse shift p hat
-	const glm::vec3 shiftedF = brdf1.brdfResult * brdfResult2 * currSuffix.postReconF;
+	const glm::vec3 shiftedF = throughput * currSuffix.postReconF;
 
 	//
 	return shiftedF;

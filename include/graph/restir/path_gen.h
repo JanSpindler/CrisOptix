@@ -9,7 +9,7 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t WINDOW_RADIUS = 3; // 48 total neighbors
+static constexpr uint32_t WINDOW_RADIUS = 10;
 static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
 
 static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
@@ -292,6 +292,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 
 	// Trace
+	bool postRecon = false;
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
@@ -311,9 +312,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 		//
 		suffix.SetLength(suffix.GetLength() + 1);
-
-		// TODO: Also include roughness
-		const bool postRecon = suffix.GetLength() > 0;
 
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < params.neeProb)
@@ -379,16 +377,18 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			return suffix;
 		}
 
+		// Check if this interaction can be a reconnection interaction
+		const bool intCanRecon =
+			glm::distance(currentPos, interaction.pos) > params.restir.reconMinDistance &&
+			brdfSampleResult.roughness > params.restir.reconMinRoughness;
+
 		// Store as reconnection vertex if fit
-		if (postRecon && suffix.GetReconIdx() == 0)
+		if (!postRecon && intCanRecon)
 		{
 			suffix.reconInt = interaction;
 			suffix.SetReconIdx(suffix.GetLength());
 			suffix.reconOutDir = brdfSampleResult.outDir;
-		}
-		else if (postRecon)
-		{
-			suffix.postReconF *= brdfSampleResult.brdfVal;
+			postRecon = true;
 		}
 		
 		currentPos = interaction.pos;
@@ -396,6 +396,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 		suffix.f *= brdfSampleResult.brdfVal;
 		suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+		if (postRecon) { suffix.postReconF *= brdfSampleResult.brdfVal; }
 	}
 
 	return suffix;
