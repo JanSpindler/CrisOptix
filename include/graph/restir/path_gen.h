@@ -37,7 +37,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	PrefixPath& prefix,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
-	const size_t maxLen,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -52,6 +51,9 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	prefix.SetValid(true);
 
 	Interaction interaction{};
+
+	//
+	const uint32_t maxLen = params.rendererType == RendererType::RestirPt ? params.maxPathLen : params.restir.prefixLen;
 
 	// Trace
 	bool postRecon = false;

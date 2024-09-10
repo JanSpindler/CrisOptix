@@ -20,10 +20,9 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	const size_t pixelIdx = GetPixelIdx(pixelCoord, params);
 
 	// Generate canonical prefix and store in buffer for later usage with spatial reuse
-	const uint32_t prefixLen = params.rendererType == RendererType::RestirPt ? 8 : params.restir.prefixLen;
-	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, prefixLen, rng, params);
+	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, rng, params);
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
-	if (!canonPrefix.primaryInt.IsValid()) { return false; }
+	if (!canonPrefix.IsValid()) { return false; }
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
 	// Get current reservoir and reset it
@@ -139,7 +138,6 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 			}
 
 			// Display if restir pt
-			if (glm::any(glm::isinf(outputRadiance) || glm::isnan(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 			if (params.enableAccum)
 			{
 				const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
