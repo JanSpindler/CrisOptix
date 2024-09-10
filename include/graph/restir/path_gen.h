@@ -9,7 +9,7 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t WINDOW_RADIUS = 10;
+static constexpr uint32_t WINDOW_RADIUS = 3;
 static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
 
 static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
