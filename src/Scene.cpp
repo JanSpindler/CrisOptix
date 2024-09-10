@@ -54,7 +54,7 @@ float Scene::GetSceneSize() const
 		const Model& model = modelInstance->GetModel();
 		for (const Mesh* mesh : model.GetMeshes())
 		{
-			const DeviceBuffer<Vertex> vertexDevBuffer = mesh->GetDeviceVertexBuffer();
+			const DeviceBuffer<Vertex>& vertexDevBuffer = mesh->GetDeviceVertexBuffer();
 			std::vector<Vertex> vertices(vertexDevBuffer.GetCount());
 			vertexDevBuffer.Download(vertices.data());
 
