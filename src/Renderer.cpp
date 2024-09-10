@@ -32,7 +32,7 @@ Renderer::Renderer(
 {
 	//
 	m_LaunchParams.neeProb = 0.3f;
-
+	m_LaunchParams.maxPathLen = 8;
 	m_LaunchParams.rendererType = RendererType::PathTracer;
 
 	//
@@ -401,6 +401,8 @@ void Renderer::RunImGuiSettings()
 	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
 	ImGui::InputInt("NEE Tries", &m_LaunchParams.neeTries, 1, 4);
 	m_LaunchParams.neeTries = std::max<int>(1, m_LaunchParams.neeTries);
+	ImGui::InputInt("Max Path Len", &m_LaunchParams.maxPathLen, 1, 1);
+	m_LaunchParams.maxPathLen = std::max<int>(1, m_LaunchParams.maxPathLen);
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
 
 	ImGui::Combo("Renderer Type", reinterpret_cast<int*>(&m_LaunchParams.rendererType), RENDERER_TYPE_NAMES, RENDERER_TYPE_COUNT);

@@ -186,7 +186,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 static __forceinline__ __device__ SuffixPath TraceSuffix(
 	SuffixPath& suffix,
 	const PrefixPath& prefix,
-	const size_t maxLen,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -198,6 +197,9 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.lastPrefixInt = prefix.lastInt;
 
 	Interaction interaction{};
+
+	// Calc max len
+	const uint32_t maxLen = params.maxPathLen - prefix.GetLength();
 
 	// Get last prefix interaction
 	const Interaction lastPrefixInt(prefix.lastInt, params.transforms);
@@ -415,7 +417,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 	const glm::vec3& origin,
 	const glm::vec3& dir,
-	const size_t maxLen,
 	PCG32& rng,
 	const LaunchParams& params)
 {
@@ -427,7 +428,7 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 	glm::vec3 throughput(1.0f);
 
 	// Trace
-	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
+	for (uint32_t traceIdx = 0; traceIdx < params.maxPathLen; ++traceIdx)
 	{
 		// Sample surface interaction
 		Interaction interaction{};

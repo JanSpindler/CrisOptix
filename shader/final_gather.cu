@@ -236,7 +236,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	}
 
 	// Add canon suffix contrib
-	outputRadiance += canonSuffixMisWeight * TraceCompletePath(origin, dir, 8, rng, params);
+	outputRadiance += canonSuffixMisWeight * TraceCompletePath(origin, dir, rng, params);
 
 	if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 

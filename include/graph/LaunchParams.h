@@ -21,6 +21,7 @@ struct LaunchParams
 	float neeProb;
 	int neeTries;
 	bool enableAccum;
+	int maxPathLen;
 
 	RendererType rendererType;
 	RestirParams restir;

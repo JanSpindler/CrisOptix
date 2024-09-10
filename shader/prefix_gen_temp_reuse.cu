@@ -133,7 +133,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 	else if (params.rendererType == RendererType::PathTracer)
 	{
 		// Perform normal path tracing
-		outputRadiance = TraceCompletePath(origin, dir, 8, rng, params);
+		outputRadiance = TraceCompletePath(origin, dir, rng, params);
 		if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
 
 		// Store radiance output
