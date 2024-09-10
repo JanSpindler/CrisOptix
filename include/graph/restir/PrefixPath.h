@@ -109,6 +109,13 @@ struct PrefixPath
 	{
 		flags &= ~(1 << 16u);
 		if (valid) { flags |= 1 << 16u; }
+
+		if (!valid)
+		{
+			primaryInt.hitInfo.meshSbtData = nullptr;
+			reconInt.hitInfo.meshSbtData = nullptr;
+			lastInt.hitInfo.meshSbtData = nullptr;
+		}
 	}
 
 	constexpr __forceinline__ __device__ __host__ bool IsNee() const

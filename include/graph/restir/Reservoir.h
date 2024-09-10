@@ -3,7 +3,7 @@
 #include <util/random.h>
 #include <graph/luminance.h>
 
-static constexpr float CONFIDENCE_MAX = 200.0f;
+static constexpr float CONFIDENCE_MAX = 50.0f;
 
 template <typename T>
 struct Reservoir

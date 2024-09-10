@@ -18,7 +18,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	jacobian = 0.0f;
 
 	//
-	if (!currPrefix.IsValid() || !otherPrefix.IsValid()) { return glm::vec3(0.0f); }
+	if (!currPrefix.IsValid() || !otherPrefix.IsValid() || currPrefix.GetReconIdx() < 2) { return glm::vec3(0.0f); }
 
 	// Get current primary interaction
 	const Interaction currPrimaryInt(currPrefix.primaryInt, params.transforms);

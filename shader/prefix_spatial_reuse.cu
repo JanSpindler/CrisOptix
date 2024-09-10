@@ -48,8 +48,8 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		// Get neighbor res and prefix
 		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const PrefixPath& neighPrefix = neighRes.sample;
-		const bool skipBecauseOfNee = params.rendererType == RendererType::ConditionalRestir && neighPrefix.IsNee();
-		if (!neighPrefix.IsValid() || skipBecauseOfNee) { continue; }
+		const bool skipBecauseOfNee = false;// params.rendererType == RendererType::ConditionalRestir && neighPrefix.IsNee();
+		if (!neighPrefix.IsValid() || !neighPrefix.reconInt.IsValid() || skipBecauseOfNee) { continue; }
 
 		// Get neighbor primary hit
 		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);

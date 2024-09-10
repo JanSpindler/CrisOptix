@@ -64,6 +64,12 @@ struct PackedInteraction
 	{
 	}
 
+	constexpr __forceinline__ __device__ __host__ PackedInteraction(const PackedInteraction& other) :
+		hitInfo(other.hitInfo),
+		inRayDir(other.inRayDir)
+	{
+	}
+
 	constexpr __forceinline__ __device__ __host__ PackedInteraction(const HitInfo& _hitInfo, const Vec3& _inRayDir) :
 		hitInfo(_hitInfo),
 		inRayDir(_inRayDir)
@@ -123,7 +129,7 @@ struct Interaction
 #endif
 
 		// Exit if mesh data invalid
-		if (meshSbtData == nullptr)
+		if (meshSbtData == nullptr || !valid)
 		{
 			valid = false;
 			return;
@@ -162,28 +168,9 @@ struct Interaction
 		const HitInfo hitInfo(valid ? meshSbtData : nullptr, instanceId, primitiveIdx, baryCoord);
 		return PackedInteraction(hitInfo, inRayDir);
 	}
-};
 
-//struct InteractionSeed
-//{
-//	glm::vec3 pos;
-//	Vec3 inDir;
-//
-//	__forceinline__ __device__ __host__ InteractionSeed() :
-//		pos(0.0f),
-//		inDir(0.0f)
-//	{
-//	}
-//
-//	constexpr __forceinline__ __device__ __host__ InteractionSeed(const glm::vec3& _pos, const Vec3& _inDir) :
-//		pos(_pos),
-//		inDir(_inDir)
-//	{
-//	}
-//
-//	__forceinline__ __device__ __host__ InteractionSeed(const Interaction& interaction) :
-//		pos(interaction.pos),
-//		inDir(interaction.inRayDir)
-//	{
-//	}
-//};
+	constexpr __forceinline__ __device__ __host__ bool IsValid() const
+	{
+		return valid;
+	}
+};

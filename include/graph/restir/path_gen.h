@@ -95,15 +95,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			//
 			prefix.p *= params.neeProb;
 
-			//
-			if (!postRecon)
-			{
-				prefix.reconInt = interaction;
-				prefix.SetReconIdx(prefix.GetLength());
-				prefix.reconOutDir = currentDir;
-				postRecon = true;
-			}
-
 			// NEE
 			bool validEmitterFound = false;
 			size_t neeCounter = 0;
@@ -133,6 +124,26 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 				// If emitter is not occluded -> end NEE
 				else
 				{
+					// Create interaction at light source
+					if (!postRecon)
+					{
+						TraceWithDataPointer<Interaction>(
+							params.traversableHandle,
+							currentPos,
+							currentDir,
+							1e-3f,
+							1e16f,
+							params.surfaceTraceParams,
+							interaction);
+						if (interaction.valid)
+						{
+							prefix.reconInt = interaction;
+							prefix.SetReconIdx(prefix.GetLength());
+							prefix.reconOutDir = currentDir;
+							postRecon = true;
+						}
+					}
+
 					// Calc brdf
 					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 						interaction.meshSbtData->evalMaterialSbtIdx,
