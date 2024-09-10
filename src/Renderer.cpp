@@ -475,6 +475,7 @@ void Renderer::RunImGuiPrefixStats()
 	const float avgNeighCount = static_cast<float>(stats.totalNeighCount) / static_cast<float>(m_Width * m_Height * (m_LaunchParams.restir.gatherN - 1));
 
 	ImGui::Checkbox("Show Prefix Entries", &m_LaunchParams.restir.showPrefixEntries);
+	ImGui::Checkbox("Show Prefix Entry Contrib", &m_LaunchParams.restir.showPrefixEntryContrib);
 	ImGui::Checkbox("Track Prefix Stats", &m_LaunchParams.restir.trackPrefixStats);
 	ImGui::Text("Min neighbor count: %d", stats.minNeighCount);
 	ImGui::Text("Max neighbor count: %d", stats.maxNeighCount);

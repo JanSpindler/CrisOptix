@@ -50,6 +50,7 @@ struct RestirParams
 
 	// Prefix stats
 	bool showPrefixEntries;
+	bool showPrefixEntryContrib;
 	bool trackPrefixStats;
 	CuBufferView<PrefixAccelStruct::Stats> prefixStats;
 };

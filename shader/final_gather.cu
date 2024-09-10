@@ -138,7 +138,20 @@ static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& 
 		params.restir.prefixEntriesTraceParams,
 		prefixSearchPayload);
 
-	return prefixSearchPayload.neighCount ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(0.0f);
+	if (prefixSearchPayload.neighCount == 0) { return glm::vec3(0.0f); }
+	if (!params.restir.showPrefixEntryContrib) { return glm::vec3(0.0f, 1.0f, 0.0f); }
+
+	// Sum suffix contrib
+	glm::vec3 contrib(0.0f);
+	const uint32_t k = params.restir.gatherM - 1;
+	const uint32_t offset = k * pixelIdx;
+	for (uint32_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
+	{
+		const uint32_t neighPixelIdx = params.restir.prefixNeighbors[offset + suffixIdx].pixelIdx;
+		const SuffixPath& suffix = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample;
+		contrib += suffix.f;
+	}
+	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
 }
 
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx)
