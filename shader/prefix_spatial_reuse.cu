@@ -8,7 +8,7 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixelCoord, PCG32& rng)
+static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixelCoord)
 {
 	// Assume: pixelCoord are valid
 
@@ -22,8 +22,11 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// Get canonical prefix
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[currPixelIdx];
-	if (!canonPrefix.IsValid()) { return false; }
+	if (!canonPrefix.IsValid() || !canonPrefix.primaryInt.IsValid()) { return false; }
 	const float canonPHat = GetLuminance(canonPrefix.f);
+
+	// Get rng
+	PCG32& rng = params.restir.restirGBuffers[currPixelIdx].rng;
 
 	// Cache data from current reservoir and reset
 	const float currResWSum = currRes.wSum;
@@ -52,9 +55,6 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
 		if (!neighPrimaryInt.valid) { continue; }
 		
-		//
-		++validNeighCount;
-
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
 		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);
@@ -63,6 +63,9 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		float jacobianCanonToNeigh = 0.0f;
 		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonPrefix, neighPrefix, jacobianCanonToNeigh, params);
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
+
+		//
+		++validNeighCount;
 
 		// Calc neigh mis weight
 		const float neighMisWeight = neighRes.confidence * GetLuminance(neighPrefix.f) /
@@ -108,12 +111,11 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 	}
 
 	// Get rng
-	const uint32_t pixelIdx = launchIdx.y * launchDims.x + launchIdx.x;
-	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
-
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	
 	// Spatial prefix reuse
 	glm::vec3 outputRadiance(0.0f);
-	if (PrefixSpatialReuse(pixelCoord, rng) && params.rendererType == RendererType::RestirPt)
+	if (PrefixSpatialReuse(pixelCoord) && params.rendererType == RendererType::RestirPt)
 	{
 		// Get reservoir
 		const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];

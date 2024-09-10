@@ -34,23 +34,33 @@ struct CuBufferView
 	{
 	}
 
-	__host__ __device__ constexpr bool IsValid() const
+	__forceinline__ __host__ __device__ constexpr bool IsValid() const
 	{
 		return data != 0;
 	}
 
-	__host__ __device__ constexpr operator bool() const
+	__forceinline__ __host__ __device__ constexpr operator bool() const
 	{
 		return IsValid();
 	}
 
-	__host__ __device__ const T& operator[](const uint32_t idx) const
+	__forceinline__ __host__ __device__ T& Get(uint32_t idx, const char* file = "", const int line = -1) const
 	{
+		if (idx >= count)
+		{
+			printf("Illegal memory access (%s:%d): %d >= %d\n", file, line, idx, count);
+			idx = 0;
+		}
 		return *reinterpret_cast<T*>(data + idx * byteStride);
 	}
 
-	__host__ __device__ T& operator[](const uint32_t idx)
+	__forceinline__ __host__ __device__ const T& operator[](const uint32_t idx) const
 	{
-		return *reinterpret_cast<T*>(data + idx * byteStride);
+		return Get(idx);
+	}
+
+	__forceinline__ __host__ __device__ T& operator[](const uint32_t idx)
+	{
+		return Get(idx);
 	}
 };

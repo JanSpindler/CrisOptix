@@ -8,7 +8,15 @@ message("CMAKE_CURRENT_LIST_DIR is ${CMAKE_CURRENT_LIST_DIR}")
 set(CMAKE_CUDA_ARCHITECTURES 86)
 option(CUDA_GENERATE_DEPENDENCIES_DURING_CONFIGURE "Generate dependencies during configure time instead of only during build time." OFF)
 mark_as_advanced(CLEAR CUDA_64_BIT_DEVICE_CODE)
-set(CUDA_NVCC_FLAGS "--use_fast_math" "--expt-relaxed-constexpr" "-Wno-deprecated-gpu-targets" "--ptxas-options=-v" "--relocatable-device-code=true" "-Xcudafe=\"--diag_suppress=2886\"")
+set(CUDA_NVCC_FLAGS 
+	"--use_fast_math" 
+	"--expt-relaxed-constexpr" 
+	"-Wno-deprecated-gpu-targets" 
+	"--ptxas-options=-v" 
+	"--relocatable-device-code=true" 
+	"-Xcudafe=\"--diag_suppress=2886\""
+	"-G"
+	"-lineinfo")
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} CACHE STRING "Semi-colon delimit multiple arguments." FORCE)
 
 set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})

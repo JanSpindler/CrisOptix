@@ -18,7 +18,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	jacobian = 0.0f;
 
 	//
-	if (!currPrefix.IsValid() || otherPrefix.IsValid()) { return glm::vec3(0.0f); }
+	if (!currPrefix.IsValid() || !otherPrefix.IsValid()) { return glm::vec3(0.0f); }
 
 	// Get current primary interaction
 	const Interaction currPrimaryInt(currPrefix.primaryInt, params.transforms);
@@ -47,16 +47,9 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 		if (brdf.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
 		throughput *= brdf.brdfVal;
 
-		// Recon dir
-		const glm::vec3& reconDir = brdf.outDir;
-		
 		// Trace new interaction
-		const glm::vec3 oldPos = currInt.pos;
-		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, reconDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
+		TraceWithDataPointer<Interaction>(params.traversableHandle, currInt.pos, brdf.outDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
 		if (!currInt.valid) { return glm::vec3(0.0f); }
-
-		// Trace occlusion
-		if (TraceOcclusion(oldPos, reconDir, 1e-3f, glm::distance(oldPos, currInt.pos), params)) { return glm::vec3(0.0f); }
 	}
 
 	// Final reconnection segment
@@ -65,7 +58,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
-	if (reconLen == INFINITY || glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
+	if (glm::isinf(reconLen) || glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
 	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
 
 	// Brdf eval 1
@@ -90,7 +83,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	// Jacobian inverse shift
 	jacobian = CalcReconnectionJacobian(
 		currPrimaryInt.pos,
-		otherPrimaryInt.pos,
+		currInt.pos,
 		currReconInt.pos,
 		currReconInt.normal);
 

@@ -135,14 +135,14 @@ struct Interaction
 
 		// Indices of triangle vertices in the mesh
 		const glm::uvec3 indices(
-			meshSbtData->indices[primitiveIdx * 3 + 0],
-			meshSbtData->indices[primitiveIdx * 3 + 1],
-			meshSbtData->indices[primitiveIdx * 3 + 2]);
+			meshSbtData->indices.Get(primitiveIdx * 3 + 0, __FILE__, __LINE__),
+			meshSbtData->indices.Get(primitiveIdx * 3 + 1, __FILE__, __LINE__),
+			meshSbtData->indices.Get(primitiveIdx * 3 + 2, __FILE__, __LINE__));
 
 		// Vertices
-		const Vertex& v0 = meshSbtData->vertices[indices.x];
-		const Vertex& v1 = meshSbtData->vertices[indices.y];
-		const Vertex& v2 = meshSbtData->vertices[indices.z];
+		const Vertex& v0 = meshSbtData->vertices.Get(indices.x, __FILE__, __LINE__);
+		const Vertex& v1 = meshSbtData->vertices.Get(indices.y, __FILE__, __LINE__);
+		const Vertex& v2 = meshSbtData->vertices.Get(indices.z, __FILE__, __LINE__);
 
 		// Interpolate
 		pos = InterpolateBary<glm::vec3>(baryCoord, v0.pos, v1.pos, v2.pos);

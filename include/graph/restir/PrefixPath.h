@@ -67,7 +67,8 @@ struct PrefixPath
 		postReconF(other.postReconF),
 		p(other.p),
 		lastInt(other.lastInt),
-		reconOutDir(other.reconOutDir)
+		reconOutDir(other.reconOutDir),
+		pathLen(other.pathLen)
 	{
 	}
 
