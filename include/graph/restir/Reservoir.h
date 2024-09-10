@@ -25,8 +25,10 @@ struct Reservoir
 		confidence = 0.0f;
 	}
 
-	__forceinline__ __host__ __device__ bool Update(const T& _sample, const float risWeight, PCG32& rng)
+	__forceinline__ __host__ __device__ bool Update(const T& _sample, float risWeight, PCG32& rng)
 	{
+		if (glm::isnan(risWeight) || glm::isinf(risWeight)) { risWeight = 0.0f; }
+
 		wSum += risWeight;
 		
 		confidence += 1.0f;

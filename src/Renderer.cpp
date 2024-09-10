@@ -50,7 +50,7 @@ Renderer::Renderer(
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
-	m_LaunchParams.restir.gatherRadius = 0.01f;
+	m_LaunchParams.restir.gatherRadius = 0.03f;
 	m_LaunchParams.restir.gatherRadiusType = PrefixRadiusType::Constant;
 
 	m_LaunchParams.restir.trackPrefixStats = false;

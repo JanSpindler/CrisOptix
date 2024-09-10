@@ -8,7 +8,7 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixelCoord, PCG32& rng)
+static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixelCoord, PCG32& rng)
 {
 	// Assume: pixelCoord are valid
 
@@ -18,11 +18,11 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 	// Get current prefix
 	Reservoir<PrefixPath>& currRes = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
 	const PrefixPath& currPrefix = currRes.sample;
-	if (!currPrefix.IsValid()) { return; }
+	if (!currPrefix.IsValid()) { return false; }
 
 	// Get canonical prefix
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[currPixelIdx];
-	if (!canonPrefix.IsValid()) { return; }
+	if (!canonPrefix.IsValid()) { return false; }
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
 	// Cache data from current reservoir and reset
@@ -86,6 +86,8 @@ static __forceinline__ __device__ void PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// Stream result of temporal reuse into reservoir again
 	currRes.Update(currPrefix, canonRisWeight, rng);
+
+	return true;
 }
 
 extern "C" __global__ void __raygen__prefix_spatial_reuse()
@@ -106,5 +108,25 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
 
 	// Spatial prefix reuse
-	PrefixSpatialReuse(pixelCoord, rng);
+	glm::vec3 outputRadiance(0.0f);
+	if (PrefixSpatialReuse(pixelCoord, rng) && params.rendererType == RendererType::RestirPt)
+	{
+		// Get reservoir
+		const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+		const glm::vec3& f = prefixRes.sample.f;
+		outputRadiance = prefixRes.wSum * f / GetLuminance(f);
+	}
+
+	// Display if restir pt
+	if (params.rendererType != RendererType::RestirPt) { return; }
+	if (params.enableAccum)
+	{
+		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+		const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+		params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+	}
+	else
+	{
+		params.outputBuffer[pixelIdx] = outputRadiance;
+	}
 }

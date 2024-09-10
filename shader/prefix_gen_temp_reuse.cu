@@ -9,7 +9,7 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ void PrefixGenTempReuse(
+static __forceinline__ __device__ bool PrefixGenTempReuse(
 	const glm::uvec2& pixelCoord,
 	const glm::uvec2& prevPixelCoord,
 	const glm::vec3& origin, 
@@ -23,6 +23,7 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	const uint32_t prefixLen = params.rendererType == RendererType::RestirPt ? 8 : params.restir.prefixLen;
 	TracePrefix(params.restir.canonicalPrefixes[pixelIdx], origin, dir, prefixLen, rng, params);
 	const PrefixPath& canonPrefix = params.restir.canonicalPrefixes[pixelIdx];
+	if (!canonPrefix.primaryInt.IsValid()) { return false; }
 	const float canonPHat = GetLuminance(canonPrefix.f);
 
 	// Get current reservoir and reset it
@@ -34,7 +35,7 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	{
 		// Skip temporal reuse
 		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
-		return;
+		return true;
 	}
 
 	// Get prev reservoir and prev prefix
@@ -49,7 +50,7 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 		skipBecauseOfNee) // Do not reuse prefixes that wont generate suffixes
 	{
 		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
-		return;
+		return true;
 	}
 
 	// Temp reuse
@@ -83,6 +84,8 @@ static __forceinline__ __device__ void PrefixGenTempReuse(
 	{
 		//printf("Prev Prefix\n");
 	}
+
+	return true;
 }
 
 extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
@@ -124,7 +127,30 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
 
 		//
-		PrefixGenTempReuse(pixelCoord, prevPixelCoord, origin, dir, rng);
+		const bool validPrimaryInt = PrefixGenTempReuse(pixelCoord, prevPixelCoord, origin, dir, rng);
+		if (params.rendererType == RendererType::RestirPt && !params.restir.prefixEnableSpatial)
+		{
+			// Get reservoir
+			if (validPrimaryInt)
+			{
+				const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+				const glm::vec3& f = prefixRes.sample.f;
+				outputRadiance = prefixRes.wSum * f / GetLuminance(f);
+			}
+
+			// Display if restir pt
+			if (glm::any(glm::isinf(outputRadiance) || glm::isnan(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
+			if (params.enableAccum)
+			{
+				const glm::vec3 oldVal = params.outputBuffer[pixelIdx];
+				const float blendFactor = 1.0f / static_cast<float>(params.frameIdx + 1);
+				params.outputBuffer[pixelIdx] = blendFactor * outputRadiance + (1.0f - blendFactor) * oldVal;
+			}
+			else
+			{
+				params.outputBuffer[pixelIdx] = outputRadiance;
+			}
+		}
 
 		// Store restir g buffer
 		params.restir.restirGBuffers[pixelIdx] = RestirGBuffer(prevPixelCoord, rng);
