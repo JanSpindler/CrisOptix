@@ -17,7 +17,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// Get current prefix
 	Reservoir<PrefixPath>& currRes = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
-	const PrefixPath& currPrefix = currRes.sample;
+	const PrefixPath currPrefix = currRes.sample;
 	if (!currPrefix.IsValid()) { return false; }
 
 	// Get canonical prefix
@@ -33,6 +33,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 	// RIS with pairwise MIS weights
 	const int neighCount = params.restir.prefixSpatialCount;
 	float canonMisWeight = 0.0f;
+	uint32_t validNeighCount = 0;
 
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
@@ -51,6 +52,9 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
 		if (!neighPrimaryInt.valid) { continue; }
 		
+		//
+		++validNeighCount;
+
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
 		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);
@@ -66,6 +70,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighPrefix.f));
 		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
+		//printf("%f\n", GetLuminance(fFromCanonOfNeigh));
 
 		// Stream neigh into res
 		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng))
@@ -83,7 +88,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// Calc canon ris weight
 	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
-
+	
 	// Stream result of temporal reuse into reservoir again
 	currRes.Update(currPrefix, canonRisWeight, rng);
 

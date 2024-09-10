@@ -9,7 +9,7 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t WINDOW_RADIUS = 3;
+static constexpr uint32_t WINDOW_RADIUS = 10;
 static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
 
 static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
@@ -29,7 +29,7 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const float term2 = glm::dot(targetPos - oldXi, targetPos - oldXi);
 	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
 	const float result = term1 * term2 / term3;
-	if (result > 2.0f || glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
+	if (result > 100.0f || glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
 	return result;
 }
 
@@ -94,6 +94,15 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		{
 			//
 			prefix.p *= params.neeProb;
+
+			//
+			if (!postRecon)
+			{
+				prefix.reconInt = interaction;
+				prefix.SetReconIdx(prefix.GetLength());
+				prefix.reconOutDir = currentDir;
+				postRecon = true;
+			}
 
 			// NEE
 			bool validEmitterFound = false;
@@ -165,7 +174,8 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		// Check if this interaction can be a reconnection interaction
 		const bool intCanRecon = 
 			glm::distance(currentPos, interaction.pos) > params.restir.reconMinDistance && 
-			brdfSampleResult.roughness > params.restir.reconMinRoughness;
+			brdfSampleResult.roughness > params.restir.reconMinRoughness &&
+			prefix.GetLength() > 1;
 
 		// Store as reconnection vertex if fit
 		if (!postRecon && intCanRecon)
@@ -332,7 +342,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			{
 				suffix.reconInt = interaction;
 				suffix.SetReconIdx(suffix.GetLength());
-				suffix.reconOutDir = brdfSampleResult.outDir;
+				suffix.reconOutDir = currentDir;
 				postRecon = true;
 			}
 

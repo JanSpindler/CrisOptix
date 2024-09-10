@@ -15,7 +15,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 
 	// Get current suffix
 	Reservoir<SuffixPath>& currRes = params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
-	const SuffixPath& currSuffix = currRes.sample;
+	const SuffixPath currSuffix = currRes.sample;
 	if (!currSuffix.IsValid()) { return; }
 
 	// Get canonical suffix
