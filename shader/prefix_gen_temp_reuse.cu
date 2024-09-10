@@ -78,7 +78,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	// Stream prev samples
 	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevPrefix.f);
 	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
-	const PrefixPath shiftedPrevPrefix(prevPrefix, glm::vec3(0.0f), canonPrefix.primaryInt);
+	const PrefixPath shiftedPrevPrefix(prevPrefix, fFromCanonOfPrev, canonPrefix.primaryInt);
 	if (currRes.Update(shiftedPrevPrefix, prevRisWeight, rng))
 	{
 		//printf("Prev Prefix\n");

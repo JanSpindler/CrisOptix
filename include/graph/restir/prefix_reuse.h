@@ -88,7 +88,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 		currReconInt.normal);
 
 	// Inverse shifted p hat
-	const glm::vec3 shiftedF = throughput * currPrefix.postReconF;
+	const glm::vec3 shiftedF = glm::max(glm::vec3(0.0f), throughput * currPrefix.postReconF);
 
 	//
 	return shiftedF;

@@ -72,7 +72,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 		// Calc neigh mis weight
 		const float neighMisWeight = neighRes.confidence * GetLuminance(neighPrefix.f) /
-			(currResConfidence * GetLuminance(fFromCanonOfNeigh) + 
+			(currResConfidence * GetLuminance(fFromCanonOfNeigh) +
 				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighPrefix.f));
 		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian

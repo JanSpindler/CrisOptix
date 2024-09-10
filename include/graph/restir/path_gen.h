@@ -29,8 +29,8 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const float term2 = glm::dot(targetPos - oldXi, targetPos - oldXi);
 	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
 	const float result = term1 * term2 / term3;
-	if (result > 100.0f || glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
-	return result;
+	if (glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
+	return glm::max(0.0f, result);
 }
 
 static __forceinline__ __device__ PrefixPath TracePrefix(
