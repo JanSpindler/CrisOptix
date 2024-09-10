@@ -54,6 +54,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 	Interaction interaction{};
 
 	// Trace
+	bool postRecon = false;
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
@@ -81,9 +82,6 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		{
 			prefix.primaryInt = interaction;
 		}
-
-		// TODO: Also include roughness
-		const bool postRecon = prefix.GetLength() > 1;
 
 		// Decide if NEE or continue PT
 		if (rng.NextFloat() < params.neeProb)
@@ -158,16 +156,18 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			break;
 		}
 
+		// Check if this interaction can be a reconnection interaction
+		const bool intCanRecon = 
+			glm::distance(currentPos, interaction.pos) > params.restir.reconMinDistance && 
+			brdfSampleResult.roughness > params.restir.reconMinRoughness;
+
 		// Store as reconnection vertex if fit
-		if (postRecon && prefix.GetReconIdx() == 0)
+		if (!postRecon && intCanRecon)
 		{
 			prefix.reconInt = interaction;
 			prefix.SetReconIdx(prefix.GetLength());
 			prefix.reconOutDir = brdfSampleResult.outDir;
-		}
-		else if (postRecon)
-		{
-			prefix.postReconF *= brdfSampleResult.brdfVal;
+			postRecon = true;
 		}
 
 		currentPos = interaction.pos;
@@ -175,6 +175,7 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 
 		prefix.f *= brdfSampleResult.brdfVal;
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+		if (postRecon) { prefix.postReconF *= brdfSampleResult.brdfVal; }
 	}
 
 	prefix.lastInt = interaction;

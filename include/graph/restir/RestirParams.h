@@ -10,7 +10,8 @@
 struct RestirParams
 {
 	// General
-	float roughnessLimit;
+	float reconMinRoughness;
+	float reconMinDistance;
 
 	// Prefix
 	int prefixLen;

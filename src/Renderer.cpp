@@ -34,7 +34,8 @@ Renderer::Renderer(
 	m_LaunchParams.neeProb = 0.3f;
 	
 	//
-	m_LaunchParams.restir.roughnessLimit = 0.5f;
+	m_LaunchParams.restir.reconMinDistance = 0.5f;
+	m_LaunchParams.restir.reconMinRoughness = 0.5f;
 
 	m_LaunchParams.restir.prefixLen = 2;
 	m_LaunchParams.restir.prefixEnableTemporal = false;
@@ -391,7 +392,8 @@ void Renderer::RunImGuiSettings()
 
 	// Restir
 	ImGui::Checkbox("Enable Restir", &m_LaunchParams.enableRestir);
-	ImGui::DragFloat("Roughness Limit", &m_LaunchParams.restir.roughnessLimit, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Min Recon Distance", &m_LaunchParams.restir.reconMinDistance, 0.01f, 0.0f, 4.0f);
+	ImGui::DragFloat("Min Recon Roughness", &m_LaunchParams.restir.reconMinRoughness, 0.01f, 0.0f, 1.0f);
 
 	// Restir Prefix
 	ImGui::Text("Restir Prefix");
