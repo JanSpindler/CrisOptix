@@ -30,13 +30,13 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	if (!currReconInt.valid) { return glm::vec3(0.0f); }
 
 	// Hybrid shift
-	const uint32_t reconVertCount = glm::max<int>(otherSuffix.GetReconIdx() - 2, 0);
+	const uint32_t reconVertCount = glm::max<int>(otherSuffix.GetReconIdx() - 1, 0);
 	Interaction& currInt = otherLastPrefixInt;
 	PCG32 otherRng = otherSuffix.rng;
 	glm::vec3 throughput(1.0f);
 	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
 	{
-		printf("%d\n", otherSuffix.GetReconIdx());
+		//printf("%d\n", otherSuffix.GetReconIdx());
 
 		// Sampled brdf
 		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
