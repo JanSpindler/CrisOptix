@@ -4,7 +4,6 @@
 #include <graph/LaunchParams.h>
 #include <graph/trace.h>
 #include <graph/restir/path_gen.h>
-#include <graph/restir/ris_helper.h>
 #include <graph/restir/ShfitResult.h>
 
 // Shifts current prefix into others domain and evaluates the f of the old domain

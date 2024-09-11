@@ -2,7 +2,6 @@
 
 #include <cuda_runtime.h>
 #include <graph/LaunchParams.h>
-#include <graph/restir/ris_helper.h>
 #include <graph/restir/path_gen.h>
 #include <graph/trace.h>
 #include <graph/restir/ShfitResult.h>

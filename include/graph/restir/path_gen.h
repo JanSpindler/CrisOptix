@@ -9,13 +9,50 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t WINDOW_RADIUS = 10;
+static constexpr uint32_t WINDOW_RADIUS = 5;
 static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
+
+static constexpr __forceinline__ __device__ float ComputeCanonicalPairwiseMISWeight(
+	const glm::vec3& basisPathContributionAtBasis, 
+	const glm::vec3& basisPathContributionAtNeighbor, 
+	const float basisPathToNeighborJacobian,
+	const float pairwiseK, 
+	const float canonicalM, 
+	const float neighborM)
+{
+	float misWeightBasisPath = 1.f;
+
+	if (GetLuminance(basisPathContributionAtBasis) > 0.f)
+	{
+		float atBasisTerm = GetLuminance(basisPathContributionAtBasis) * canonicalM;
+		misWeightBasisPath = atBasisTerm / (atBasisTerm + GetLuminance(basisPathContributionAtNeighbor) * basisPathToNeighborJacobian * neighborM * pairwiseK);
+	}
+	return misWeightBasisPath;
+}
+
+static constexpr __forceinline__ __device__ __host__ float ComputeNeighborPairwiseMISWeight(
+	const glm::vec3& neighborPathContributionAtBasis, 
+	const glm::vec3& neighborPathContributionAtNeighbor,
+	const float neighborPathToBasisJacobian, 
+	const float pairwiseK, 
+	const float canonicalM, 
+	const float neighborM)
+{
+	float misWeightNeighborPath = 0.f;
+	if (GetLuminance(neighborPathContributionAtNeighbor) > 0.f)
+	{
+		misWeightNeighborPath = GetLuminance(neighborPathContributionAtNeighbor) * neighborM /
+			(GetLuminance(neighborPathContributionAtNeighbor) * neighborM + GetLuminance(neighborPathContributionAtBasis) * neighborPathToBasisJacobian * canonicalM / pairwiseK);
+	}
+	return misWeightNeighborPath;
+}
 
 static constexpr __forceinline__ __device__ glm::uvec2 SelectSpatialNeighbor(const glm::uvec2& pixelCoord, PCG32& rng)
 {
 	const uint32_t xCoord = (pixelCoord.x + WINDOW_RADIUS) - (rng.NextUint32() % WINDOW_SIZE);
 	const uint32_t yCoord = (pixelCoord.y + WINDOW_RADIUS) - (rng.NextUint32() % WINDOW_SIZE);
+	const glm::uvec2 result(xCoord, yCoord);
+	if (result == pixelCoord) return pixelCoord + glm::uvec2(1);
 	return glm::uvec2(xCoord, yCoord);
 }
 
@@ -30,6 +67,7 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
 	const float result = term1 * term2 / term3;
 	if (glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
+	if (result > 4.0f) { return 0.0f; }
 	return glm::max(0.0f, result);
 }
 
@@ -96,77 +134,57 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			prefix.p *= params.neeProb;
 
 			// NEE
-			bool validEmitterFound = false;
-			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < params.neeTries)
+			// Sample light source
+			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+			const float distance = glm::length(emitterSample.pos - interaction.pos);
+
+			// Cast shadow ray
+			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, distance, params))
 			{
-				//
-				++neeCounter;
+				prefix.SetValid(false);
+				prefix.SetNee(false);
+				break;
+			}
 
-				// Sample light source
-				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
-				const float distance = glm::length(emitterSample.pos - interaction.pos);
-
-				// Cast shadow ray
-				const bool occluded = TraceOcclusion(
-					interaction.pos,
-					lightDir,
+			// Create interaction at light source
+			if (!postRecon)
+			{
+				TraceWithDataPointer<Interaction>(
+					params.traversableHandle,
+					currentPos,
+					currentDir,
 					1e-3f,
-					distance,
-					params);
-
-				// If emitter is occluded -> skip
-				if (occluded)
+					1e16f,
+					params.surfaceTraceParams,
+					interaction);
+				if (interaction.valid)
 				{
-					validEmitterFound = false;
+					prefix.reconInt = interaction;
+					prefix.SetReconIdx(prefix.GetLength());
+					prefix.reconOutDir = currentDir;
+					postRecon = true;
 				}
-				// If emitter is not occluded -> end NEE
 				else
 				{
-					// Create interaction at light source
-					if (!postRecon)
-					{
-						TraceWithDataPointer<Interaction>(
-							params.traversableHandle,
-							currentPos,
-							currentDir,
-							1e-3f,
-							1e16f,
-							params.surfaceTraceParams,
-							interaction);
-						if (interaction.valid)
-						{
-							prefix.reconInt = interaction;
-							prefix.SetReconIdx(prefix.GetLength());
-							prefix.reconOutDir = currentDir;
-							postRecon = true;
-						}
-					}
-
-					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-						interaction.meshSbtData->evalMaterialSbtIdx,
-						interaction,
-						lightDir);
-					
-					prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-					if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
-
-					if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission; }
-
-					prefix.SetNee(true);
-					prefix.SetValid(true);
-
-					validEmitterFound = true;
+					prefix.SetValid(false);
+					break;
 				}
 			}
 
-			if (!validEmitterFound)
-			{
-				prefix.SetNee(false);
-				prefix.SetValid(false);
-			}
+			// Calc brdf
+			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
+				interaction.meshSbtData->evalMaterialSbtIdx,
+				interaction,
+				lightDir);
+					
+			prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+			if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+
+			if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission; }
+
+			prefix.SetNee(true);
+			prefix.SetValid(true);
 
 			break;
 		}
@@ -248,65 +266,44 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		suffix.p *= params.neeProb;
 
 		// NEE
-		bool validEmitterFound = false;
-		size_t neeCounter = 0;
-		while (!validEmitterFound && neeCounter < params.neeTries)
+		// Sample light source
+		const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+		const glm::vec3 lightDir = glm::normalize(emitterSample.pos - lastPrefixInt.pos);
+		const float distance = glm::length(emitterSample.pos - lastPrefixInt.pos);
+
+		// Cast shadow ray
+		if (TraceOcclusion(lastPrefixInt.pos, lightDir, 1e-3f, distance, params))
 		{
-			//
-			++neeCounter;
-
-			// Sample light source
-			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - lastPrefixInt.pos);
-			const float distance = glm::length(emitterSample.pos - lastPrefixInt.pos);
-
-			// Cast shadow ray
-			const bool occluded = TraceOcclusion(
-				lastPrefixInt.pos,
-				lightDir,
-				1e-3f,
-				distance,
-				params);
-
-			// If emitter is occluded -> skip
-			if (occluded)
-			{
-				validEmitterFound = false;
-			}
-			// If emitter is not occluded -> end NEE
-			else
-			{
-				// Trace surface interaction at emitter to store as reconInteraction
-				TraceWithDataPointer<Interaction>(
-					params.traversableHandle,
-					lastPrefixInt.pos,
-					lightDir,
-					1e-3f,
-					distance + 1.0f,
-					params.surfaceTraceParams,
-					interaction);
-				if (!interaction.valid)
-				{
-					suffix.SetValid(false);
-					return suffix;
-				}
-				suffix.reconInt = interaction;
-
-				// Calc brdf
-				const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-					lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
-					lastPrefixInt,
-					lightDir);
-
-				suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-				suffix.postReconF = suffix.f;
-
-				suffix.SetValid(false);
-				validEmitterFound = true;
-			}
+			suffix.SetValid(false);
+			return suffix;
 		}
 
-		if (!validEmitterFound) { suffix.SetValid(false); }
+		// Trace surface interaction at emitter to store as reconInteraction
+		TraceWithDataPointer<Interaction>(
+			params.traversableHandle,
+			lastPrefixInt.pos,
+			lightDir,
+			1e-3f,
+			distance + 1.0f,
+			params.surfaceTraceParams,
+			interaction);
+		if (!interaction.valid)
+		{
+			suffix.SetValid(false);
+			return suffix;
+		}
+		suffix.reconInt = interaction;
+
+		// Calc brdf
+		const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
+			lastPrefixInt.meshSbtData->evalMaterialSbtIdx,
+			lastPrefixInt,
+			lightDir);
+
+		suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+		suffix.postReconF = suffix.f;
+
+		suffix.SetValid(true);
 		return suffix;
 	}
 
@@ -354,59 +351,54 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			//
 			suffix.p *= params.neeProb;
 
-			//
+			// NEE
+			// Sample light source
+			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+			const float distance = glm::length(emitterSample.pos - interaction.pos);
+
+			// Cast shadow ray
+			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, distance, params))
+			{
+				suffix.SetValid(false);
+				return suffix;
+			}
+
+			// Create interaction at light source
 			if (!postRecon)
 			{
-				suffix.reconInt = interaction;
-				suffix.SetReconIdx(suffix.GetLength());
-				suffix.reconOutDir = currentDir;
-				postRecon = true;
-			}
-
-			// NEE
-			bool validEmitterFound = false;
-			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < params.neeTries)
-			{
-				//
-				++neeCounter;
-
-				// Sample light source
-				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
-				const float distance = glm::length(emitterSample.pos - interaction.pos);
-
-				// Cast shadow ray
-				const bool occluded = TraceOcclusion(
-					interaction.pos,
-					lightDir,
+				TraceWithDataPointer<Interaction>(
+					params.traversableHandle,
+					currentPos,
+					currentDir,
 					1e-3f,
-					distance,
-					params);
-
-				// If emitter is occluded -> skip
-				if (occluded)
+					1e16f,
+					params.surfaceTraceParams,
+					interaction);
+				if (interaction.valid)
 				{
-					validEmitterFound = false;
+					suffix.reconInt = interaction;
+					suffix.SetReconIdx(prefix.GetLength());
+					suffix.reconOutDir = currentDir;
+					postRecon = true;
 				}
-				// If emitter is not occluded -> end NEE
 				else
 				{
-					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-						interaction.meshSbtData->evalMaterialSbtIdx,
-						interaction,
-						lightDir);
-
-					suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-					suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color;
-
-					suffix.SetValid(true);
-					validEmitterFound = true;
+					suffix.SetValid(false);
+					return suffix;
 				}
 			}
 
-			if (!validEmitterFound) { suffix.SetValid(false); }
+			// Calc brdf
+			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
+				interaction.meshSbtData->evalMaterialSbtIdx,
+				interaction,
+				lightDir);
+
+			suffix.f *= brdfEvalResult.brdfResult * emitterSample.color;
+			suffix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color;
+
+			suffix.SetValid(true);
 			return suffix;
 		}
 
@@ -489,45 +481,22 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 			throughput /= params.neeProb;
 			
 			// NEE
-			bool validEmitterFound = false;
-			size_t neeCounter = 0;
-			while (!validEmitterFound && neeCounter < params.neeTries)
-			{
-				//
-				++neeCounter;
+			// Sample light source
+			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+			const float distance = glm::length(emitterSample.pos - interaction.pos);
 
-				// Sample light source
-				const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
-				const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
-				const float distance = glm::length(emitterSample.pos - interaction.pos);
+			// Cast shadow ray
+			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, distance, params)) { return glm::vec3(0.0f); }
 
-				// Cast shadow ray
-				const bool occluded = TraceOcclusion(
-					interaction.pos,
-					lightDir,
-					1e-3f,
-					distance,
-					params);
-
-				// If emitter is occluded -> skip
-				if (occluded)
-				{
-					validEmitterFound = false;
-				}
-				// If emitter is not occluded -> end NEE
-				else
-				{
-					// Calc brdf
-					const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-						interaction.meshSbtData->evalMaterialSbtIdx,
-						interaction,
-						lightDir);
-					radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
-					if (currentDepth == 1) { radiance += brdfEvalResult.emission; }
-
-					validEmitterFound = true;
-				}
-			}
+			// If emitter is not occluded -> end NEE
+			// Calc brdf
+			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
+				interaction.meshSbtData->evalMaterialSbtIdx,
+				interaction,
+				lightDir);
+			radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
+			if (currentDepth == 1) { radiance += brdfEvalResult.emission; }
 
 			break;
 		}

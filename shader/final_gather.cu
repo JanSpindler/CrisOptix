@@ -16,6 +16,9 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const SuffixPath& suffix,
 	const float suffixUcwSrcDomain)
 {
+	//
+	if (!suffix.IsValid()) { return { glm::vec3(0.0f), 0.0f }; }
+
 	// Get last prefix interaction
 	if (!prefixLastInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
 
@@ -30,8 +33,6 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	glm::vec3 throughput(1.0f);
 	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
 	{
-		//printf("%d\n", otherSuffix.GetReconIdx());
-
 		// Sampled brdf
 		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			currInt.meshSbtData->sampleMaterialSbtIdx,
@@ -40,16 +41,10 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 		if (brdf.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
 		throughput *= brdf.brdfVal;
 
-		// Recon dir
-		const glm::vec3& reconDir = brdf.outDir;
-
 		// Trace new interaction
 		const glm::vec3 oldPos = currInt.pos;
-		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, reconDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
+		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, brdf.outDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
 		if (!currInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
-
-		// Trace occlusion
-		if (TraceOcclusion(oldPos, reconDir, 1e-3f, glm::distance(oldPos, currInt.pos), params)) { return { glm::vec3(0.0f), 0.0f }; }
 	}
 
 	// Trace occlusion

@@ -19,7 +19,6 @@ struct LaunchParams
 	CameraData cameraData;
 
 	float neeProb;
-	int neeTries;
 	bool enableAccum;
 	int maxPathLen;
 

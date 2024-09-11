@@ -4,7 +4,6 @@
 #include <graph/LaunchParams.h>
 #include <graph/restir/path_gen.h>
 #include <util/pixel_index.h>
-#include <graph/restir/ris_helper.h>
 #include <graph/restir/prefix_reuse.h>
 
 __constant__ LaunchParams params;
@@ -65,9 +64,9 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
 	const float pFromPrevOfPrev = GetLuminance(prevPrefix.f);
 
-	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
-	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
-
+	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (1.0f * pFromCanonOfCanon + prevRes.confidence * pFromPrevOfCanon);
+	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (1.0f * pFromCanonOfPrev + prevRes.confidence * pFromPrevOfPrev);
+	
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;
 	if (currRes.Update(canonPrefix, canonRisWeight, rng))

@@ -37,11 +37,15 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 	const int neighCount = params.restir.prefixSpatialCount;
 	float canonMisWeight = 0.0f;
 	uint32_t validNeighCount = 0;
+	uint32_t validNeighFlags = 0;
 
+	// Count valid neighbors
+	glm::uvec2 neighPixelCoords[MAX_SPATIAL_NEIGH_COUNT];
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Select new neighbor
-		const glm::uvec2 neighPixelCoord = SelectSpatialNeighbor(pixelCoord, rng);
+		neighPixelCoords[neighIdx] = SelectSpatialNeighbor(pixelCoord, rng);
+		const glm::uvec2& neighPixelCoord = neighPixelCoords[neighIdx];
 		if (!IsPixelValid(neighPixelCoord, params)) { continue; }
 		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
 
@@ -58,6 +62,28 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
 		if (!neighPrimaryInt.valid) { continue; }
 
+		// Mark neigh as valid
+		++validNeighCount;
+		validNeighFlags |= 1 << neighIdx;
+	}
+
+	// Perform reuse with valid neighbors
+	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
+	{
+		// Skip if not marked as valid
+		if (!((validNeighFlags >> neighIdx) & 1)) { continue; }
+
+		// Select new neighbor
+		const glm::uvec2& neighPixelCoord = neighPixelCoords[neighIdx];
+		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
+
+		// Get neighbor res and prefix
+		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const PrefixPath& neighPrefix = neighRes.sample;
+
+		// Get neighbor primary hit
+		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
+
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
 		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);
@@ -67,13 +93,13 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonPrefix, neighPrefix, jacobianCanonToNeigh, params);
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
 
-		//
-		++validNeighCount;
-
 		// Calc neigh mis weight
-		const float neighMisWeight = neighRes.confidence * GetLuminance(neighPrefix.f) /
-			(currResConfidence * GetLuminance(fFromCanonOfNeigh) +
-				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighPrefix.f));
+		const float neighMisWeight = ComputeNeighborPairwiseMISWeight(
+			fFromCanonOfNeigh, 
+			neighPrefix.f, 
+			jacobianNeighToCanon, 1.0f, 
+			currRes.confidence, 
+			neighRes.confidence);
 		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
 
@@ -84,19 +110,23 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		}
 
 		// Update canonical mis weight
-		canonMisWeight += (currResConfidence * canonPHat) / 
-			((currResConfidence * canonPHat) + 
-				(neighRes.confidence * static_cast<float>(neighCount) * pFromNeighOfCanon));
+		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
+			canonPrefix.f, 
+			fFromNeighOfCanon, 
+			jacobianCanonToNeigh, 
+			1.0f, 
+			currRes.confidence, 
+			neighRes.confidence);
 	}
 
-	canonMisWeight /= static_cast<float>(neighCount);
+	canonMisWeight /= static_cast<float>(validNeighCount + 1);
 
 	// Calc canon ris weight
 	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
 	
 	// Stream result of temporal reuse into reservoir again
 	currRes.Update(currPrefix, canonRisWeight, rng);
-
+	
 	return true;
 }
 

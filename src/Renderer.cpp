@@ -400,8 +400,6 @@ void Renderer::RunImGuiSettings()
 
 	// General rendering
 	ImGui::DragFloat("NEE Prob", &m_LaunchParams.neeProb, 0.01f, 0.0f, 1.0f);
-	ImGui::InputInt("NEE Tries", &m_LaunchParams.neeTries, 1, 4);
-	m_LaunchParams.neeTries = std::max<int>(1, m_LaunchParams.neeTries);
 	ImGui::InputInt("Max Path Len", &m_LaunchParams.maxPathLen, 1, 1);
 	m_LaunchParams.maxPathLen = std::max<int>(1, m_LaunchParams.maxPathLen);
 	ImGui::Checkbox("Enable Accum", &m_LaunchParams.enableAccum);
@@ -425,7 +423,7 @@ void Renderer::RunImGuiSettings()
 		ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
 		ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
 		ImGui::InputInt("Prefix Spatial Count", &m_LaunchParams.restir.prefixSpatialCount);
-		m_LaunchParams.restir.prefixSpatialCount = std::max<int>(0, m_LaunchParams.restir.prefixSpatialCount);
+		m_LaunchParams.restir.prefixSpatialCount = std::clamp<int>(m_LaunchParams.restir.prefixSpatialCount, 0, MAX_SPATIAL_NEIGH_COUNT);
 
 		// Conditional restir
 		if (m_LaunchParams.rendererType == RendererType::ConditionalRestir)
@@ -435,7 +433,7 @@ void Renderer::RunImGuiSettings()
 			ImGui::Checkbox("Suffix Enable Temporal", &m_LaunchParams.restir.suffixEnableTemporal);
 			ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
 			ImGui::InputInt("Suffix Spatial Count", &m_LaunchParams.restir.suffixSpatialCount);
-			m_LaunchParams.restir.suffixSpatialCount = std::max<int>(0, m_LaunchParams.restir.suffixSpatialCount);
+			m_LaunchParams.restir.suffixSpatialCount = std::clamp<int>(m_LaunchParams.restir.suffixSpatialCount, 0, MAX_SPATIAL_NEIGH_COUNT);
 
 			// Restir final gather
 			ImGui::Text("Restir Final Gather");
