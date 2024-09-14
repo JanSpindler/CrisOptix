@@ -198,7 +198,7 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 				params.restir.prefixEntriesTraceParams,
 				prefixSearchPayload);
 			const uint32_t neighCount = prefixSearchPayload.neighCount;
-			const float misWeight = 1.0f / static_cast<float>(neighCount + 1.0f);
+			const float misWeight = 1.0f / static_cast<float>(neighCount + 1);
 
 			// Set mis weight for canonical suffix
 			if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }

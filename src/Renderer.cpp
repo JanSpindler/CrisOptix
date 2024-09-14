@@ -40,18 +40,20 @@ Renderer::Renderer(
 	m_LaunchParams.restir.reconMinRoughness = 0.2f;
 
 	m_LaunchParams.restir.prefixLen = 2;
-	m_LaunchParams.restir.prefixEnableTemporal = false;
+	m_LaunchParams.restir.prefixEnableTemporal = true;
 	m_LaunchParams.restir.prefixEnableSpatial = false;
 	m_LaunchParams.restir.prefixSpatialCount = 1;
+	m_LaunchParams.restir.prefixSpatialRounds = 1;
 
-	m_LaunchParams.restir.suffixEnableTemporal = false;
-	m_LaunchParams.restir.suffixEnableSpatial = false;
+	m_LaunchParams.restir.suffixEnableTemporal = true;
+	m_LaunchParams.restir.suffixEnableSpatial = true;
 	m_LaunchParams.restir.suffixSpatialCount = 1;
+	m_LaunchParams.restir.suffixSpatialRounds = 1;
 
 	m_LaunchParams.restir.gatherN = 1;
 	m_LaunchParams.restir.gatherM = 1;
 	m_LaunchParams.restir.gatherRadius = 0.03f;
-	m_LaunchParams.restir.gatherRadiusType = PrefixRadiusType::Constant;
+	m_LaunchParams.restir.gatherRadiusType = PrefixRadiusType::PathLength;
 
 	m_LaunchParams.restir.trackPrefixStats = false;
 
@@ -227,6 +229,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		m_LaunchParams.restir.frontBufferIdx = 0;
 		m_LaunchParams.restir.backBufferIdx = 1;
 	}
+	m_LaunchParams.restir.spatialRoundIdx = 0;
 
 	m_LaunchParams.restir.prefixReservoirs = CuBufferView<Reservoir<PrefixPath>>(m_PrefixReservoirs.GetCuPtr(), m_PrefixReservoirs.GetCount());
 	m_LaunchParams.restir.canonicalPrefixes = CuBufferView<PrefixPath>(m_CanonicalPrefixes.GetCuPtr(), m_CanonicalPrefixes.GetCount());
@@ -270,15 +273,22 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 		// Prefix spatial reuse
 		if (m_LaunchParams.restir.prefixEnableSpatial && m_LaunchParams.restir.prefixSpatialCount > 0)
 		{
-			ASSERT_OPTIX(optixLaunch(
-				m_PrefixSpatialReusePipeline.GetHandle(),
-				0,
-				m_LaunchParamsBuf.GetCuPtr(),
-				m_LaunchParamsBuf.GetByteSize(),
-				m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
-				m_Width,
-				m_Height,
-				1));
+			for (size_t spatialRoundIdx = 0; spatialRoundIdx < m_LaunchParams.restir.prefixSpatialRounds; ++spatialRoundIdx)
+			{
+				m_LaunchParams.restir.spatialRoundIdx = spatialRoundIdx;
+				m_LaunchParamsBuf.Upload(&m_LaunchParams);
+				ASSERT_CUDA(cudaDeviceSynchronize());
+
+				ASSERT_OPTIX(optixLaunch(
+					m_PrefixSpatialReusePipeline.GetHandle(),
+					0,
+					m_LaunchParamsBuf.GetCuPtr(),
+					m_LaunchParamsBuf.GetByteSize(),
+					m_Sbt.GetSBT(m_PrefixSpatialReuseSbtIdx),
+					m_Width,
+					m_Height,
+					1));
+			}
 		}
 		m_PostPrefixSpatialReuseEvent.Record();
 
@@ -300,15 +310,22 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 			// Suffix spatial reuse
 			if (m_LaunchParams.restir.suffixEnableSpatial && m_LaunchParams.restir.suffixSpatialCount > 0)
 			{
-				ASSERT_OPTIX(optixLaunch(
-					m_SuffixSpatialReusePipeline.GetHandle(),
-					0,
-					m_LaunchParamsBuf.GetCuPtr(),
-					m_LaunchParamsBuf.GetByteSize(),
-					m_Sbt.GetSBT(m_SuffixSpatialReuseSbtIdx),
-					m_Width,
-					m_Height,
-					1));
+				for (size_t spatialRoundIdx = 0; spatialRoundIdx < m_LaunchParams.restir.suffixSpatialRounds; ++spatialRoundIdx)
+				{
+					m_LaunchParams.restir.spatialRoundIdx = spatialRoundIdx;
+					m_LaunchParamsBuf.Upload(&m_LaunchParams);
+					ASSERT_CUDA(cudaDeviceSynchronize());
+
+					ASSERT_OPTIX(optixLaunch(
+						m_SuffixSpatialReusePipeline.GetHandle(),
+						0,
+						m_LaunchParamsBuf.GetCuPtr(),
+						m_LaunchParamsBuf.GetByteSize(),
+						m_Sbt.GetSBT(m_SuffixSpatialReuseSbtIdx),
+						m_Width,
+						m_Height,
+						1));
+				}
 			}
 			m_PostSuffixSpatialReuseEvent.Record();
 
@@ -423,6 +440,7 @@ void Renderer::RunImGuiSettings()
 		ImGui::Checkbox("Prefix Enable Temporal", &m_LaunchParams.restir.prefixEnableTemporal);
 		ImGui::Checkbox("Prefix Enable Spatial", &m_LaunchParams.restir.prefixEnableSpatial);
 		ImGui::InputInt("Prefix Spatial Count", &m_LaunchParams.restir.prefixSpatialCount);
+		ImGui::InputInt("Prefix Spatial Rounds", &m_LaunchParams.restir.prefixSpatialRounds);
 		m_LaunchParams.restir.prefixSpatialCount = std::clamp<int>(m_LaunchParams.restir.prefixSpatialCount, 0, MAX_SPATIAL_NEIGH_COUNT);
 
 		// Conditional restir
@@ -433,6 +451,7 @@ void Renderer::RunImGuiSettings()
 			ImGui::Checkbox("Suffix Enable Temporal", &m_LaunchParams.restir.suffixEnableTemporal);
 			ImGui::Checkbox("Suffix Enable Spatial", &m_LaunchParams.restir.suffixEnableSpatial);
 			ImGui::InputInt("Suffix Spatial Count", &m_LaunchParams.restir.suffixSpatialCount);
+			ImGui::InputInt("Suffix Spatial Rounds", &m_LaunchParams.restir.suffixSpatialRounds);
 			m_LaunchParams.restir.suffixSpatialCount = std::clamp<int>(m_LaunchParams.restir.suffixSpatialCount, 0, MAX_SPATIAL_NEIGH_COUNT);
 
 			// Restir final gather

@@ -139,8 +139,8 @@ int main()
     std::cout << "Hello there" << std::endl;
 
     // Settings
-    static constexpr uint32_t width = 1600;
-    static constexpr uint32_t height = 900;
+    static constexpr uint32_t width = 800;
+    static constexpr uint32_t height = 800;
     static constexpr size_t pixelCount = width * height;
 
     // Init
@@ -154,7 +154,7 @@ int main()
 
     // Camera
     Camera cam(
-        glm::vec3(0.0f, 1.0f, 4.0f),
+        glm::vec3(0.0f, 1.0f, 2.7f),
         glm::vec3(0.0f, 0.0f, -1.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         static_cast<float>(width) / static_cast<float>(height),

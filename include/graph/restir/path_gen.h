@@ -67,7 +67,7 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
 	const float result = term1 * term2 / term3;
 	if (glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
-	if (result > 4.0f) { return 0.0f; }
+	//if (result > 4.0f) { return 0.0f; }
 	return glm::max(0.0f, result);
 }
 

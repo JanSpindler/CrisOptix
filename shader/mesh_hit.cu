@@ -35,6 +35,12 @@ extern "C" __global__ void __closesthit__mesh()
 	si->instanceId = optixGetInstanceId();
 	si->primitiveIdx = primIdx;
 
+	if (primIdx >= sbtData->indices.count / 3)
+	{
+		si->valid = false;
+		return;
+	}
+
 	// Store bary coord
 	si->baryCoord = baryCoord;
 

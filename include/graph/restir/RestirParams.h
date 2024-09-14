@@ -13,17 +13,20 @@ struct RestirParams
 	// General
 	float reconMinRoughness;
 	float reconMinDistance;
+	int spatialRoundIdx;
 
 	// Prefix
 	int prefixLen;
 	bool prefixEnableTemporal;
 	bool prefixEnableSpatial;
 	int prefixSpatialCount;
+	int prefixSpatialRounds;
 
 	// Suffix
 	bool suffixEnableTemporal;
 	bool suffixEnableSpatial;
 	int suffixSpatialCount;
+	int suffixSpatialRounds;
 
 	// Final gather
 	int gatherN;

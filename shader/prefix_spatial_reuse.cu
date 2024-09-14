@@ -53,7 +53,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		if (!params.restir.restirGBuffers[neighPixelIdx].primaryIntValid) { continue; }
 
 		// Get neighbor res and prefix
-		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.backBufferIdx];
 		const PrefixPath& neighPrefix = neighRes.sample;
 		const bool skipBecauseOfNee = params.rendererType == RendererType::ConditionalRestir && neighPrefix.IsNee();
 		if (!neighPrefix.IsValid() || skipBecauseOfNee) { continue; }
@@ -78,7 +78,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
 
 		// Get neighbor res and prefix
-		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const Reservoir<PrefixPath>& neighRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.backBufferIdx];
 		const PrefixPath& neighPrefix = neighRes.sample;
 
 		// Get neighbor primary hit
@@ -94,14 +94,15 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
 
 		// Calc neigh mis weight
-		const float neighMisWeight = ComputeNeighborPairwiseMISWeight(
-			fFromCanonOfNeigh, 
-			neighPrefix.f, 
-			jacobianNeighToCanon, 1.0f, 
-			currRes.confidence, 
-			neighRes.confidence);
-		const float neighUcw = neighRes.wSum / GetLuminance(neighPrefix.f);
-		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
+		//const float neighMisWeight = ComputeNeighborPairwiseMISWeight(
+		//	fFromCanonOfNeigh, 
+		//	neighPrefix.f, 
+		//	jacobianNeighToCanon, 
+		//	1.0f, 
+		//	currRes.confidence, 
+		//	neighRes.confidence);
+		const float neighMisWeight = 1.0f / static_cast<float>(validNeighCount + 1);
+		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighRes.wSum;
 
 		// Stream neigh into res
 		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng))
@@ -110,23 +111,27 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		}
 
 		// Update canonical mis weight
-		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
-			canonPrefix.f, 
-			fFromNeighOfCanon, 
-			jacobianCanonToNeigh, 
-			1.0f, 
-			currRes.confidence, 
-			neighRes.confidence);
+		//canonMisWeight += ComputeCanonicalPairwiseMISWeight(
+		//	canonPrefix.f, 
+		//	fFromNeighOfCanon, 
+		//	jacobianCanonToNeigh, 
+		//	1.0f, 
+		//	currRes.confidence, 
+		//	neighRes.confidence);
 	}
 
-	canonMisWeight /= static_cast<float>(validNeighCount + 1);
+	//canonMisWeight /= static_cast<float>(validNeighCount + 1);
+	canonMisWeight = 1.0f / static_cast<float>(validNeighCount + 1);
 
 	// Calc canon ris weight
-	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
+	const float canonRisWeight = canonMisWeight * currResWSum * GetLuminance(currPrefix.f);
 	
 	// Stream result of temporal reuse into reservoir again
 	currRes.Update(currPrefix, canonRisWeight, rng);
 	
+	// Finalize GRIS
+	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
+
 	return true;
 }
 
@@ -153,11 +158,14 @@ extern "C" __global__ void __raygen__prefix_spatial_reuse()
 		// Get reservoir
 		const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
 		const glm::vec3& f = prefixRes.sample.f;
-		outputRadiance = prefixRes.wSum * f / GetLuminance(f);
+		outputRadiance = prefixRes.wSum * f;
 	}
 
+	params.restir.prefixReservoirs[2 * pixelIdx + params.restir.backBufferIdx] =
+		params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+
 	// Display if restir pt
-	if (params.rendererType != RendererType::RestirPt) { return; }
+	if (params.rendererType != RendererType::RestirPt || params.restir.spatialRoundIdx != params.restir.prefixSpatialRounds - 1) { return; }
 	if (params.enableAccum)
 	{
 		const glm::vec3 oldVal = params.outputBuffer[pixelIdx];

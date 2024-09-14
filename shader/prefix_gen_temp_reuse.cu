@@ -33,6 +33,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	{
 		// Skip temporal reuse
 		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
+		currRes.FinalizeGRIS();
 		return true;
 	}
 
@@ -48,6 +49,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 		skipBecauseOfNee) // Do not reuse prefixes that wont generate suffixes
 	{
 		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
+		currRes.FinalizeGRIS();
 		return true;
 	}
 
@@ -75,13 +77,15 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	}
 
 	// Stream prev samples
-	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevPrefix.f);
-	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
+	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevRes.wSum;
 	const PrefixPath shiftedPrevPrefix(prevPrefix, fFromCanonOfPrev, canonPrefix.primaryInt);
 	if (currRes.Update(shiftedPrevPrefix, prevRisWeight, rng))
 	{
 		//printf("Prev Prefix\n");
 	}
+
+	// Finalize GRIS
+	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
 
 	return true;
 }
@@ -133,7 +137,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 			{
 				const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
 				const glm::vec3& f = prefixRes.sample.f;
-				outputRadiance = prefixRes.wSum * f / GetLuminance(f);
+				outputRadiance = prefixRes.wSum * f;
 			}
 
 			// Display if restir pt
@@ -147,6 +151,14 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 			{
 				params.outputBuffer[pixelIdx] = outputRadiance;
 			}
+		}
+
+		// Copy front to back reservoir for spatial reuse
+		if ((params.rendererType == RendererType::RestirPt && params.restir.prefixEnableSpatial) ||
+			(params.rendererType == RendererType::ConditionalRestir && params.restir.suffixEnableSpatial))
+		{
+			params.restir.prefixReservoirs[2 * pixelIdx + params.restir.backBufferIdx] = 
+				params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
 		}
 
 		// Store restir g buffer
