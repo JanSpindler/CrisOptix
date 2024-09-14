@@ -35,7 +35,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 	// RIS with pairwise MIS weights
 	const int neighCount = params.restir.prefixSpatialCount;
-	float canonMisWeight = 0.0f;
+	float canonMisWeight = 1.0f;
 	uint32_t validNeighCount = 0;
 	uint32_t validNeighFlags = 0;
 
@@ -86,51 +86,49 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
-		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, canonPrefix, jacobianNeighToCanon, params);
+		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighPrefix, currPrefix, jacobianNeighToCanon, params);
 		const float pFromCanonOfNeigh = GetLuminance(fFromCanonOfNeigh) * jacobianNeighToCanon;
 
 		float jacobianCanonToNeigh = 0.0f;
-		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonPrefix, neighPrefix, jacobianCanonToNeigh, params);
+		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(currPrefix, neighPrefix, jacobianCanonToNeigh, params);
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
 
 		// Calc neigh mis weight
-		//const float neighMisWeight = ComputeNeighborPairwiseMISWeight(
-		//	fFromCanonOfNeigh, 
-		//	neighPrefix.f, 
-		//	jacobianNeighToCanon, 
-		//	1.0f, 
-		//	currRes.confidence, 
-		//	neighRes.confidence);
-		const float neighMisWeight = 1.0f / static_cast<float>(validNeighCount + 1);
+		float neighMisWeight = GetLuminance(neighPrefix.f) / jacobianNeighToCanon * neighRes.confidence
+			/ ((GetLuminance(neighPrefix.f) / jacobianNeighToCanon) * neighRes.confidence + GetLuminance(currPrefix.f) * currResConfidence / static_cast<float>(validNeighCount));
+		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
+
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighRes.wSum;
 
 		// Stream neigh into res
-		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng))
+		if (currRes.Update(PrefixPath(neighPrefix, fFromCanonOfNeigh, currPrefix.primaryInt), neighRisWeight, rng, neighRes.confidence))
 		{
 			//printf("Spatial Prefix\n");
 		}
 
-		// Update canonical mis weight
-		//canonMisWeight += ComputeCanonicalPairwiseMISWeight(
-		//	canonPrefix.f, 
-		//	fFromNeighOfCanon, 
-		//	jacobianCanonToNeigh, 
-		//	1.0f, 
-		//	currRes.confidence, 
-		//	neighRes.confidence);
+		if (pFromNeighOfCanon > 0.0f)
+		{
+			float subtract = 
+				pFromNeighOfCanon * neighRes.confidence / 
+				(pFromNeighOfCanon * neighRes.confidence + currResConfidence * GetLuminance(currPrefix.f) / static_cast<float>(validNeighCount));
+			if (glm::isnan(subtract) || glm::isinf(subtract)) { subtract = 0.0f; }
+			canonMisWeight -= subtract;
+		}
 	}
 
-	//canonMisWeight /= static_cast<float>(validNeighCount + 1);
-	canonMisWeight = 1.0f / static_cast<float>(validNeighCount + 1);
-
 	// Calc canon ris weight
+	if (glm::isinf(canonMisWeight) || glm::isnan(canonMisWeight)) { canonMisWeight = 0.0f; }
 	const float canonRisWeight = canonMisWeight * currResWSum * GetLuminance(currPrefix.f);
 	
 	// Stream result of temporal reuse into reservoir again
-	currRes.Update(currPrefix, canonRisWeight, rng);
+	if (!currRes.Update(currPrefix, canonRisWeight, rng, currResConfidence)) {  }
 	
 	// Finalize GRIS
-	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
+	if (currRes.wSum > 0.0f)
+	{
+		currRes.wSum /= static_cast<float>(validNeighCount + 1);
+		currRes.FinalizeGRIS(); 
+	}
 
 	return true;
 }

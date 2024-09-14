@@ -38,6 +38,8 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	glm::vec3 throughput(1.0f);
 	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
 	{
+		//printf("%d, %d\n", otherPrefix.GetLength(), otherPrefix.GetReconIdx());
+
 		// Sampled brdf
 		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			currInt.meshSbtData->sampleMaterialSbtIdx,

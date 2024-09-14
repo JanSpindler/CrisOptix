@@ -68,7 +68,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
 
 		// Stream neigh into res
-		if (currRes.Update(SuffixPath(neighSuffix, currSuffix.lastPrefixInt, fFromCanonOfNeigh), neighRisWeight, rng))
+		if (currRes.Update(SuffixPath(neighSuffix, currSuffix.lastPrefixInt, fFromCanonOfNeigh), neighRisWeight, rng, neighRes.confidence))
 		{
 			//printf("Spatial Suffix\n");
 		}
@@ -85,7 +85,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
 
 	// Stream result of temporal reuse into reservoir again
-	currRes.Update(currSuffix, canonRisWeight, rng);
+	currRes.Update(currSuffix, canonRisWeight, rng, currResConfidence);
 }
 
 extern "C" __global__ void __raygen__suffix_spatial_reuse()

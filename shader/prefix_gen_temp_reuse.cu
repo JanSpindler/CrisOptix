@@ -32,7 +32,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	if (!params.restir.prefixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
 	{
 		// Skip temporal reuse
-		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
+		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng, 1.0f);
 		currRes.FinalizeGRIS();
 		return true;
 	}
@@ -48,7 +48,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 		!prevPrefix.IsValid() || // Do not reuse invalid prefixes
 		skipBecauseOfNee) // Do not reuse prefixes that wont generate suffixes
 	{
-		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng);
+		currRes.Update(canonPrefix, canonPHat / canonPrefix.p, rng, 1.0f);
 		currRes.FinalizeGRIS();
 		return true;
 	}
@@ -71,7 +71,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;
-	if (currRes.Update(canonPrefix, canonRisWeight, rng))
+	if (currRes.Update(canonPrefix, canonRisWeight, rng, 1.0f))
 	{
 		//printf("Curr Prefix\n");
 	}
@@ -79,7 +79,7 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	// Stream prev samples
 	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevRes.wSum;
 	const PrefixPath shiftedPrevPrefix(prevPrefix, fFromCanonOfPrev, canonPrefix.primaryInt);
-	if (currRes.Update(shiftedPrevPrefix, prevRisWeight, rng))
+	if (currRes.Update(shiftedPrevPrefix, prevRisWeight, rng, prevRes.confidence))
 	{
 		//printf("Prev Prefix\n");
 	}

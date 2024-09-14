@@ -38,7 +38,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	// Skip temporal reuse if prev pixel is invalid or temporal reuse is not active
 	if (!params.restir.suffixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
 	{
-		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng);
+		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
 		return;
 	}
 
@@ -47,7 +47,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const SuffixPath& prevSuffix = prevRes.sample;
 	if (prevRes.wSum <= 0.0f || !prevSuffix.IsValid())
 	{
-		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng);
+		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
 		return;
 	}
 
@@ -69,7 +69,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonSuffix.p;
-	if (currRes.Update(canonSuffix, canonRisWeight, rng))
+	if (currRes.Update(canonSuffix, canonRisWeight, rng, 1.0f))
 	{
 		//printf("Curr Suffix\n");
 	}
@@ -78,7 +78,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevSuffix.f);
 	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
 	const SuffixPath shiftedPrevSuffix(prevSuffix, canonSuffix.lastPrefixInt, fFromCanonOfPrev);
-	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng))
+	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng, 1.0f))
 	{
 		//printf("Prev Suffix\n");
 	}

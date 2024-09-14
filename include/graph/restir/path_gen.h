@@ -9,7 +9,7 @@
 #include <optix_device.h>
 #include <graph/trace.h>
 
-static constexpr uint32_t WINDOW_RADIUS = 5;
+static constexpr uint32_t WINDOW_RADIUS = 10;
 static constexpr uint32_t WINDOW_SIZE = 2 * WINDOW_RADIUS + 1;
 
 static constexpr __forceinline__ __device__ float ComputeCanonicalPairwiseMISWeight(
@@ -67,7 +67,7 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	const float term3 = glm::dot(targetPos - newXi, targetPos - newXi);
 	const float result = term1 * term2 / term3;
 	if (glm::isinf(result) || glm::isnan(result)) { return 0.0f; }
-	//if (result > 4.0f) { return 0.0f; }
+	if (result > 4.0f) { return 0.0f; }
 	return glm::max(0.0f, result);
 }
 
@@ -201,10 +201,12 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		}
 
 		// Check if this interaction can be a reconnection interaction
+		const float reconDistance = glm::distance(currentPos, interaction.pos);
+		const float reconRoughness = brdfSampleResult.roughness;
 		const bool intCanRecon = 
-			glm::distance(currentPos, interaction.pos) > params.restir.reconMinDistance && 
-			brdfSampleResult.roughness > params.restir.reconMinRoughness &&
-			prefix.GetLength() > 1;
+			reconDistance > params.restir.reconMinDistance && 
+			reconRoughness > params.restir.reconMinRoughness &&
+			prefix.GetLength() >= 2;
 
 		// Store as reconnection vertex if fit
 		if (!postRecon && intCanRecon)

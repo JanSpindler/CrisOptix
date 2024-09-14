@@ -271,7 +271,7 @@ void Renderer::LaunchFrame(glm::vec3* outputBuffer)
 	if (m_LaunchParams.rendererType == RendererType::ConditionalRestir || m_LaunchParams.rendererType == RendererType::RestirPt)
 	{
 		// Prefix spatial reuse
-		if (m_LaunchParams.restir.prefixEnableSpatial && m_LaunchParams.restir.prefixSpatialCount > 0)
+		if (m_LaunchParams.restir.prefixEnableSpatial)
 		{
 			for (size_t spatialRoundIdx = 0; spatialRoundIdx < m_LaunchParams.restir.prefixSpatialRounds; ++spatialRoundIdx)
 			{
