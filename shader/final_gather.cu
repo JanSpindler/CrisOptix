@@ -250,7 +250,6 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 		{
 			outputRadiance += FinalGatherSinglePrefix(prefixIdx, pixelIdx, origin, dir, canonSuffixMisWeight, k, rng);
 		}
-
 		outputRadiance /= static_cast<float>(params.restir.gatherN);
 	}
 
