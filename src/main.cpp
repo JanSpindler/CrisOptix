@@ -172,7 +172,7 @@ int main()
     //const Model zeroDayModel("./data/model/ZeroDay_v1/MEASURE_SEVEN/MEASURE_SEVEN.fbx", false, SpecTexUsage::OccRoughMetal, optixDeviceContext);
     //const ModelInstance zeroDayInstance(zeroDayModel, glm::mat4(1.0f));
 
-#if 0
+#if 1
     const Model cornellModel("./data/model/Cornell/CornellBox-Original.obj", false, SpecTexUsage::Color, optixDeviceContext);
     const ModelInstance cornellInstance(cornellModel, glm::identity<glm::mat4>());
     const std::vector<const ModelInstance*> modelInstances = { &cornellInstance };

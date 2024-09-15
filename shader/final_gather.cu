@@ -11,20 +11,20 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
+static __forceinline__ __device__ glm::vec3 ShiftSuffix(
 	const Interaction& prefixLastInt,
 	const SuffixPath& suffix,
-	const float suffixUcwSrcDomain)
+	float& jacobian)
 {
-	//
-	if (!suffix.IsValid()) { return { glm::vec3(0.0f), 0.0f }; }
+	// Default val for jacobian
+	jacobian = 0.0f;
 
-	// Get last prefix interaction
-	if (!prefixLastInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+	// Check for valid suffix and prefix
+	if (!suffix.IsValid() || !prefixLastInt.valid) { return glm::vec3(0.0f); }
 
 	// Get suffix reconnection interaction
 	Interaction reconInt(suffix.reconInt, params.transforms);
-	if (!reconInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+	if (!reconInt.valid) { return glm::vec3(0.0f); }
 
 	// Hybrid shift
 	const uint32_t reconVertCount = glm::max<int>(suffix.GetReconIdx() - 1, 0);
@@ -38,13 +38,13 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 			currInt.meshSbtData->sampleMaterialSbtIdx,
 			currInt,
 			otherRng);
-		if (brdf.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+		if (brdf.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
 		throughput *= brdf.brdfVal;
 
 		// Trace new interaction
 		const glm::vec3 oldPos = currInt.pos;
 		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, brdf.outDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
-		if (!currInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+		if (!currInt.valid) { return glm::vec3(0.0f); }
 	}
 
 	// Trace occlusion
@@ -52,18 +52,18 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 	const float reconLen = glm::length(reconVec);
 	const glm::vec3 reconDir = glm::normalize(reconVec);
 
-	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return { glm::vec3(0.0f), 0.0f }; }
-	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return { glm::vec3(0.0f), 0.0f }; }
+	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
+	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
 
 	// Eval brdf at last prefix vert with new out dir
 	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 		currInt.meshSbtData->evalMaterialSbtIdx,
 		currInt,
 		reconDir);
-	if (brdfEvalResult1.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+	if (brdfEvalResult1.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
 	throughput *= brdfEvalResult1.brdfResult;
 
-	// 
+	// Set new dir for reconnection
 	reconInt.inRayDir = reconDir;
 
 	//
@@ -74,7 +74,7 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 			reconInt.meshSbtData->evalMaterialSbtIdx,
 			reconInt,
 			suffix.reconOutDir);
-		if (brdfEvalResult2.samplingPdf <= 0.0f) { return { glm::vec3(0.0f), 0.0f }; }
+		if (brdfEvalResult2.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
 		throughput *= brdfEvalResult2.brdfResult;
 	}
 
@@ -83,17 +83,17 @@ static __forceinline__ __device__ cuda::std::pair<glm::vec3, float> ShiftSuffix(
 
 	// Get suffix last prefix int
 	const Interaction suffixLastPrefixInt(suffix.lastPrefixInt, params.transforms);
-	if (!suffixLastPrefixInt.valid) { return { glm::vec3(0.0f), 0.0f }; }
+	if (!suffixLastPrefixInt.valid) { return glm::vec3(0.0f); }
 
 	// Calc jacobian
-	const float jacobian = CalcReconnectionJacobian(
+	jacobian = CalcReconnectionJacobian(
 		suffixLastPrefixInt.pos, 
 		currInt.pos,
 		reconInt.pos,
 		reconInt.normal);
 
 	// Return
-	return { radiance, suffixUcwSrcDomain * jacobian };
+	return radiance;
 }
 
 static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& launchIdx, const size_t pixelIdx)
@@ -223,12 +223,12 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 				const SuffixPath& neighSuffix = neighSuffixRes.sample;
 
 				// Shift suffix
-				const cuda::std::pair<glm::vec3, float> shiftedSuffix = ShiftSuffix(
+				float jacobian = 0.0f;
+				const glm::vec3 shiftedF = ShiftSuffix(
 					lastPrefixInt, 
 					neighSuffix, 
-					neighSuffixRes.wSum / GetLuminance(neighSuffix.f));
-				const glm::vec3& shiftedF = shiftedSuffix.first;
-				const float ucwSuffix = shiftedSuffix.second;
+					jacobian);
+				const float ucwSuffix = jacobian * neighSuffixRes.wSum;
 
 				// Add
 				suffixContrib += misWeight * shiftedF * ucwSuffix;

@@ -38,6 +38,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	// Skip temporal reuse if prev pixel is invalid or temporal reuse is not active
 	if (!params.restir.suffixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
 	{
+		currRes.FinalizeGRIS();
 		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
 		return;
 	}
@@ -47,6 +48,7 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const SuffixPath& prevSuffix = prevRes.sample;
 	if (prevRes.wSum <= 0.0f || !prevSuffix.IsValid())
 	{
+		currRes.FinalizeGRIS();
 		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
 		return;
 	}
@@ -82,6 +84,9 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	{
 		//printf("Prev Suffix\n");
 	}
+
+	// Finalize GRIS
+	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
 }
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()

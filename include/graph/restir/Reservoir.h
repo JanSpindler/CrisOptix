@@ -42,13 +42,6 @@ struct Reservoir
 		return false;
 	}
 
-	constexpr __forceinline__ __host__ __device__ void FinalizeRIS()
-	{
-		constexpr float pHat = GetLuminance(sample.f);
-		if (pHat == 0.0f || M == 0.0f) { wSum = 0.0f; }
-		else { wSum /= pHat * M; }
-	}
-
 	constexpr __forceinline__ __host__ __device__ void FinalizeGRIS()
 	{
 		const float pHat = GetLuminance(sample.f);
