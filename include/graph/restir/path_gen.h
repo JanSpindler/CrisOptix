@@ -261,8 +261,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	// Get last prefix interaction
 	Interaction interaction(prefix.lastInt, params.transforms);
 	if (!interaction.valid) { return suffix; }
-	glm::vec3 lastPos = interaction.pos;
-
+	
 	//
 	bool postRecon = false;
 	for (uint32_t vertIdx = 0; vertIdx < maxLen; ++vertIdx)
@@ -271,7 +270,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 		if (rng.NextFloat() < params.neeProb || vertIdx == maxLen - 1)
 		{
 			// Prob
-			suffix.p /= params.neeProb;
+			if (vertIdx != maxLen - 1) { suffix.p *= params.neeProb; }
 
 			// Sample light source
 			const EmitterSample emitter = SampleEmitter(rng, params.emitterTable);
@@ -321,17 +320,18 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 		// Sample brdf
 		const BrdfSampleResult brdfSampleResult = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
-				interaction.meshSbtData->sampleMaterialSbtIdx,
-				interaction,
-				rng);
+			interaction.meshSbtData->sampleMaterialSbtIdx,
+			interaction,
+			rng);
 		if (brdfSampleResult.samplingPdf <= 0.0f) { return suffix; }
 
 		// Update f and p
-		suffix.p /= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
+		suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 		suffix.f *= brdfSampleResult.brdfVal;
 		if (postRecon) { suffix.postReconF *= brdfSampleResult.brdfVal; }
 
 		// Trace new interaction
+		const glm::vec3 lastPos = interaction.pos;
 		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
 			lastPos,
@@ -361,12 +361,10 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			suffix.reconOutDir = brdfSampleResult.outDir;
 			postRecon = true;
 		}
-
-		// Update
-		lastPos = interaction.pos;
 	}
 
 	//
+	printf("Ho");
 	return suffix;
 }
 

@@ -88,7 +88,6 @@ static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
 
 	// Exit if k = 0
 	if (k == 0) { return canonContrib; }
-	printf("Hi\n");
 
 	// Get last prefix interaction
 	const Interaction lastPrefixInt(canonSuffix.lastPrefixInt, params.transforms);
