@@ -88,7 +88,8 @@ static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
 
 	// Exit if k = 0
 	if (k == 0) { return canonContrib; }
-	
+	printf("Hi\n");
+
 	// Get last prefix interaction
 	const Interaction lastPrefixInt(canonSuffix.lastPrefixInt, params.transforms);
 
@@ -192,6 +193,11 @@ static __forceinline__ __device__ glm::vec3 FinalGatherNotCanon(
 	const uint32_t k,
 	PCG32& rng)
 {
+	printf("Hi\n");
+
+	// Exit if k = 0
+	if (k == 0) { return glm::vec3(0.0f); }
+
 	// Trace new prefix for pixel q
 	Interaction lastPrefixInt{};
 	glm::vec3 prefixThroughput(0.0f);

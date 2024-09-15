@@ -30,17 +30,20 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	// Hybrid shift
 	const uint32_t reconVertCount = glm::max<int>(srcSuffix.GetReconIdx() - 1, 0);
 	Interaction currInt = dstLastPrefixInt;
-	PCG32 otherRng = srcSuffix.rng;
+	PCG32 srcRng = srcSuffix.rng;
 	glm::vec3 throughput(1.0f);
 	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
 	{
 		//printf("%d\n", otherSuffix.GetReconIdx());
 
+		// Dummy rng because of NEE
+		srcRng.NextFloat();
+
 		// Sampled brdf
 		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
 			currInt.meshSbtData->sampleMaterialSbtIdx,
 			currInt,
-			otherRng);
+			srcRng);
 		if (brdf.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
 		throughput *= brdf.brdfVal;
 
