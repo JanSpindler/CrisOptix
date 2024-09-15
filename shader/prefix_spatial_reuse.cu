@@ -68,6 +68,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 	}
 
 	// Perform reuse with valid neighbors
+	const float validNeighCountF = static_cast<float>(validNeighCount);
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Skip if not marked as valid
@@ -93,9 +94,17 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(currPrefix, neighPrefix, jacobianCanonToNeigh, params);
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
 
+		const float pFromCanonOfCanon = GetLuminance(currPrefix.f);
+		const float pFromNeighOfNeigh = GetLuminance(neighPrefix.f);
+
 		// Calc neigh mis weight
 		float neighMisWeight = GetLuminance(neighPrefix.f) / jacobianNeighToCanon * neighRes.confidence
-			/ ((GetLuminance(neighPrefix.f) / jacobianNeighToCanon) * neighRes.confidence + GetLuminance(currPrefix.f) * currResConfidence / static_cast<float>(validNeighCount));
+			/ ((GetLuminance(neighPrefix.f) / jacobianNeighToCanon) * neighRes.confidence + GetLuminance(currPrefix.f) * currResConfidence / static_cast<float>(neighCount));
+
+		//float neighMisWeight = (pFromNeighOfNeigh * neighRes.confidence) / (
+		//	(1.0f * pFromCanonOfNeigh * currResConfidence) + 
+		//	(validNeighCountF * pFromNeighOfNeigh * neighRes.confidence));
+
 		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
 
 		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighRes.wSum;
@@ -106,11 +115,12 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 			//printf("Spatial Prefix\n");
 		}
 
+		canonMisWeight += 1.0f;
 		if (pFromNeighOfCanon > 0.0f)
 		{
 			float subtract = 
 				pFromNeighOfCanon * neighRes.confidence / 
-				(pFromNeighOfCanon * neighRes.confidence + currResConfidence * GetLuminance(currPrefix.f) / static_cast<float>(validNeighCount));
+				(pFromNeighOfCanon * neighRes.confidence + currResConfidence * GetLuminance(currPrefix.f) / static_cast<float>(neighCount));
 			if (glm::isnan(subtract) || glm::isinf(subtract)) { subtract = 0.0f; }
 			canonMisWeight -= subtract;
 		}
@@ -121,7 +131,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 	const float canonRisWeight = canonMisWeight * currResWSum * GetLuminance(currPrefix.f);
 	
 	// Stream result of temporal reuse into reservoir again
-	if (!currRes.Update(currPrefix, canonRisWeight, rng, currResConfidence)) {  }
+	currRes.Update(currPrefix, canonRisWeight, rng, currResConfidence);
 	
 	// Finalize GRIS
 	if (currRes.wSum > 0.0f)
