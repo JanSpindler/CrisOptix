@@ -8,6 +8,7 @@
 #include <graph/restir/path_gen.h>
 #include <cuda/std/tuple>
 #include <device_atomic_functions.hpp>
+#include <graph/restir/suffix_reuse.h>
 
 __constant__ LaunchParams params;
 
@@ -64,97 +65,130 @@ static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& 
 	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
 }
 
-static __forceinline__ __device__ glm::vec3 ShiftSuffixFG(
-	const Interaction& prefixLastInt,
-	const SuffixPath& suffix,
-	float& jacobian)
+static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
+	const uint32_t pixelIdx,
+	const glm::vec3& origin,
+	const glm::vec3& dir,
+	const uint32_t k,
+	PCG32& rng)
 {
-	// Default val for jacobian
-	jacobian = 0.0f;
+	// Trace canon prefix
+	PrefixPath canonPrefix{};
+	TracePrefix(canonPrefix, origin, dir, rng, params);
+	if (!canonPrefix.IsValid()) { return glm::vec3(0.0f); }
 
-	// Check for valid suffix and prefix
-	if (!suffix.IsValid() || !prefixLastInt.valid) { return glm::vec3(0.0f); }
+	// Exit if canon has nee
+	if (canonPrefix.IsNee()) { return canonPrefix.f / canonPrefix.p; }
 
-	// Get suffix reconnection interaction
-	Interaction reconInt(suffix.reconInt, params.transforms);
-	if (!reconInt.valid) { return glm::vec3(0.0f); }
+	// Trace canon suffix
+	SuffixPath canonSuffix{};
+	TraceSuffix(canonSuffix, canonPrefix, rng, params);
+	if (!canonSuffix.IsValid()) { return glm::vec3(0.0f); }
+	const glm::vec3 canonContrib = canonPrefix.f * canonSuffix.f / (canonPrefix.p * canonSuffix.p);
 
-	// Hybrid shift
-	const uint32_t reconVertCount = glm::max<int>(suffix.GetReconIdx() - 1, 0);
-	Interaction currInt = prefixLastInt;
-	PCG32 otherRng = suffix.rng;
-	glm::vec3 throughput(1.0f);
-	for (uint32_t idx = 0; idx < reconVertCount; ++idx)
+	// Exit if k = 0
+	if (k == 0) { return canonContrib; }
+	
+	// Get last prefix interaction
+	const Interaction lastPrefixInt(canonSuffix.lastPrefixInt, params.transforms);
+
+	// Find k neighboring prefixes in world space
+	static constexpr float EPSILON = 1e-16f;
+	PrefixSearchPayload prefixSearchPayload(pixelIdx);
+	TraceWithDataPointer<PrefixSearchPayload>(
+		params.restir.prefixEntriesTraversHandle,
+		lastPrefixInt.pos,
+		glm::vec3(EPSILON),
+		0.0f,
+		EPSILON,
+		params.restir.prefixEntriesTraceParams,
+		prefixSearchPayload);
+	const uint32_t neighCount = prefixSearchPayload.neighCount;
+
+	// Track prefix stats
+	if (params.restir.trackPrefixStats)
 	{
-		// Sampled brdf
-		const BrdfSampleResult brdf = optixDirectCall<BrdfSampleResult, const Interaction&, PCG32&>(
-			currInt.meshSbtData->sampleMaterialSbtIdx,
-			currInt,
-			otherRng);
-		if (brdf.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
-		throughput *= brdf.brdfVal;
-
-		// Trace new interaction
-		const glm::vec3 oldPos = currInt.pos;
-		TraceWithDataPointer<Interaction>(params.traversableHandle, oldPos, brdf.outDir, 1e-3f, 1e16f, params.surfaceTraceParams, currInt);
-		if (!currInt.valid) { return glm::vec3(0.0f); }
+		atomicMin(&params.restir.prefixStats[0].minNeighCount, neighCount);
+		atomicMax(&params.restir.prefixStats[0].maxNeighCount, neighCount);
+		atomicAdd(&params.restir.prefixStats[0].totalNeighCount, neighCount);
 	}
 
-	// Trace occlusion
-	const glm::vec3 reconVec = reconInt.pos - currInt.pos;
-	const float reconLen = glm::length(reconVec);
-	const glm::vec3 reconDir = glm::normalize(reconVec);
-
-	if (glm::any(glm::isinf(reconDir) || glm::isnan(reconDir))) { return glm::vec3(0.0f); }
-	if (TraceOcclusion(currInt.pos, reconDir, 1e-3f, reconLen, params)) { return glm::vec3(0.0f); }
-
-	// Eval brdf at last prefix vert with new out dir
-	const BrdfEvalResult brdfEvalResult1 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-		currInt.meshSbtData->evalMaterialSbtIdx,
-		currInt,
-		reconDir);
-	if (brdfEvalResult1.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
-	throughput *= brdfEvalResult1.brdfResult;
-
-	// Set new dir for reconnection
-	reconInt.inRayDir = reconDir;
-
-	//
-	if (suffix.GetReconIdx() > 0)
+	// Count valid neighbors
+	uint32_t validNeighCount = 0;
+	uint32_t validNeighFlags = 0;
+	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
-		// Eval brdf at suffix recon vertex
-		const BrdfEvalResult brdfEvalResult2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
-			reconInt.meshSbtData->evalMaterialSbtIdx,
-			reconInt,
-			suffix.reconOutDir);
-		if (brdfEvalResult2.samplingPdf <= 0.0f) { return glm::vec3(0.0f); }
-		throughput *= brdfEvalResult2.brdfResult;
+		// Get neighbor pixel index
+		const uint32_t neighPixelIdx = prefixSearchPayload.GetNeighbor(neighIdx, params).pixelIdx;
+
+		// Check if neigh suffix is valid
+		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const SuffixPath& neighSuffix = neighSuffixRes.sample;
+		if (!neighSuffix.IsValid()) { continue; }
+
+		// Mark as valid
+		++validNeighCount;
+		validNeighFlags |= 1 << neighIdx;
 	}
 
-	// Calc total contribution of new path
-	const glm::vec3 radiance = throughput * suffix.postReconF;
+	// Borrow their suffixes and gather path contributions
+	glm::vec3 suffixContrib(0.0f);
+	const float validNeighCountF = static_cast<float>(validNeighCount);
+	const float pairwiseK = validNeighCountF;
+	float canonMisWeight = 1.0f;
 
-	// Get suffix last prefix int
-	const Interaction suffixLastPrefixInt(suffix.lastPrefixInt, params.transforms);
-	if (!suffixLastPrefixInt.valid) { return glm::vec3(0.0f); }
+	for (size_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
+	{
+		// Check if suffix is valid
+		if (!(validNeighFlags & (1 << neighIdx))) { continue; }
 
-	// Calc jacobian
-	jacobian = CalcReconnectionJacobian(
-		suffixLastPrefixInt.pos, 
-		currInt.pos,
-		reconInt.pos,
-		reconInt.normal);
+		// Get suffix
+		const uint32_t neighPixelIdx = prefixSearchPayload.GetNeighbor(neighIdx, params).pixelIdx;
+		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const SuffixPath& neighSuffix = neighSuffixRes.sample;
 
-	// Return
-	return radiance;
+		// Shift
+		float jacobianNeighToCanon = 0.0f;
+		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighSuffix, canonSuffix, jacobianNeighToCanon, params);
+		const float pFromCanonOfNeigh = GetLuminance(fFromCanonOfNeigh) * jacobianNeighToCanon;
+
+		float jacobianCanonToNeigh = 0.0f;
+		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonSuffix, neighSuffix, jacobianCanonToNeigh, params);
+		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
+
+		const glm::vec3& fFromCanonOfCanon = canonSuffix.f;
+		const glm::vec3& fFromNeighOfNeigh = neighSuffix.f;
+		const float pFromCanonOfCanon = GetLuminance(fFromCanonOfCanon);
+		const float pFromNeighOfNeigh = GetLuminance(fFromNeighOfNeigh);
+
+		// Calc neigh mis weight
+		float neighMisWeight = ComputeNeighborPairwiseMISWeight(
+			fFromCanonOfNeigh, fFromNeighOfNeigh, jacobianNeighToCanon, pairwiseK, 1.0f, neighSuffixRes.confidence);
+		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
+
+		// Add to suffix contribution
+		suffixContrib += neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
+
+		// Update canon mis weight
+		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
+			fFromCanonOfCanon, fFromNeighOfCanon, jacobianCanonToNeigh, pairwiseK, 1.0f, neighSuffixRes.confidence);
+	}
+
+	// Gather
+	glm::vec3 gatherContrib = suffixContrib * canonPrefix.f / canonPrefix.p;
+	gatherContrib /= static_cast<float>(params.restir.gatherN);
+	
+	glm::vec3 result = gatherContrib + (canonContrib * canonMisWeight);
+	result /= pairwiseK + 1.0f;
+
+	if (glm::any(glm::isinf(result) || glm::isnan(result))) { return glm::vec3(0.0f); }
+	return result;
 }
 
-static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
-	const uint32_t prefixIdx,
+static __forceinline__ __device__ glm::vec3 FinalGatherNotCanon(
 	const uint32_t pixelIdx,
 	const glm::vec3& origin, 
-	const glm::vec3& dir, 
-	float& canonSuffixMisWeight,
+	const glm::vec3& dir,
 	const uint32_t k,
 	PCG32& rng)
 {
@@ -179,11 +213,7 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 		params.restir.prefixEntriesTraceParams,
 		prefixSearchPayload);
 	const uint32_t neighCount = prefixSearchPayload.neighCount;
-	const float misWeight = 1.0f / static_cast<float>(neighCount + 1);
-
-	// Set mis weight for canonical suffix
-	if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
-
+	
 	// Track prefix stats
 	if (params.restir.trackPrefixStats)
 	{
@@ -195,7 +225,7 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 	// Count valid neighbors
 	uint32_t validNeighCount = 0;
 	uint32_t validNeighFlags = 0;
-	for (uint32_t neighIdx = 0; neighIdx < prefixSearchPayload.neighCount; ++neighIdx)
+	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Get neighbor pixel index
 		const uint32_t neighPixelIdx = prefixSearchPayload.GetNeighbor(neighIdx, params).pixelIdx;
@@ -214,6 +244,7 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 	glm::vec3 suffixContrib(0.0f);
 	const float validNeighCountF = static_cast<float>(validNeighCount);
 	const float pairwiseK = validNeighCountF;
+
 	for (size_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Check if suffix is valid
@@ -224,20 +255,28 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const SuffixPath& neighSuffix = neighSuffixRes.sample;
 
-		// Shift suffix
-		float jacobian = 0.0f;
-		const glm::vec3 shiftedF = ShiftSuffixFG(
-			lastPrefixInt,
-			neighSuffix,
-			jacobian);
-		const float ucwSuffix = jacobian * neighSuffixRes.wSum;
+		// Shift
+		float jacobianNeighToCanon = 0.0f;
+		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighSuffix, lastPrefixInt, jacobianNeighToCanon, params);
+		const float pFromCanonOfNeigh = GetLuminance(fFromCanonOfNeigh) * jacobianNeighToCanon;
 
-		// Add
-		suffixContrib += misWeight * shiftedF * ucwSuffix;
+		const glm::vec3& fFromNeighOfNeigh = neighSuffix.f;
+		const float pFromNeighOfNeigh = GetLuminance(fFromNeighOfNeigh);
+
+		// Calc neigh mis weight
+		float neighMisWeight = ComputeNeighborPairwiseMISWeight(
+			fFromCanonOfNeigh, fFromNeighOfNeigh, jacobianNeighToCanon, pairwiseK, 1.0f, neighSuffixRes.confidence);
+		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
+
+		// Add to suffix contribution
+		suffixContrib += neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
 	}
 
 	// Gather
-	const glm::vec3 result = suffixContrib * prefixThroughput / prefixP;
+	glm::vec3 result = suffixContrib * prefixThroughput / prefixP;
+	result /= static_cast<float>(params.restir.gatherN);
+	result /= pairwiseK + 1.0f;
+
 	if (glm::any(glm::isinf(result) || glm::isnan(result))) { return glm::vec3(0.0f); }
 	return result;
 }
@@ -262,23 +301,16 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
 	SpawnCameraRay(params.cameraData, uv, origin, dir);
 
-	// K = M - 1
-	float canonSuffixMisWeight = 1.0f;
+	// Final gather
 	const size_t k = params.restir.gatherM - 1;
-	if (k > 0)
+	outputRadiance += FinalGatherCanon(pixelIdx, origin, dir, k, rng);
+	for (size_t prefixIdx = 1; prefixIdx < params.restir.gatherN; ++prefixIdx)
 	{
-		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
-		{
-			outputRadiance += FinalGatherSinglePrefix(prefixIdx, pixelIdx, origin, dir, canonSuffixMisWeight, k, rng);
-		}
-		outputRadiance /= static_cast<float>(params.restir.gatherN);
+		outputRadiance += FinalGatherNotCanon(pixelIdx, origin, dir, k, rng);
 	}
 
-	// Add canon suffix contrib
-	outputRadiance += canonSuffixMisWeight * TraceCompletePath(origin, dir, rng, params);
-
+	// Check output radiance
 	if (glm::any(glm::isnan(outputRadiance) || glm::isinf(outputRadiance))) { outputRadiance = glm::vec3(0.0f); }
-
 	return outputRadiance;
 }
 

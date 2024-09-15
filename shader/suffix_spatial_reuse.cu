@@ -76,9 +76,6 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		const Reservoir<SuffixPath>& neighRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const SuffixPath& neighSuffix = neighRes.sample;
 		
-		// Get neighbor primary hit
-		const Interaction neighLastPrefixInt(neighSuffix.lastPrefixInt, params.transforms);
-		
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
 		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighSuffix, currSuffix, jacobianNeighToCanon, params);
