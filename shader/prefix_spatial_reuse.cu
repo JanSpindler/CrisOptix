@@ -49,7 +49,7 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		if (!IsPixelValid(neighPixelCoord, params)) { continue; }
 		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
 
-		//
+		// Check neighbor primary interaction
 		if (!params.restir.restirGBuffers[neighPixelIdx].primaryIntValid) { continue; }
 
 		// Get neighbor res and prefix
@@ -57,10 +57,6 @@ static __forceinline__ __device__ bool PrefixSpatialReuse(const glm::uvec2& pixe
 		const PrefixPath& neighPrefix = neighRes.sample;
 		const bool skipBecauseOfNee = params.rendererType == RendererType::ConditionalRestir && neighPrefix.IsNee();
 		if (!neighPrefix.IsValid() || skipBecauseOfNee) { continue; }
-
-		// Get neighbor primary hit
-		const Interaction neighPrimaryInt(neighPrefix.primaryInt, params.transforms);
-		if (!neighPrimaryInt.valid) { continue; }
 
 		// Mark neigh as valid
 		++validNeighCount;

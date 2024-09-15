@@ -126,7 +126,7 @@ extern "C" __global__ void __raygen__prefix_gen_temp_reuse()
 		const glm::vec2 motionVector = params.motionVectors[pixelIdx];
 
 		// Calc prev pixel coord
-		const glm::uvec2 prevPixelCoord = glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
+		const glm::uvec2 prevPixelCoord = pixelCoord;// glm::uvec2(glm::vec2(pixelCoord) + glm::vec2(0.5f) + motionVector);
 
 		//
 		const bool validPrimaryInt = PrefixGenTempReuse(pixelCoord, prevPixelCoord, origin, dir, rng);

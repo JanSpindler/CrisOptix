@@ -32,60 +32,104 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	currRes.Reset();
 
 	// RIS with pairwise MIS weights
-	const uint32_t neighCount = params.restir.suffixSpatialCount;
-	float canonMisWeight = 0.0f;
-	
+	const int neighCount = params.restir.suffixSpatialCount;
+	float canonMisWeight = 1.0f;
+	uint32_t validNeighCount = 0;
+	uint32_t validNeighFlags = 0;
+
+	// Count valid neighbors
+	glm::uvec2 neighPixelCoords[MAX_SPATIAL_NEIGH_COUNT];
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Select new neighbor
-		const glm::uvec2 neighPixelCoord = SelectSpatialNeighbor(pixelCoord, rng);
+		neighPixelCoords[neighIdx] = SelectSpatialNeighbor(pixelCoord, rng);
+		const glm::uvec2& neighPixelCoord = neighPixelCoords[neighIdx];
 		if (!IsPixelValid(neighPixelCoord, params)) { continue; }
+		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
+
+		// Check neighbor primary interaction
+		if (!params.restir.restirGBuffers[neighPixelIdx].primaryIntValid) { continue; }
+
+		// Get neighbor res and suffix
+		const Reservoir<SuffixPath>& neighRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.backBufferIdx];
+		const SuffixPath& neighSuffix = neighRes.sample;
+		if (!neighSuffix.IsValid()) { continue; }
+
+		// Mark neigh as valid
+		++validNeighCount;
+		validNeighFlags |= 1 << neighIdx;
+	}
+	
+	// Perform reuse with valid neighbors
+	const float validNeighCountF = static_cast<float>(validNeighCount);
+	const float k = validNeighCountF;
+	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
+	{
+		// Skip if not marked as valid
+		if (!((validNeighFlags >> neighIdx) & 1)) { continue; }
+
+		// Select new neighbor
+		const glm::uvec2& neighPixelCoord = neighPixelCoords[neighIdx];
 		const uint32_t neighPixelIdx = GetPixelIdx(neighPixelCoord, params);
 
 		// Get neighbor res and prefix
 		const Reservoir<SuffixPath>& neighRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const SuffixPath& neighSuffix = neighRes.sample;
-		if (!neighSuffix.IsValid()) { continue; }
-
+		
 		// Get neighbor primary hit
 		const Interaction neighLastPrefixInt(neighSuffix.lastPrefixInt, params.transforms);
-		if (!neighLastPrefixInt.valid) { continue; }
-
+		
 		// Shift
 		float jacobianNeighToCanon = 0.0f;
-		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighSuffix, canonSuffix, jacobianNeighToCanon, params);
+		const glm::vec3 fFromCanonOfNeigh = CalcCurrContribInOtherDomain(neighSuffix, currSuffix, jacobianNeighToCanon, params);
 		const float pFromCanonOfNeigh = GetLuminance(fFromCanonOfNeigh) * jacobianNeighToCanon;
 
 		float jacobianCanonToNeigh = 0.0f;
-		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(canonSuffix, neighSuffix, jacobianCanonToNeigh, params);
+		const glm::vec3 fFromNeighOfCanon = CalcCurrContribInOtherDomain(currSuffix, neighSuffix, jacobianCanonToNeigh, params);
 		const float pFromNeighOfCanon = GetLuminance(fFromNeighOfCanon) * jacobianCanonToNeigh;
 
+		const glm::vec3& fFromCanonOfCanon = currSuffix.f;
+		const glm::vec3& fFromNeighOfNeigh = neighSuffix.f;
+		const float pFromCanonOfCanon = GetLuminance(fFromCanonOfCanon);
+		const float pFromNeighOfNeigh = GetLuminance(fFromNeighOfNeigh);
+
 		// Calc neigh mis weight
-		const float neighMisWeight = neighRes.confidence * GetLuminance(neighSuffix.f) /
-			(currResConfidence * GetLuminance(fFromCanonOfNeigh) +
-				static_cast<float>(neighCount) * neighRes.confidence * GetLuminance(neighSuffix.f));
-		const float neighUcw = neighRes.wSum / GetLuminance(neighSuffix.f);
-		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighUcw; // pFromCanonOfNeigh includes pHat and jacobian
+		float neighMisWeight = ComputeNeighborPairwiseMISWeight(
+			fFromCanonOfNeigh, fFromNeighOfNeigh, jacobianNeighToCanon, k, currResConfidence, neighRes.confidence);
+		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
+
+		// Calc neigh ris weight
+		const float neighRisWeight = neighMisWeight * pFromCanonOfNeigh * neighRes.wSum;
 
 		// Stream neigh into res
 		if (currRes.Update(SuffixPath(neighSuffix, currSuffix.lastPrefixInt, fFromCanonOfNeigh), neighRisWeight, rng, neighRes.confidence))
 		{
-			//printf("Spatial Suffix\n");
+			//printf("Spatial Prefix\n");
 		}
 
-		// Update canonical mis weight
-		canonMisWeight += (currResConfidence * canonPHat) /
-			((currResConfidence * canonPHat) +
-				(neighRes.confidence * static_cast<float>(neighCount) * pFromNeighOfCanon));
+		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
+			fFromCanonOfCanon, fFromNeighOfCanon, jacobianCanonToNeigh, k, currResConfidence, neighRes.confidence);
 	}
 
-	canonMisWeight /= static_cast<float>(neighCount);
+	// Check canon mis weight
+	if (glm::isinf(canonMisWeight) || glm::isnan(canonMisWeight)) { canonMisWeight = 0.0f; }
 
 	// Calc canon ris weight
-	const float canonRisWeight = canonMisWeight * currResWSum; // "pHat * ucw = wSum" here
+	const float canonRisWeight = canonMisWeight * currResWSum * GetLuminance(currSuffix.f);
 
 	// Stream result of temporal reuse into reservoir again
 	currRes.Update(currSuffix, canonRisWeight, rng, currResConfidence);
+
+	// Finalize GRIS
+	if (currRes.wSum > 0.0f) 
+	{
+		currRes.wSum /= k + 1.0f;
+		currRes.FinalizeGRIS(); 
+	}
+
+	// Store in back buffer
+	params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.backBufferIdx] =
+		params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
 }
 
 extern "C" __global__ void __raygen__suffix_spatial_reuse()
