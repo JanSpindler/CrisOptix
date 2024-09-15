@@ -62,7 +62,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	
 	// Perform reuse with valid neighbors
 	const float validNeighCountF = static_cast<float>(validNeighCount);
-	const float k = validNeighCountF;
+	const float pairwiseK = validNeighCountF;
 	for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
 		// Skip if not marked as valid
@@ -95,7 +95,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 
 		// Calc neigh mis weight
 		float neighMisWeight = ComputeNeighborPairwiseMISWeight(
-			fFromCanonOfNeigh, fFromNeighOfNeigh, jacobianNeighToCanon, k, currResConfidence, neighRes.confidence);
+			fFromCanonOfNeigh, fFromNeighOfNeigh, jacobianNeighToCanon, pairwiseK, currResConfidence, neighRes.confidence);
 		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
 
 		// Calc neigh ris weight
@@ -108,7 +108,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		}
 
 		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
-			fFromCanonOfCanon, fFromNeighOfCanon, jacobianCanonToNeigh, k, currResConfidence, neighRes.confidence);
+			fFromCanonOfCanon, fFromNeighOfCanon, jacobianCanonToNeigh, pairwiseK, currResConfidence, neighRes.confidence);
 	}
 
 	// Check canon mis weight
@@ -123,7 +123,7 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 	// Finalize GRIS
 	if (currRes.wSum > 0.0f) 
 	{
-		currRes.wSum /= k + 1.0f;
+		currRes.wSum /= pairwiseK + 1.0f;
 		currRes.FinalizeGRIS(); 
 	}
 

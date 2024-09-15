@@ -13,13 +13,13 @@ struct PrefixNeighbor
 	// Distance to searching prefix.
 	float distance;
 
-	__forceinline__ __device__ __host__ PrefixNeighbor() :
+	constexpr __forceinline__ __device__ __host__ PrefixNeighbor() :
 		pixelIdx(0),
 		distance(0.0f)
 	{
 	}
 
-	__forceinline__ __device__ __host__ PrefixNeighbor(const uint32_t _pixelIdx, const float _distance) :
+	constexpr __forceinline__ __device__ __host__ PrefixNeighbor(const uint32_t _pixelIdx, const float _distance) :
 		pixelIdx(_pixelIdx),
 		distance(_distance)
 	{
@@ -35,7 +35,7 @@ public:
 		uint32_t maxNeighCount;
 		uint64_t totalNeighCount;
 
-		__forceinline__ __device__ __host__ Stats() :
+		constexpr __forceinline__ __device__ __host__ Stats() :
 			minNeighCount(0xFFFFFFFF),
 			maxNeighCount(0),
 			totalNeighCount(0)

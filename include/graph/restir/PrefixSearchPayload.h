@@ -30,6 +30,8 @@ struct PrefixSearchPayload
 
 	constexpr __forceinline__ __device__ const PrefixNeighbor& GetNeighbor(const uint32_t neighIdx, const LaunchParams& params) const
 	{
+		if (neighIdx >= neighCount) { return PrefixNeighbor(); }
+
 		const uint32_t k = params.restir.gatherM - 1;
 		const uint32_t offset = pixelIdx * k;
 		const PrefixNeighbor& neigh = params.restir.prefixNeighbors[offset + neighIdx];

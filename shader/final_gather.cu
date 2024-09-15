@@ -197,6 +197,14 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 	uint32_t validNeighFlags = 0;
 	for (uint32_t neighIdx = 0; neighIdx < prefixSearchPayload.neighCount; ++neighIdx)
 	{
+		// Get neighbor pixel index
+		const uint32_t neighPixelIdx = prefixSearchPayload.GetNeighbor(neighIdx, params).pixelIdx;
+
+		// Check if neigh suffix is valid
+		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const SuffixPath& neighSuffix = neighSuffixRes.sample;
+		if (!neighSuffix.IsValid()) { continue; }
+
 		// Mark as valid
 		++validNeighCount;
 		validNeighFlags |= 1 << neighIdx;
@@ -204,13 +212,16 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 
 	// Borrow their suffixes and gather path contributions
 	glm::vec3 suffixContrib(0.0f);
-	for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
+	const float validNeighCountF = static_cast<float>(validNeighCount);
+	const float pairwiseK = validNeighCountF;
+	for (size_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 	{
-		// Assume: Neighbor prefix and suffix are valid
+		// Check if suffix is valid
+		if (!(validNeighFlags & (1 << neighIdx))) { continue; }
 
 		// Get suffix
-		const uint32_t suffixPixelIdx = params.restir.prefixNeighbors[k * pixelIdx + suffixIdx].pixelIdx;
-		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * suffixPixelIdx + params.restir.frontBufferIdx];
+		const uint32_t neighPixelIdx = prefixSearchPayload.GetNeighbor(neighIdx, params).pixelIdx;
+		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const SuffixPath& neighSuffix = neighSuffixRes.sample;
 
 		// Shift suffix
