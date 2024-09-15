@@ -11,7 +11,60 @@
 
 __constant__ LaunchParams params;
 
-static __forceinline__ __device__ glm::vec3 ShiftSuffix(
+static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& launchIdx, const size_t pixelIdx)
+{
+	// Init RNG
+	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
+
+	// Final gather
+	// Spawn camera ray
+	glm::vec3 origin(0.0f);
+	glm::vec3 dir(0.0f);
+	glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
+	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
+	SpawnCameraRay(params.cameraData, uv, origin, dir);
+
+	// Sample surface interaction
+	Interaction interaction{};
+	TraceWithDataPointer<Interaction>(
+		params.traversableHandle,
+		origin,
+		dir,
+		1e-3f,
+		1e16f,
+		params.surfaceTraceParams,
+		interaction);
+	if (!interaction.valid) { return glm::vec3(0.0f); }
+
+	// Find k neighboring prefixes in world space
+	static constexpr float EPSILON = 1e-16f;
+	PrefixSearchPayload prefixSearchPayload(pixelIdx);
+	TraceWithDataPointer<PrefixSearchPayload>(
+		params.restir.prefixEntriesTraversHandle,
+		interaction.pos,
+		glm::vec3(EPSILON),
+		0.0f,
+		EPSILON,
+		params.restir.prefixEntriesTraceParams,
+		prefixSearchPayload);
+
+	if (prefixSearchPayload.neighCount == 0) { return glm::vec3(0.0f); }
+	if (!params.restir.showPrefixEntryContrib) { return glm::vec3(0.0f, 1.0f, 0.0f); }
+
+	// Sum suffix contrib
+	glm::vec3 contrib(0.0f);
+	const uint32_t k = params.restir.gatherM - 1;
+	const uint32_t offset = k * pixelIdx;
+	for (uint32_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
+	{
+		const uint32_t neighPixelIdx = params.restir.prefixNeighbors[offset + suffixIdx].pixelIdx;
+		const SuffixPath& suffix = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample;
+		contrib += suffix.f;
+	}
+	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
+}
+
+static __forceinline__ __device__ glm::vec3 ShiftSuffixFG(
 	const Interaction& prefixLastInt,
 	const SuffixPath& suffix,
 	float& jacobian)
@@ -96,57 +149,76 @@ static __forceinline__ __device__ glm::vec3 ShiftSuffix(
 	return radiance;
 }
 
-static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& launchIdx, const size_t pixelIdx)
+static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
+	const uint32_t prefixIdx,
+	const uint32_t pixelIdx,
+	const glm::vec3& origin, 
+	const glm::vec3& dir, 
+	float& canonSuffixMisWeight,
+	const uint32_t k,
+	PCG32& rng)
 {
-	// Init RNG
-	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
-
-	// Final gather
-	// Spawn camera ray
-	glm::vec3 origin(0.0f);
-	glm::vec3 dir(0.0f);
-	glm::vec2 uv = (glm::vec2(launchIdx) + rng.Next2d()) / glm::vec2(params.width, params.height);
-	uv = 2.0f * uv - 1.0f; // [0, 1] -> [-1, 1]
-	SpawnCameraRay(params.cameraData, uv, origin, dir);
-
-	// Sample surface interaction
-	Interaction interaction{};
-	TraceWithDataPointer<Interaction>(
-		params.traversableHandle,
-		origin,
-		dir,
-		1e-3f,
-		1e16f,
-		params.surfaceTraceParams,
-		interaction);
-	if (!interaction.valid) { return glm::vec3(0.0f); }
+	// Trace new prefix for pixel q
+	Interaction lastPrefixInt{};
+	glm::vec3 prefixThroughput(0.0f);
+	float prefixP = 0.0f;
+	if (!TracePrefixForFinalGather(prefixThroughput, prefixP, lastPrefixInt, origin, dir, params.restir.prefixLen, rng, params))
+	{
+		return glm::vec3(0.0f);
+	}
 
 	// Find k neighboring prefixes in world space
 	static constexpr float EPSILON = 1e-16f;
 	PrefixSearchPayload prefixSearchPayload(pixelIdx);
 	TraceWithDataPointer<PrefixSearchPayload>(
 		params.restir.prefixEntriesTraversHandle,
-		interaction.pos,
+		lastPrefixInt.pos,
 		glm::vec3(EPSILON),
 		0.0f,
 		EPSILON,
 		params.restir.prefixEntriesTraceParams,
 		prefixSearchPayload);
+	const uint32_t neighCount = prefixSearchPayload.neighCount;
+	const float misWeight = 1.0f / static_cast<float>(neighCount + 1);
 
-	if (prefixSearchPayload.neighCount == 0) { return glm::vec3(0.0f); }
-	if (!params.restir.showPrefixEntryContrib) { return glm::vec3(0.0f, 1.0f, 0.0f); }
+	// Set mis weight for canonical suffix
+	if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
 
-	// Sum suffix contrib
-	glm::vec3 contrib(0.0f);
-	const uint32_t k = params.restir.gatherM - 1;
-	const uint32_t offset = k * pixelIdx;
-	for (uint32_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
+	// Track prefix stats
+	if (params.restir.trackPrefixStats)
 	{
-		const uint32_t neighPixelIdx = params.restir.prefixNeighbors[offset + suffixIdx].pixelIdx;
-		const SuffixPath& suffix = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample;
-		contrib += suffix.f;
+		atomicMin(&params.restir.prefixStats[0].minNeighCount, neighCount);
+		atomicMax(&params.restir.prefixStats[0].maxNeighCount, neighCount);
+		atomicAdd(&params.restir.prefixStats[0].totalNeighCount, neighCount);
 	}
-	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
+
+	// Borrow their suffixes and gather path contributions
+	glm::vec3 suffixContrib(0.0f);
+	for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
+	{
+		// Assume: Neighbor prefix and suffix are valid
+
+		// Get suffix
+		const uint32_t suffixPixelIdx = params.restir.prefixNeighbors[k * pixelIdx + suffixIdx].pixelIdx;
+		const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * suffixPixelIdx + params.restir.frontBufferIdx];
+		const SuffixPath& neighSuffix = neighSuffixRes.sample;
+
+		// Shift suffix
+		float jacobian = 0.0f;
+		const glm::vec3 shiftedF = ShiftSuffixFG(
+			lastPrefixInt,
+			neighSuffix,
+			jacobian);
+		const float ucwSuffix = jacobian * neighSuffixRes.wSum;
+
+		// Add
+		suffixContrib += misWeight * shiftedF * ucwSuffix;
+	}
+
+	// Gather
+	const glm::vec3 result = suffixContrib * prefixThroughput / prefixP;
+	if (glm::any(glm::isinf(result) || glm::isnan(result))) { return glm::vec3(0.0f); }
+	return result;
 }
 
 static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launchIdx, const size_t pixelIdx)
@@ -174,70 +246,9 @@ static __forceinline__ __device__ glm::vec3 GetRadiance(const glm::uvec3& launch
 	const size_t k = params.restir.gatherM - 1;
 	if (k > 0)
 	{
-		Interaction lastPrefixInt{};
-		glm::vec3 prefixThroughput(0.0f);
-		float prefixP = 0.0f;
-
 		for (size_t prefixIdx = 0; prefixIdx < params.restir.gatherN; ++prefixIdx)
 		{
-			// Trace new prefix for pixel q
-			if (!TracePrefixForFinalGather(prefixThroughput, prefixP, lastPrefixInt, origin, dir, params.restir.prefixLen, rng, params))
-			{
-				continue;
-			}
-			
-			// Find k neighboring prefixes in world space
-			static constexpr float EPSILON = 1e-16f;
-			PrefixSearchPayload prefixSearchPayload(pixelIdx);
-			TraceWithDataPointer<PrefixSearchPayload>(
-				params.restir.prefixEntriesTraversHandle,
-				lastPrefixInt.pos,
-				glm::vec3(EPSILON),
-				0.0f,
-				EPSILON,
-				params.restir.prefixEntriesTraceParams,
-				prefixSearchPayload);
-			const uint32_t neighCount = prefixSearchPayload.neighCount;
-			const float misWeight = 1.0f / static_cast<float>(neighCount + 1);
-
-			// Set mis weight for canonical suffix
-			if (prefixIdx == 0) { canonSuffixMisWeight = misWeight; }
-
-			// Track prefix stats
-			if (params.restir.trackPrefixStats)
-			{
-				atomicMin(&params.restir.prefixStats[0].minNeighCount, neighCount);
-				atomicMax(&params.restir.prefixStats[0].maxNeighCount, neighCount);
-				atomicAdd(&params.restir.prefixStats[0].totalNeighCount, neighCount);
-			}
-
-			// Borrow their suffixes and gather path contributions
-			glm::vec3 suffixContrib(0.0f);
-			for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
-			{
-				// Assume: Neighbor prefix and suffix are valid
-
-				// Get suffix
-				const uint32_t suffixPixelIdx = params.restir.prefixNeighbors[k * pixelIdx + suffixIdx].pixelIdx;
-				const Reservoir<SuffixPath>& neighSuffixRes = params.restir.suffixReservoirs[2 * suffixPixelIdx + params.restir.frontBufferIdx];
-				const SuffixPath& neighSuffix = neighSuffixRes.sample;
-
-				// Shift suffix
-				float jacobian = 0.0f;
-				const glm::vec3 shiftedF = ShiftSuffix(
-					lastPrefixInt, 
-					neighSuffix, 
-					jacobian);
-				const float ucwSuffix = jacobian * neighSuffixRes.wSum;
-
-				// Add
-				suffixContrib += misWeight * shiftedF * ucwSuffix;
-			}
-
-			// Gather
-			glm::vec3 result = suffixContrib * prefixThroughput / prefixP;
-			if (glm::any(glm::isinf(result) || glm::isnan(result))) { result = glm::vec3(0.0f); }
-			outputRadiance += result;
+			outputRadiance += FinalGatherSinglePrefix(prefixIdx, pixelIdx, origin, dir, canonSuffixMisWeight, k, rng);
 		}
 
 		outputRadiance /= static_cast<float>(params.restir.gatherN);
