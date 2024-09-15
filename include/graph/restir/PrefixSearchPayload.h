@@ -28,6 +28,14 @@ struct PrefixSearchPayload
 	{
 	}
 
+	constexpr __forceinline__ __device__ const PrefixNeighbor& GetNeighbor(const uint32_t neighIdx, const LaunchParams& params) const
+	{
+		const uint32_t k = params.restir.gatherM - 1;
+		const uint32_t offset = pixelIdx * k;
+		const PrefixNeighbor& neigh = params.restir.prefixNeighbors[offset + neighIdx];
+		return neigh;
+	}
+
 	__forceinline__ __device__ void FindLargestDist(const LaunchParams& params)
 	{
 		return;
@@ -43,18 +51,19 @@ struct PrefixSearchPayload
 		const Interaction lastPrefixInt(
 			params.restir.prefixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].sample.lastInt, 
 			params.transforms);
+		if (!lastPrefixInt.IsValid()) { return; }
 
 		// Get current pos
 		const glm::vec3& currPos = lastPrefixInt.pos;
 
 		// Go over all stored neighbors
 		maxDistNeighIdx = 0;
-		maxNeighDist = params.restir.prefixNeighbors[offset + maxDistNeighIdx].distance;
+		maxNeighDist = GetNeighbor(maxDistNeighIdx, params).distance;
 
 		for (uint32_t neighIdx = 0; neighIdx < neighCount; ++neighIdx)
 		{
 			// Get neigh
-			const PrefixNeighbor& neigh = params.restir.prefixNeighbors[offset + neighIdx];
+			const PrefixNeighbor& neigh = GetNeighbor(neighIdx, params);
 
 			// Store as max distance if it is
 			if (neigh.distance < maxNeighDist)

@@ -192,6 +192,16 @@ static __forceinline__ __device__ glm::vec3 FinalGatherSinglePrefix(
 		atomicAdd(&params.restir.prefixStats[0].totalNeighCount, neighCount);
 	}
 
+	// Count valid neighbors
+	uint32_t validNeighCount = 0;
+	uint32_t validNeighFlags = 0;
+	for (uint32_t neighIdx = 0; neighIdx < prefixSearchPayload.neighCount; ++neighIdx)
+	{
+		// Mark as valid
+		++validNeighCount;
+		validNeighFlags |= 1 << neighIdx;
+	}
+
 	// Borrow their suffixes and gather path contributions
 	glm::vec3 suffixContrib(0.0f);
 	for (size_t suffixIdx = 0; suffixIdx < neighCount; ++suffixIdx)
