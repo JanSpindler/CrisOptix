@@ -82,7 +82,7 @@ struct PrefixPath
 
 	constexpr __forceinline__ __device__ __host__ void Reset()
 	{
-		flags = 0;
+		flags = 0u;
 		pathLen = 0.0f;
 	}
 

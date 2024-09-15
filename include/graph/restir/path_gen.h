@@ -71,51 +71,55 @@ static constexpr __forceinline__ __device__ float CalcReconnectionJacobian(
 	return glm::max(0.0f, result);
 }
 
-static __forceinline__ __device__ PrefixPath TracePrefix(
+static __forceinline__ __device__ void TracePrefix(
 	PrefixPath& prefix,
 	const glm::vec3& origin,
 	const glm::vec3& dir,
 	PCG32& rng,
 	const LaunchParams& params)
 {
-	// Init prefix
+	glm::vec3 currentPos = origin;
+	glm::vec3 currentDir = dir;
+
 	prefix.Reset();
 	prefix.rng = rng;
 	prefix.p = 1.0f;
 	prefix.f = glm::vec3(1.0f);
 	prefix.postReconF = glm::vec3(1.0f);
-	prefix.SetNee(false);
-	prefix.SetValid(false);
-	prefix.SetLength(0);
-	prefix.SetReconIdx(0);
+	prefix.SetValid(true);
 
-	// Calc max length
+	Interaction interaction{};
+
+	//
 	const uint32_t maxLen = params.rendererType == RendererType::RestirPt ? params.maxPathLen : params.restir.prefixLen;
 
 	// Trace
 	bool postRecon = false;
-	Interaction interaction{};
-	glm::vec3 lastPos = origin;
-	glm::vec3 lastDir = dir;
 	for (uint32_t traceIdx = 0; traceIdx < maxLen; ++traceIdx)
 	{
 		// Sample surface interaction
 		TraceWithDataPointer<Interaction>(
 			params.traversableHandle,
-			lastPos,
-			lastDir,
+			currentPos,
+			currentDir,
 			1e-3f,
 			1e16f,
 			params.surfaceTraceParams,
 			interaction);
-		if (!interaction.valid) { return prefix; }
+
+		// Exit if no surface found
+		if (!interaction.valid)
+		{
+			prefix.SetValid(false);
+			return;
+		}
 
 		// Add to path length
-		prefix.pathLen += glm::distance(lastPos, interaction.pos);
+		prefix.pathLen += glm::distance(currentPos, interaction.pos);
 
-		// Increment length
+		// Inc vertex count
 		prefix.SetLength(prefix.GetLength() + 1);
-		
+
 		// Store primary interaction
 		if (prefix.GetLength() == 1)
 		{
@@ -126,57 +130,68 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 		const bool forceNee = params.rendererType == RendererType::RestirPt && traceIdx == maxLen - 1;
 		if (rng.NextFloat() < params.neeProb || forceNee)
 		{
-			// Update p
-			if (!forceNee) { prefix.p *= params.neeProb; }
+			//
+			prefix.p *= params.neeProb;
 
+			// NEE
 			// Sample light source
 			const EmitterSample emitterSample = SampleEmitter(rng, params.emitterTable);
+			const glm::vec3 lightDir = glm::normalize(emitterSample.pos - interaction.pos);
+			const float distance = glm::length(emitterSample.pos - interaction.pos);
 
-			// Check occlusion
-			const glm::vec3 lightVec = emitterSample.pos - interaction.pos;
-			const float lightLen = glm::length(lightVec);
-			const glm::vec3 lightDir = glm::normalize(lightVec);
-			if (glm::any(glm::isnan(lightDir) || glm::isinf(lightDir))) { return prefix; }
-			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, lightLen, params)) { return prefix; }
+			// Cast shadow ray
+			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, distance, params))
+			{
+				prefix.SetValid(false);
+				return;
+			}
 
 			// Create interaction at light source
 			if (!postRecon)
 			{
 				TraceWithDataPointer<Interaction>(
 					params.traversableHandle,
-					interaction.pos,
-					lightDir,
+					currentPos,
+					currentDir,
 					1e-3f,
 					1e16f,
 					params.surfaceTraceParams,
 					interaction);
-				if (!interaction.valid) { return prefix; }
-
-				prefix.reconInt = interaction;
-				prefix.SetReconIdx(prefix.GetLength());
-				prefix.reconOutDir = glm::vec3(0.0f);
-				postRecon = true;
+				if (interaction.valid)
+				{
+					prefix.reconInt = interaction;
+					prefix.SetReconIdx(prefix.GetLength());
+					prefix.reconOutDir = currentDir;
+					postRecon = true;
+				}
+				else
+				{
+					prefix.SetValid(false);
+					return;
+				}
 			}
-
-			// Store last interaction
-			prefix.lastInt = interaction;
 
 			// Calc brdf
 			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 				interaction.meshSbtData->evalMaterialSbtIdx,
 				interaction,
 				lightDir);
-			if (brdfEvalResult.samplingPdf <= 0.0f) { return prefix; }
-					
-			// Calc radiance
+			if (brdfEvalResult.samplingPdf <= 0.0f) 
+			{
+				prefix.SetValid(false);
+				return;
+			}
+
 			prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-			prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color;
+			if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+
 			if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission; }
 
-			// Exit
 			prefix.SetNee(true);
 			prefix.SetValid(true);
-			return prefix;
+			prefix.lastInt = interaction;
+
+			return;
 		}
 
 		// Indirect illumination, generate next ray
@@ -184,13 +199,17 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
 			rng);
-		if (brdfSampleResult.samplingPdf <= 0.0f) { return prefix; }
+		if (brdfSampleResult.samplingPdf <= 0.0f)
+		{
+			prefix.SetValid(false);
+			return;
+		}
 
 		// Check if this interaction can be a reconnection interaction
-		const float reconDistance = glm::distance(lastPos, interaction.pos);
+		const float reconDistance = glm::distance(currentPos, interaction.pos);
 		const float reconRoughness = brdfSampleResult.roughness;
-		const bool intCanRecon = 
-			reconDistance > params.restir.reconMinDistance && 
+		const bool intCanRecon =
+			reconDistance > params.restir.reconMinDistance &&
 			reconRoughness > params.restir.reconMinRoughness &&
 			prefix.GetLength() >= 2;
 
@@ -203,30 +222,18 @@ static __forceinline__ __device__ PrefixPath TracePrefix(
 			postRecon = true;
 		}
 
-		// Update f and p
+		currentPos = interaction.pos;
+		currentDir = brdfSampleResult.outDir;
+
 		prefix.f *= brdfSampleResult.brdfVal;
 		prefix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
 		if (postRecon) { prefix.postReconF *= brdfSampleResult.brdfVal; }
-
-		// Update
-		lastPos = interaction.pos;
-		lastDir = brdfSampleResult.outDir;
 	}
 
-	// Store last interaction
 	prefix.lastInt = interaction;
-
-	//if (!prefix.IsValid() || prefix.reconInt.hitInfo.meshSbtData == nullptr) { return prefix; }
-	//if (prefix.reconInt.hitInfo.meshSbtData->indices.count / 3 <= prefix.reconInt.hitInfo.primitiveIdx)
-	//{
-	//	prefix.SetValid(false);
-	//}
-
-	prefix.SetValid(true);
-	return prefix;
 }
 
-static __forceinline__ __device__ SuffixPath TraceSuffix(
+static __forceinline__ __device__ void TraceSuffix(
 	SuffixPath& suffix,
 	const PrefixPath& prefix,
 	PCG32& rng,
@@ -244,14 +251,14 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 	suffix.SetReconIdx(0);
 
 	// Check prefix
-	if (!prefix.IsValid() || prefix.IsNee()) { return suffix; }
+	if (!prefix.IsValid() || prefix.IsNee()) { return; }
 
 	// Calc max len
 	const uint32_t maxLen = params.maxPathLen - prefix.GetLength();
 
 	// Get last prefix interaction
 	Interaction interaction(prefix.lastInt, params.transforms);
-	if (!interaction.valid) { return suffix; }
+	if (!interaction.valid) { return; }
 	
 	//
 	bool postRecon = false;
@@ -270,15 +277,15 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			const glm::vec3 lightVec = emitter.pos - interaction.pos;
 			const float lightLen = glm::length(lightVec);
 			const glm::vec3 lightDir = glm::normalize(lightVec);
-			if (glm::any(glm::isnan(lightDir) || glm::isinf(lightDir))) { return suffix; }
-			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, lightLen, params)) { return suffix; }
+			if (glm::any(glm::isnan(lightDir) || glm::isinf(lightDir))) { return; }
+			if (TraceOcclusion(interaction.pos, lightDir, 1e-3f, lightLen, params)) { return; }
 
 			// Eval brdf
 			const BrdfEvalResult brdfEvalResult = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(
 				interaction.meshSbtData->evalMaterialSbtIdx,
 				interaction,
 				lightDir);
-			if (brdfEvalResult.samplingPdf <= 0.0f) { return suffix; }
+			if (brdfEvalResult.samplingPdf <= 0.0f) { return; }
 
 			// Create reconnection interaction if not already done
 			if (!postRecon)
@@ -292,7 +299,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 					1e16f,
 					params.surfaceTraceParams,
 					reconInt);
-				if (!reconInt.valid) { return suffix; }
+				if (!reconInt.valid) { return; }
 
 				suffix.reconInt = reconInt;
 				suffix.SetReconIdx(vertIdx);
@@ -306,7 +313,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 
 			// End
 			suffix.SetValid(true);
-			return suffix;
+			return;
 		}
 
 		// Sample brdf
@@ -314,7 +321,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			interaction.meshSbtData->sampleMaterialSbtIdx,
 			interaction,
 			rng);
-		if (brdfSampleResult.samplingPdf <= 0.0f) { return suffix; }
+		if (brdfSampleResult.samplingPdf <= 0.0f) { return; }
 
 		// Update f and p
 		suffix.p *= brdfSampleResult.samplingPdf * (1.0f - params.neeProb);
@@ -331,7 +338,7 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			1e16f,
 			params.surfaceTraceParams,
 			interaction);
-		if (!interaction.valid) { return suffix; }
+		if (!interaction.valid) { return; }
 
 		// Increment length
 		suffix.SetLength(suffix.GetLength() + 1);
@@ -353,10 +360,6 @@ static __forceinline__ __device__ SuffixPath TraceSuffix(
 			postRecon = true;
 		}
 	}
-
-	//
-	printf("Ho");
-	return suffix;
 }
 
 static __forceinline__ __device__ glm::vec3 TraceCompletePath(
