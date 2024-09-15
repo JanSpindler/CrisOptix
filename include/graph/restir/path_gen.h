@@ -126,6 +126,21 @@ static __forceinline__ __device__ void TracePrefix(
 			prefix.primaryInt = interaction;
 		}
 
+		// 
+		if (params.rendererType == RendererType::ConditionalRestir && traceIdx == maxLen - 1)
+		{
+			if (!postRecon)
+			{
+				prefix.reconInt = interaction;
+				prefix.SetReconIdx(prefix.GetLength());
+				prefix.reconOutDir = glm::vec3(0.0f);
+			}
+
+			prefix.SetValid(true);
+			prefix.lastInt = interaction;
+			return;
+		}
+
 		// Decide if NEE or continue PT
 		const bool forceNee = params.rendererType == RendererType::RestirPt && traceIdx == maxLen - 1;
 		if (rng.NextFloat() < params.neeProb || forceNee)
@@ -240,16 +255,13 @@ static __forceinline__ __device__ void TraceSuffix(
 	const LaunchParams& params)
 {
 	// Init suffix
-	suffix.Reset();
 	suffix.f = glm::vec3(1.0f);
 	suffix.p = 1.0f;
 	suffix.postReconF = glm::vec3(1.0f);
 	suffix.rng = rng;
 	suffix.lastPrefixInt = prefix.lastInt;
-	suffix.SetValid(false);
-	suffix.SetLength(0);
-	suffix.SetReconIdx(0);
-
+	suffix.Reset();
+	
 	// Check prefix
 	if (!prefix.IsValid() || prefix.IsNee()) { return; }
 

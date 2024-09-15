@@ -66,7 +66,7 @@ struct SuffixPath
 
 	constexpr __forceinline__ __device__ __host__ void Reset()
 	{
-		flags = 0;
+		flags = 0u;
 	}
 	
 	constexpr __forceinline__ __device__ __host__ uint32_t GetLength() const
