@@ -9,6 +9,13 @@
 
 __constant__ LaunchParams params;
 
+static constexpr __forceinline__ __device__ void InvalidateReservoir(const glm::uvec2& pixelCoord)
+{
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].Reset();
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].sample.SetValid(false);
+}
+
 static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixelCoord)
 {
 	// Calc pixel index
@@ -16,7 +23,11 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 
 	// Get prefix
 	const PrefixPath& prefix = params.restir.prefixReservoirs[pixelIdx * 2 + params.restir.frontBufferIdx].sample;
-	if (!prefix.IsValid() || prefix.IsNee()) { return; }
+	if (!prefix.IsValid() || prefix.IsNee())
+	{
+		InvalidateReservoir(pixelCoord);
+		return; 
+	}
 
 	// Get rng
 	PCG32& rng = params.restir.restirGBuffers[pixelIdx].rng;
@@ -24,7 +35,11 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	// Generate canonical suffix
 	TraceSuffix(params.restir.canonicalSuffixes[pixelIdx], prefix, rng, params);
 	const SuffixPath& canonSuffix = params.restir.canonicalSuffixes[pixelIdx];
-	if (!canonSuffix.IsValid()) { return; }
+	if (!canonSuffix.IsValid()) 
+	{
+		InvalidateReservoir(pixelCoord);
+		return; 
+	}
 	const float canonPHat = GetLuminance(canonSuffix.f);
 
 	// Get current reservoir

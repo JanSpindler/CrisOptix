@@ -6,21 +6,40 @@
 
 __constant__ LaunchParams params;
 
+static constexpr __forceinline__ __device__ void InvalidateReservoir(const glm::uvec2& pixelCoord)
+{
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].Reset();
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx].sample.SetValid(false);
+}
+
 static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixelCoord)
 {
 	// Get current prefix
 	const size_t currPixelIdx = GetPixelIdx(pixelCoord, params);
 	const PrefixPath& prefix = params.restir.prefixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx].sample;
-	if (!prefix.IsValid() || prefix.IsNee()) { return; }
+	if (!prefix.IsValid() || prefix.IsNee())
+	{
+		InvalidateReservoir(pixelCoord);
+		return; 
+	}
 
 	// Get current suffix
 	Reservoir<SuffixPath>& currRes = params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
 	const SuffixPath currSuffix = currRes.sample;
-	if (!currSuffix.IsValid()) { return; }
+	if (!currSuffix.IsValid()) 
+	{
+		InvalidateReservoir(pixelCoord);
+		return; 
+	}
 
 	// Get canonical suffix
 	const SuffixPath& canonSuffix = params.restir.canonicalSuffixes[currPixelIdx];
-	if (!canonSuffix.IsValid()) { return; }
+	if (!canonSuffix.IsValid()) 
+	{
+		InvalidateReservoir(pixelCoord);
+		return; 
+	}
 	const float canonPHat = GetLuminance(canonSuffix.f);
 
 	// Get rng
@@ -145,5 +164,4 @@ extern "C" __global__ void __raygen__suffix_spatial_reuse()
 	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
 	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.backBufferIdx] =
 		params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
-
 }
