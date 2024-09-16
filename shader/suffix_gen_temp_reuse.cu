@@ -111,4 +111,9 @@ extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
 
 	//
 	SuffixGenTempReuse(pixelCoord);
+
+	// Swap buffers
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.backBufferIdx] =
+		params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
 }
