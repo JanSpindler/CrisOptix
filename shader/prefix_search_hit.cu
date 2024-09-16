@@ -18,6 +18,7 @@ extern "C" __global__ void __intersection__prefix_entry()
 	const Interaction neighLastInt(
 		params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastInt,
 		params.transforms);
+	if (!neighLastInt.valid) { return; }
 
 	// Get radius
 	const OptixAabb& aabb = params.restir.prefixEntryAabbs[neighPixelIdx];

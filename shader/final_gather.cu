@@ -168,6 +168,7 @@ static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
 
 		// Add to suffix contribution
 		suffixContrib += neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
+		//suffixContrib += neighMisWeight * fFromNeighOfNeigh * neighSuffixRes.wSum;
 
 		// Update canon mis weight
 		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
@@ -176,10 +177,10 @@ static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
 
 	// Gather
 	glm::vec3 gatherContrib = suffixContrib * canonPrefix.f / canonPrefix.p;
-	gatherContrib /= static_cast<float>(params.restir.gatherN);
+	gatherContrib /= static_cast<float>(validNeighCount + 1); // 1 / N
 	
 	glm::vec3 result = gatherContrib + (canonContrib * canonMisWeight);
-	result /= pairwiseK + 1.0f;
+	result /= pairwiseK + 1.0f; // 1 / (k + 1) for pairwise MIS
 
 	if (glm::any(glm::isinf(result) || glm::isnan(result))) { return glm::vec3(0.0f); }
 	return result;

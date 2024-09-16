@@ -60,15 +60,18 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	const glm::vec3 fFromCanonOfPrev = CalcCurrContribInOtherDomain(prevPrefix, canonPrefix, jacobianPrevToCanon, params);
 	const glm::vec3 fFromPrevOfCanon = CalcCurrContribInOtherDomain(canonPrefix, prevPrefix, jacobianCanonToPrev, params);
 
-	// Calc talbot mis weights
+	// Calc pairwise mis weights
 	const float pFromCanonOfCanon = canonPHat;
 	const float pFromCanonOfPrev = GetLuminance(fFromCanonOfPrev) * jacobianPrevToCanon;
 	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
 	const float pFromPrevOfPrev = GetLuminance(prevPrefix.f);
 
-	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (1.0f * pFromCanonOfCanon + prevRes.confidence * pFromPrevOfCanon);
-	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (1.0f * pFromCanonOfPrev + prevRes.confidence * pFromPrevOfPrev);
-	
+	static constexpr float pairwiseK = 1.0f;
+	const float prevMisWeight = ComputeNeighborPairwiseMISWeight(
+		fFromCanonOfPrev, prevPrefix.f, jacobianPrevToCanon, pairwiseK, 1.0f, prevRes.confidence);
+	const float canonMisWeight = 1.0f + ComputeCanonicalPairwiseMISWeight(
+		canonPrefix.f, fFromPrevOfCanon, jacobianCanonToPrev, pairwiseK, 1.0f, prevRes.confidence);
+
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonPrefix.p;
 	if (currRes.Update(canonPrefix, canonRisWeight, rng, 1.0f))
@@ -85,7 +88,11 @@ static __forceinline__ __device__ bool PrefixGenTempReuse(
 	}
 
 	// Finalize GRIS
-	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
+	if (currRes.wSum > 0.0f) 
+	{
+		currRes.wSum /= pairwiseK + 1.0f;
+		currRes.FinalizeGRIS(); 
+	}
 
 	return true;
 }

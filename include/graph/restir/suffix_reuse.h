@@ -16,6 +16,9 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	// Default val jacobian
 	jacobian = 0.0f;
 
+	// Check source suffix
+	if (!srcSuffix.IsValid()) { return glm::vec3(0.0f); }
+
 	// Get other last perfix interaction
 	if (!dstLastPrefixInt.valid) { return glm::vec3(0.0f); }
 
@@ -73,10 +76,17 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 	throughput *= brdf1.brdfResult;
 
 	// Brdf eval 2
-	if (srcSuffix.GetReconIdx() == 0)
+	if (srcSuffix.GetReconIdx() < srcSuffix.GetLength())
 	{
 		// Fix recon interaction in dir
 		srcReconInt.inRayDir = reconDir;
+
+		//
+		if (srcSuffix.reconOutDir == glm::vec3(0.0f))
+		{
+			//printf("Alarm %d, %d\n", srcSuffix.GetLength(), srcSuffix.GetReconIdx());
+			return glm::vec3(0.0f);
+		}
 
 		// Brdf
 		const BrdfEvalResult brdf2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(

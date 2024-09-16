@@ -274,13 +274,30 @@ static __forceinline__ __device__ void TraceSuffix(
 	
 	//
 	bool postRecon = false;
+	glm::vec3 lastDir(0.0f);
 	for (uint32_t vertIdx = 0; vertIdx < maxLen; ++vertIdx)
 	{
+		// Trace new interaction
+		const glm::vec3 lastPos = interaction.pos;
+		if (suffix.GetLength() > 0)
+		{
+			TraceWithDataPointer<Interaction>(
+				params.traversableHandle,
+				lastPos,
+				lastDir,
+				1e-3f,
+				1e16f,
+				params.surfaceTraceParams,
+				interaction);
+			if (!interaction.valid) { return; }
+		}
+
 		// Nee
-		if (rng.NextFloat() < params.neeProb || vertIdx == maxLen - 1)
+		const bool forceNee = vertIdx == maxLen - 1;
+		if (rng.NextFloat() < params.neeProb || forceNee)
 		{
 			// Prob
-			if (vertIdx != maxLen - 1) { suffix.p *= params.neeProb; }
+			if (!forceNee) { suffix.p *= params.neeProb; }
 
 			// Sample light source
 			const EmitterSample emitter = SampleEmitter(rng, params.emitterTable);
@@ -299,6 +316,9 @@ static __forceinline__ __device__ void TraceSuffix(
 				lightDir);
 			if (brdfEvalResult.samplingPdf <= 0.0f) { return; }
 
+			// Increment length
+			suffix.SetLength(suffix.GetLength() + 1);
+
 			// Create reconnection interaction if not already done
 			if (!postRecon)
 			{
@@ -314,14 +334,15 @@ static __forceinline__ __device__ void TraceSuffix(
 				if (!reconInt.valid) { return; }
 
 				suffix.reconInt = reconInt;
-				suffix.SetReconIdx(vertIdx);
-				suffix.reconOutDir = lightDir;
+				suffix.SetReconIdx(suffix.GetLength());
+				suffix.reconOutDir = glm::vec3(0.0f);
 				postRecon = true;
 			}
 
 			// Radiance
 			suffix.f *= brdfEvalResult.brdfResult * emitter.color;
-			suffix.postReconF *= brdfEvalResult.brdfResult * emitter.color;
+			suffix.postReconF *= emitter.color;
+			if (suffix.GetReconIdx() < suffix.GetLength()) { suffix.postReconF *= brdfEvalResult.brdfResult; }
 
 			// End
 			suffix.SetValid(true);
@@ -340,21 +361,6 @@ static __forceinline__ __device__ void TraceSuffix(
 		suffix.f *= brdfSampleResult.brdfVal;
 		if (postRecon) { suffix.postReconF *= brdfSampleResult.brdfVal; }
 
-		// Trace new interaction
-		const glm::vec3 lastPos = interaction.pos;
-		TraceWithDataPointer<Interaction>(
-			params.traversableHandle,
-			lastPos,
-			brdfSampleResult.outDir,
-			1e-3f,
-			1e16f,
-			params.surfaceTraceParams,
-			interaction);
-		if (!interaction.valid) { return; }
-
-		// Increment length
-		suffix.SetLength(suffix.GetLength() + 1);
-
 		// Check if this interaction can be a reconnection interaction
 		const float reconDistance = glm::distance(lastPos, interaction.pos);
 		const float reconRoughness = brdfSampleResult.roughness;
@@ -371,6 +377,10 @@ static __forceinline__ __device__ void TraceSuffix(
 			suffix.reconOutDir = brdfSampleResult.outDir;
 			postRecon = true;
 		}
+
+		// Update
+		lastDir = brdfSampleResult.outDir;
+		suffix.SetLength(suffix.GetLength() + 1);
 	}
 }
 

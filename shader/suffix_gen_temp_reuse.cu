@@ -66,8 +66,11 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const float pFromPrevOfCanon = GetLuminance(fFromPrevOfCanon) * jacobianCanonToPrev;
 	const float pFromPrevOfPrev = GetLuminance(prevSuffix.f);
 
-	const float canonMisWeight = 1.0f * pFromCanonOfCanon / (pFromCanonOfCanon + pFromPrevOfCanon);
-	const float prevMisWeight = prevRes.confidence * pFromPrevOfPrev / (pFromCanonOfPrev + pFromPrevOfPrev);
+	static constexpr float pairwiseK = 1.0f;
+	const float prevMisWeight = ComputeNeighborPairwiseMISWeight(
+		fFromCanonOfPrev, prevSuffix.f, jacobianPrevToCanon, pairwiseK, 1.0f, prevRes.confidence);
+	const float canonMisWeight = 1.0f + ComputeCanonicalPairwiseMISWeight(
+		canonSuffix.f, fFromPrevOfCanon, jacobianCanonToPrev, pairwiseK, 1.0f, prevRes.confidence);
 
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonSuffix.p;
@@ -86,7 +89,11 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	}
 
 	// Finalize GRIS
-	if (currRes.wSum > 0.0f) { currRes.FinalizeGRIS(); }
+	if (currRes.wSum > 0.0f)
+	{
+		currRes.wSum /= pairwiseK + 1.0f;
+		currRes.FinalizeGRIS(); 
+	}
 }
 
 extern "C" __global__ void __raygen__suffix_gen_temp_reuse()
