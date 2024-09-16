@@ -197,10 +197,11 @@ static __forceinline__ __device__ void TracePrefix(
 				return;
 			}
 
-			prefix.f *= brdfEvalResult.brdfResult * emitterSample.color;
-			if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color; }
+			const float distFactor = 1.0f / (distance * distance);
 
-			if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission; }
+			prefix.f *= brdfEvalResult.brdfResult * emitterSample.color * distFactor;
+			if (postRecon) { prefix.postReconF *= brdfEvalResult.brdfResult * emitterSample.color * distFactor; }
+			if (prefix.GetLength() == 1) { prefix.f += brdfEvalResult.emission * distFactor; }
 
 			prefix.SetNee(true);
 			prefix.SetValid(true);
@@ -340,8 +341,9 @@ static __forceinline__ __device__ void TraceSuffix(
 			}
 
 			// Radiance
-			suffix.f *= brdfEvalResult.brdfResult * emitter.color;
-			suffix.postReconF *= emitter.color;
+			const float distFactor = 1.0f / (lightLen * lightLen);
+			suffix.f *= brdfEvalResult.brdfResult * emitter.color * distFactor;
+			suffix.postReconF *= emitter.color * distFactor;
 			if (suffix.GetReconIdx() < suffix.GetLength()) { suffix.postReconF *= brdfEvalResult.brdfResult; }
 
 			// End
@@ -441,7 +443,10 @@ static __forceinline__ __device__ glm::vec3 TraceCompletePath(
 				interaction.meshSbtData->evalMaterialSbtIdx,
 				interaction,
 				lightDir);
-			radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color;
+
+			// Radiance
+			const float distFactor = 1.0f / (distance * distance);
+			radiance = throughput * brdfEvalResult.brdfResult * emitterSample.color * distFactor;
 			if (currentDepth == 1) { radiance += brdfEvalResult.emission; }
 
 			break;
