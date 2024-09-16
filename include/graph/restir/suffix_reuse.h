@@ -82,11 +82,7 @@ static __forceinline__ __device__ glm::vec3 CalcCurrContribInOtherDomain(
 		srcReconInt.inRayDir = reconDir;
 
 		//
-		if (srcSuffix.reconOutDir == glm::vec3(0.0f))
-		{
-			//printf("Alarm %d, %d\n", srcSuffix.GetLength(), srcSuffix.GetReconIdx());
-			return glm::vec3(0.0f);
-		}
+		if (srcSuffix.reconOutDir == glm::vec3(0.0f)) { return glm::vec3(0.0f); }
 
 		// Brdf
 		const BrdfEvalResult brdf2 = optixDirectCall<BrdfEvalResult, const Interaction&, const glm::vec3&>(

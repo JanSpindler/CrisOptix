@@ -59,8 +59,9 @@ static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& 
 	for (uint32_t suffixIdx = 0; suffixIdx < prefixSearchPayload.neighCount; ++suffixIdx)
 	{
 		const uint32_t neighPixelIdx = params.restir.prefixNeighbors[offset + suffixIdx].pixelIdx;
-		const SuffixPath& suffix = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample;
-		contrib += suffix.f;
+		const Reservoir<SuffixPath>& suffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+		const SuffixPath& suffix = suffixRes.sample;
+		contrib += suffix.f * suffixRes.wSum;
 	}
 	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
 }

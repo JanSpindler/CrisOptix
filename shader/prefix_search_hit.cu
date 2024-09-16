@@ -14,11 +14,19 @@ extern "C" __global__ void __intersection__prefix_entry()
 	// Get payload
 	PrefixSearchPayload* payload = GetPayloadDataPointer<PrefixSearchPayload>();
 
+	// Get prefix
+	const Reservoir<PrefixPath>& prefixRes = params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+	const PrefixPath& prefix = prefixRes.sample;
+	if (!prefix.IsValid()) { return; }
+
 	// Get neighbor last interaction
-	const Interaction neighLastInt(
-		params.restir.prefixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx].sample.lastInt,
-		params.transforms);
+	const Interaction neighLastInt(prefix.lastInt, params.transforms);
 	if (!neighLastInt.valid) { return; }
+
+	// Get suffix
+	const Reservoir<SuffixPath>& suffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
+	const SuffixPath& suffix = suffixRes.sample;
+	if (!suffix.IsValid()) { return; }
 
 	// Get radius
 	const OptixAabb& aabb = params.restir.prefixEntryAabbs[neighPixelIdx];
