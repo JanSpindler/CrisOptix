@@ -123,10 +123,6 @@ static __forceinline__ __device__ void SuffixSpatialReuse(const glm::uvec2& pixe
 		currRes.wSum /= pairwiseK + 1.0f;
 		currRes.FinalizeGRIS(); 
 	}
-
-	// Store in back buffer
-	params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.backBufferIdx] =
-		params.restir.suffixReservoirs[2 * currPixelIdx + params.restir.frontBufferIdx];
 }
 
 extern "C" __global__ void __raygen__suffix_spatial_reuse()
@@ -144,4 +140,10 @@ extern "C" __global__ void __raygen__suffix_spatial_reuse()
 
 	// Spatial suffix reuse
 	SuffixSpatialReuse(pixelCoord);
+
+	// Swap buffers
+	const uint32_t pixelIdx = GetPixelIdx(pixelCoord, params);
+	params.restir.suffixReservoirs[2 * pixelIdx + params.restir.backBufferIdx] =
+		params.restir.suffixReservoirs[2 * pixelIdx + params.restir.frontBufferIdx];
+
 }

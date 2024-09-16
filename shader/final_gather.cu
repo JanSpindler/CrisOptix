@@ -168,8 +168,8 @@ static __forceinline__ __device__ glm::vec3 FinalGatherCanon(
 		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
 
 		// Add to suffix contribution
-		suffixContrib += neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
-		//suffixContrib += neighMisWeight * fFromNeighOfNeigh * neighSuffixRes.wSum;
+		const glm::vec3 neighContrib = neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
+		if (!glm::any(glm::isnan(neighContrib) || glm::isinf(neighContrib))) { suffixContrib += neighContrib; }
 
 		// Update canon mis weight
 		canonMisWeight += ComputeCanonicalPairwiseMISWeight(
