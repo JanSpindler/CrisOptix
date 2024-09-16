@@ -38,8 +38,8 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	// Skip temporal reuse if prev pixel is invalid or temporal reuse is not active
 	if (!params.restir.suffixEnableTemporal || !IsPixelValid(prevPixelCoord, params))
 	{
-		currRes.FinalizeGRIS();
 		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
+		currRes.FinalizeGRIS();
 		return;
 	}
 
@@ -48,8 +48,8 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const SuffixPath& prevSuffix = prevRes.sample;
 	if (prevRes.wSum <= 0.0f || !prevSuffix.IsValid())
 	{
-		currRes.FinalizeGRIS();
 		currRes.Update(canonSuffix, canonPHat / canonSuffix.p, rng, 1.0f);
+		currRes.FinalizeGRIS();
 		return;
 	}
 
@@ -67,10 +67,11 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	const float pFromPrevOfPrev = GetLuminance(prevSuffix.f);
 
 	static constexpr float pairwiseK = 1.0f;
+	const float prevConfidence = prevRes.confidence;
 	const float prevMisWeight = ComputeNeighborPairwiseMISWeight(
-		fFromCanonOfPrev, prevSuffix.f, jacobianPrevToCanon, pairwiseK, 1.0f, prevRes.confidence);
+		fFromCanonOfPrev, prevSuffix.f, jacobianPrevToCanon, pairwiseK, 1.0f, prevConfidence);
 	const float canonMisWeight = 1.0f + ComputeCanonicalPairwiseMISWeight(
-		canonSuffix.f, fFromPrevOfCanon, jacobianCanonToPrev, pairwiseK, 1.0f, prevRes.confidence);
+		canonSuffix.f, fFromPrevOfCanon, jacobianCanonToPrev, pairwiseK, 1.0f, prevConfidence);
 
 	// Stream canonical sample
 	const float canonRisWeight = canonMisWeight * canonPHat / canonSuffix.p;
@@ -80,10 +81,9 @@ static __forceinline__ __device__ void SuffixGenTempReuse(const glm::uvec2& pixe
 	}
 
 	// Stream prev samples
-	const float prevUcw = prevRes.wSum * jacobianPrevToCanon / GetLuminance(prevSuffix.f);
-	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevUcw;
+	const float prevRisWeight = prevMisWeight * pFromCanonOfPrev * prevRes.wSum;
 	const SuffixPath shiftedPrevSuffix(prevSuffix, canonSuffix.lastPrefixInt, fFromCanonOfPrev);
-	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng, 1.0f))
+	if (currRes.Update(shiftedPrevSuffix, prevRisWeight, rng, prevConfidence))
 	{
 		//printf("Prev Suffix\n");
 	}
