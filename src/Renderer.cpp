@@ -459,7 +459,7 @@ void Renderer::RunImGuiSettings()
 			ImGui::InputInt("Final Gather N", &m_LaunchParams.restir.gatherN, 1, 4);
 			m_LaunchParams.restir.gatherN = std::max<int>(1, m_LaunchParams.restir.gatherN);
 			ImGui::InputInt("Final Gather M", &m_LaunchParams.restir.gatherM, 1, 4);
-			m_LaunchParams.restir.gatherM = std::max<int>(1, m_LaunchParams.restir.gatherM);
+			m_LaunchParams.restir.gatherM = std::clamp<int>(m_LaunchParams.restir.gatherM, 1, 32);
 			ImGui::DragFloat("Final Gather Radius", &m_LaunchParams.restir.gatherRadius, 1e-3f, 0.0f, 1.0f);
 			ImGui::Combo("Final Gather Radius Type", reinterpret_cast<int*>(&m_LaunchParams.restir.gatherRadiusType), PREFIX_RADIUS_TYPE_NAMES, PREFIX_RADIUS_TYPE_COUNT);
 		}

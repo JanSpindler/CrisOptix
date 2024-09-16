@@ -61,7 +61,7 @@ static __forceinline__ __device__ glm::vec3 ShowPrefixEntries(const glm::uvec3& 
 		const uint32_t neighPixelIdx = params.restir.prefixNeighbors[offset + suffixIdx].pixelIdx;
 		const Reservoir<SuffixPath>& suffixRes = params.restir.suffixReservoirs[2 * neighPixelIdx + params.restir.frontBufferIdx];
 		const SuffixPath& suffix = suffixRes.sample;
-		contrib += suffix.f * suffixRes.wSum;
+		contrib += suffix.f;// *suffixRes.wSum;
 	}
 	return contrib / static_cast<float>(prefixSearchPayload.neighCount);
 }
@@ -194,8 +194,6 @@ static __forceinline__ __device__ glm::vec3 FinalGatherNotCanon(
 	const uint32_t k,
 	PCG32& rng)
 {
-	printf("Hi\n");
-
 	// Exit if k = 0
 	if (k == 0) { return glm::vec3(0.0f); }
 
@@ -276,7 +274,8 @@ static __forceinline__ __device__ glm::vec3 FinalGatherNotCanon(
 		if (glm::isnan(neighMisWeight) || glm::isinf(neighMisWeight)) neighMisWeight = 0.0f;
 
 		// Add to suffix contribution
-		suffixContrib += neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
+		const glm::vec3 neighContrib = neighMisWeight * fFromCanonOfNeigh * neighSuffixRes.wSum * jacobianNeighToCanon;
+		if (!glm::any(glm::isnan(neighContrib) || glm::isinf(neighContrib))) { suffixContrib += neighContrib; }
 	}
 
 	// Gather
